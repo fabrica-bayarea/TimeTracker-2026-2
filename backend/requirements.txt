@@ -1,0 +1,9 @@
+# Gerado por pip freeze
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.12
+pydantic==2.13.5
+python-dotenv==1.2.3
+fpdf2==2.8.8

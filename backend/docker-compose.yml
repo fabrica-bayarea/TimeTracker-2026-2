@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:18
+    container_name: timetracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timetracker_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timetracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  seed:
+    build: .
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python seed.py
+
+  api:
+    build: .
+    container_name: timetracker-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  timetracker_pgdata:
