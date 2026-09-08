@@ -32,12 +32,12 @@ Empresas com equipes remotas ou presenciais frequentemente não possuem visibili
 O sistema é composto por **três camadas independentes** que se comunicam via API REST:
 
 ```
-┌─────────────────────┐     HTTPS      ┌─────────────────────┐      SQL       ┌──────────────┐
-│   Agente Desktop    │ ──────────────▶ │   Backend / API     │ ─────────────▶ │  PostgreSQL  │
-│   (C# .NET 8)       │                │   (Python FastAPI)   │                │              │
-│                     │ ◀────────────── │                     │ ◀───────────── │              │
-│   SQLite (offline)  │   Configs       │   Swagger /docs     │   Consultas    │              │
-└─────────────────────┘                └─────────────────────┘                └──────────────┘
+┌─────────────────────┐     HTTPS        ┌─────────────────────┐      SQL       ┌──────────────┐
+│   Agente Desktop    │ ──────────────▶  │  Backend / API     │ ─────────────▶ │  PostgreSQL  │
+│   (C# .NET 8)       │                  │  (Python FastAPI)   │                │              │
+│                     │ ◀──────────────  │                    │ ◀───────────── │              │
+│   SQLite (offline)  │   Configs        │   Swagger /docs     │   Consultas    │              │
+└─────────────────────┘                  └─────────────────────┘                └──────────────┘
                                                 │
                                                 │ REST API
                                                 ▼
