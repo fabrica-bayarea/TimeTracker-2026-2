@@ -10,7 +10,11 @@ import {
   Sidebar,
   TimelineCard,
 } from "./components";
-import { useActiveSection, useTheme } from "./hooks/useDashboard";
+import {
+  useActiveSection,
+  useDashboardData,
+  useTheme,
+} from "./hooks/useDashboard";
 
 /**
  * Componente principal da aplicação
@@ -21,6 +25,16 @@ function App() {
   const [selectedDate, setSelectedDate] = useState("2026-09-06");
   const [tracking, setTracking] = useState(true);
   const activeSection = useActiveSection();
+  const { data, loading, error } = useDashboardData(selectedDate);
+  const summaryUsers = data?.summary?.users ?? [];
+  const realtimePeople = data?.realtime ?? [];
+  const totalMonitoredSeconds = summaryUsers.reduce(
+    (total, user) => total + user.total_seconds,
+    0,
+  );
+  const onlinePeople = realtimePeople.filter(
+    (person) => person.status === "online",
+  ).length;
 
   // Formata a data para exibição
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
@@ -42,6 +56,7 @@ function App() {
           toggleTheme={toggleTheme}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
+          apiStatus={loading ? "loading" : error ? "offline" : "online"}
         />
 
         {/* Cards de métricas */}
@@ -50,9 +65,12 @@ function App() {
             icon="◷"
             tone="bg-violet-100 text-violet-600"
             label="Tempo monitorado"
-            value="6h 42min"
-            detail="↑ 12%  vs. ontem"
-            positive
+            value={
+              totalMonitoredSeconds > 0
+                ? `${Math.floor(totalMonitoredSeconds / 3600)}h ${Math.floor((totalMonitoredSeconds % 3600) / 60)}min`
+                : "6h 42min"
+            }
+            detail={data ? "dados da API" : "dados demonstrativos"}
           />
           <MetricCard
             icon="⌁"
@@ -68,11 +86,11 @@ function App() {
             label="Em atividade agora"
             value={
               <>
-                12{" "}
+                {data ? onlinePeople : 12}{" "}
                 <span className="text-xs font-medium text-muted">pessoas</span>
               </>
             }
-            detail="de 16 na equipe"
+            detail={data ? `${realtimePeople.length} na equipe` : "de 16 na equipe"}
           />
           <MetricCard
             icon="◆"
@@ -86,11 +104,20 @@ function App() {
         {/* Seção de gráficos e tabelas */}
         <section className="grid gap-5 lg:grid-cols-2">
           <ActivityChart />
-          <CategoryChart />
+          <CategoryChart summaryUsers={summaryUsers} />
           <AppsCard />
           <TimelineCard />
-          <PeopleCard />
+          <PeopleCard realtimePeople={realtimePeople} />
         </section>
+
+        {loading && (
+          <p className="mt-4 text-xs text-muted">Consultando dados da API...</p>
+        )}
+        {error && (
+          <p className="mt-4 text-xs text-amber-600">
+            API indisponível. Exibindo dados demonstrativos.
+          </p>
+        )}
 
         {/* Seção de relatórios e agente */}
         <div className="mt-5 grid gap-5">

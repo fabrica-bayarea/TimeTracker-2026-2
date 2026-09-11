@@ -1,5 +1,32 @@
 import { useEffect, useState } from "react";
 import { navItems } from "../data/dashboardData";
+import { fetchDashboardData } from "../services/api";
+
+export function useDashboardData(selectedDate) {
+  const [state, setState] = useState({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setState({ data: null, loading: true, error: null });
+
+    fetchDashboardData(selectedDate, controller.signal)
+      .then((data) => setState({ data, loading: false, error: null }))
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          setState({ data: null, loading: false, error });
+        }
+      });
+
+    return () => controller.abort();
+  }, [selectedDate]);
+
+  return state;
+}
 
 /**
  * Hook para gerenciar o tema (escuro/claro)

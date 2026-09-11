@@ -6,6 +6,7 @@
  * @param {function} toggleTheme - Função para alternar tema
  * @param {string} selectedDate - Data selecionada
  * @param {function} setSelectedDate - Função para atualizar data
+ * @param {string} apiStatus - Estado da conexão com a API
  */
 export function Header({
   formattedDate,
@@ -13,7 +14,14 @@ export function Header({
   toggleTheme,
   selectedDate,
   setSelectedDate,
+  apiStatus,
 }) {
+  const apiStatusLabel = {
+    loading: "Conectando à API",
+    offline: "API offline",
+    online: "API online",
+  }[apiStatus] || "API offline";
+
   return (
     <header
       id="visao-geral"
@@ -57,9 +65,11 @@ export function Header({
             aria-label="Data do relatório"
           />
         </label>
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+        <span
+          className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}
+        >
           <i className="status-dot" />
-          API online
+          {apiStatusLabel}
         </span>
       </div>
     </header>
