@@ -11,7 +11,7 @@ Os aprimoramentos usam exclusivamente os endpoints já documentados nesta págin
 - o hook preserva o último resultado válido ao atualizar a mesma data e o mantém visível se uma consulta posterior falhar;
 - ao trocar de data, o resultado anterior é descartado até a resposta da nova consulta, evitando dados inconsistentes;
 - respostas vazias da API são representadas como estados vazios na interface, sem substituir silenciosamente por conteúdo demonstrativo;
-- o CSV é gerado no navegador a partir das atividades exibidas no momento e a impressão do navegador é usada para salvar em PDF.
+- o CSV e o PDF agora sao solicitados diretamente aos endpoints de exportacao do backend, respeitando data e colaborador selecionados.
 
 O controle de “pausar acompanhamento” foi substituído por um controle de atualização automática. Pausar ou retomar o agente exigiria um endpoint próprio e, por isso, não é uma ação disponibilizada pelo frontend.
 
@@ -47,8 +47,8 @@ Responsabilidades:
 - definir a URL base da API;
 - realizar requisicoes com `fetch`;
 - verificar respostas HTTP malsucedidas;
-- buscar o resumo diario e a atividade em tempo real;
-- montar URLs para exportacoes futuras ou existentes.
+- buscar usuarios, resumo diario, atividade em tempo real e os sete resumos usados no grafico semanal;
+- montar URLs para exportacoes CSV e PDF com os filtros atuais.
 
 A URL padrao e:
 
@@ -69,8 +69,8 @@ Esse hook:
 - diferencia o carregamento inicial (`loading`) de uma atualização com dados visíveis (`refreshing`);
 - registra `updatedAt`, usado para informar ao usuário quando os dados foram atualizados;
 - mantém dados apenas enquanto eles correspondem à data selecionada;
-- recebe a data selecionada no dashboard;
-- dispara as duas consultas da API em paralelo;
+- recebe a data e o colaborador selecionados no dashboard;
+- dispara as consultas da API em paralelo;
 - controla os estados `loading`, `data` e `error`;
 - cancela a requisicao anterior quando a data muda ou o componente e desmontado;
 - evita atualizar a tela com uma requisicao cancelada.
@@ -79,7 +79,11 @@ As consultas sao:
 
 ```text
 GET /dashboard/summary?date=AAAA-MM-DD
+GET /dashboard/summary?date=AAAA-MM-DD&username=colaborador
 GET /activities/realtime
+GET /users/
+GET /dashboard/export/csv?date=AAAA-MM-DD&username=colaborador
+GET /dashboard/export/pdf?date=AAAA-MM-DD&username=colaborador
 ```
 
 ### 3. Integracao no componente principal
@@ -125,6 +129,8 @@ Usado para obter:
 - distribuicao do tempo por categoria;
 - cor configurada para cada categoria.
 
+Quando o filtro de colaborador esta preenchido, o parametro `username` e enviado ao backend.
+
 ### Atividade em tempo real
 
 ```http
@@ -140,6 +146,25 @@ Usado para obter:
 - categoria classificada;
 - status online ou ausente;
 - tempo desde a ultima atividade.
+
+### Usuarios
+
+```http
+GET /users/
+```
+
+Alimenta o seletor de colaboradores do dashboard.
+
+### Exportacoes
+
+Os botoes CSV e PDF usam diretamente:
+
+```http
+GET /dashboard/export/csv?date=AAAA-MM-DD
+GET /dashboard/export/pdf?date=AAAA-MM-DD
+```
+
+O filtro `username` e acrescentado quando um colaborador e selecionado.
 
 ## Exemplo de resposta esperada
 
@@ -192,18 +217,38 @@ Quando a API nao responde ou retorna erro HTTP:
 
 Esse comportamento permite apresentar e navegar pelo prototipo sem banco ou backend ativos, mas deixa visivel que os dados nao sao reais naquele momento.
 
-## O que ainda permanece demonstrativo
+## O que foi implementado no frontend
 
-A API atual nao possui endpoints suficientes para alimentar todos os blocos do dashboard. Por isso, continuam usando dados locais:
+- filtro por colaborador;
+- filtro por data;
+- atualizacao manual e automatica a cada 30 segundos;
+- indicador de estado da API;
+- tratamento de carregamento, erro e resposta vazia;
+- tabela de equipe com dados de `/activities/realtime`;
+- categorias agregadas a partir do resumo diario;
+- tempo monitorado calculado a partir dos segundos retornados pela API;
+- tempo produtivo derivado das categorias, considerando `Social` e `Outros` como nao produtivas;
+- grafico semanal obtido por sete consultas de resumo diario;
+- exportacao CSV e PDF usando os endpoints do backend;
+- preservacao do fallback demonstrativo somente quando a API esta indisponivel.
 
-- grafico semanal de atividade;
-- timeline do expediente;
-- ranking de aplicativos mais usados;
-- tempo produtivo;
-- software mais usado;
+## O que ainda falta
+
+Ainda existem dependencias que nao podem ser resolvidas somente no frontend:
+
+- ranking de aplicativos por tempo de uso: falta endpoint com agrupamento por processo e duracao;
+- timeline do expediente: falta endpoint com intervalos de atividade, inicio, fim e duracao;
 - informacoes fixas do agente na secao de status.
 
-Esses blocos somente devem ser considerados totalmente integrados quando houver dados ou endpoints correspondentes no contrato da API.
+O grafico semanal ja foi integrado usando sete chamadas ao endpoint de resumo diario. O tempo produtivo e uma metrica derivada no frontend; para uma regra oficial, o backend ou o contrato do produto deve definir quais categorias sao produtivas.
+
+Pendencias proprias do frontend:
+
+- adicionar testes unitarios e de componentes;
+- testar a experiencia com API indisponivel e respostas vazias;
+- revisar acessibilidade do seletor e dos links de download;
+- substituir a regra provisoria de produtividade por uma regra aprovada pelo produto;
+- integrar ranking e timeline quando os endpoints forem disponibilizados.
 
 ## Como executar
 
@@ -238,4 +283,4 @@ Tambem foi feita verificacao de erros nos arquivos alterados do frontend, sem er
 
 ## Mensagem para apresentacao a lideranca
 
-> O frontend foi conectado aos endpoints existentes do backend sem alterar a API. O dashboard agora consulta o resumo diario e a atividade em tempo real, transforma as respostas do banco para o formato dos componentes React e apresenta dados de equipe, categorias, tempo monitorado e pessoas online. Tambem foram incluidos estados de carregamento, erro e fallback para preservar a navegacao quando a API estiver indisponivel. As areas que dependem de dados ainda nao expostos pelo backend permanecem demonstrativas e foram identificadas para uma proxima etapa.
+> O frontend foi conectado aos endpoints existentes do backend sem alterar a API. O dashboard agora consulta usuarios, resumos diarios, atividade em tempo real e os sete dias usados no grafico semanal. Tambem envia filtros, calcula indicadores derivados, e direciona CSV e PDF para os endpoints oficiais. Permanecem pendentes apenas os dados que a API ainda nao fornece, como ranking de aplicativos por duracao e timeline detalhada do expediente.

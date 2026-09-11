@@ -280,7 +280,8 @@ Layout adapta com classes `lg:grid-cols-2`, etc.
 ## 🚧 TODO
 
 - [x] Integração inicial com API backend
-- [ ] Integração dos gráficos semanal e de aplicativos com endpoints específicos
+- [x] Integração do gráfico semanal usando resumos diários
+- [ ] Integração da timeline e do ranking de aplicativos quando os endpoints existirem
 - [ ] Testes unitários e E2E
 - [ ] Tipos TypeScript
 - [ ] Validação de formulários
