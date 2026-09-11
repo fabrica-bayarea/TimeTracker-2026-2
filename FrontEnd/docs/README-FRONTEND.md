@@ -247,6 +247,7 @@ Layout adapta com classes `lg:grid-cols-2`, etc.
 ## 📖 Documentação Adicional
 
 - [STYLES.md](./STYLES.md) - Documentação completa de estilos CSS
+- [INTEGRACAO-FRONTEND-BACKEND.md](./INTEGRACAO-FRONTEND-BACKEND.md) - Integração com a API e fluxo de dados
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [React Docs](https://react.dev)
 - [Recharts Docs](https://recharts.org)
@@ -263,7 +264,8 @@ Layout adapta com classes `lg:grid-cols-2`, etc.
 
 ## 🚧 TODO
 
-- [ ] Integração com API backend
+- [x] Integração inicial com API backend
+- [ ] Integração dos gráficos semanal e de aplicativos com endpoints específicos
 - [ ] Testes unitários e E2E
 - [ ] Tipos TypeScript
 - [ ] Validação de formulários
