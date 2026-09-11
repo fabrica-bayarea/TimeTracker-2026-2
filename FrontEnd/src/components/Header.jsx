@@ -11,7 +11,9 @@ export function Header({
   selectedUsername, setSelectedUsername, users, refreshing, onRefresh, updatedAt,
 }) {
   const apiStatusLabel = {
-    loading: "Conectando à API", offline: "API offline", online: "API online",
+    loading: "Conectando à API",
+    offline: "API offline",
+    online: "API online",
   }[apiStatus] || "API offline";
 
   return (
@@ -19,26 +21,33 @@ export function Header({
       <div>
         <p className="eyebrow">{formattedDate} · DADOS AO VIVO</p>
         <h1 className="font-display text-[29px] font-extrabold text-ink dark:text-white">Visão geral da operação</h1>
-        <p className="mt-2 text-sm text-muted">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
+        <p className="mt-2 max-w-2xl text-sm text-muted">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
-          {dark ? "☀" : "☾"}
+      <div className="flex flex-wrap items-center gap-3" aria-label="Filtros e controles do painel">
+        <button
+          type="button"
+          className="icon-control"
+          onClick={toggleTheme}
+          aria-label={dark ? "Ativar tema claro" : "Ativar tema escuro"}
+          aria-pressed={dark}
+          title={dark ? "Ativar tema claro" : "Ativar tema escuro"}
+        >
+          <span aria-hidden="true">{dark ? "☀" : "☾"}</span>
         </button>
         <button
           type="button"
           className="icon-control"
           onClick={onRefresh}
           disabled={refreshing || apiStatus === "loading"}
-          aria-label="Atualizar dados"
-          title="Atualizar dados"
+          aria-label={refreshing ? "Atualizando dados" : "Atualizar dados agora"}
+          title={refreshing ? "Atualizando dados" : "Atualizar dados agora"}
         >
-          ↻
+          <span aria-hidden="true" className={refreshing ? "animate-spin" : ""}>↻</span>
         </button>
-        <label className="control flex items-center gap-2" title="Selecionar data">
-          ▣
+        <label className="control gap-2" title="Selecionar data">
+          <span aria-hidden="true">▣</span>
           <input
-            className="bg-transparent text-xs outline-none"
+            className="min-w-0 bg-transparent text-xs outline-none"
             type="date"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
@@ -46,10 +55,10 @@ export function Header({
             aria-label="Data do relatório"
           />
         </label>
-        <label className="control flex items-center gap-2" title="Filtrar colaborador">
+        <label className="control gap-2" title="Filtrar colaborador">
           <span aria-hidden="true">♙</span>
           <select
-            className="bg-transparent text-xs outline-none"
+            className="min-w-0 max-w-[190px] bg-transparent text-xs outline-none"
             value={selectedUsername}
             onChange={(event) => setSelectedUsername(event.target.value)}
             aria-label="Filtrar colaborador"
@@ -62,8 +71,12 @@ export function Header({
             ))}
           </select>
         </label>
-        <span className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}>
-          <i className="status-dot" />
+        <span
+          className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}
+          role="status"
+          aria-live="polite"
+        >
+          <i className="status-dot" aria-hidden="true" />
           {apiStatusLabel}
         </span>
         {updatedAt && (
