@@ -34,12 +34,6 @@ export default defineConfig({
     },
   },
 
-  // Configuração de resolução
-  resolve: {
-    alias: {
-      '@': '/src',
-    },
-  },
 
   // Configuração de enviroment
   define: {

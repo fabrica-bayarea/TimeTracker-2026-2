@@ -1,10 +1,7 @@
+import { getLocalIsoDate } from "../utils/dashboard";
+
 /** Cabeçalho com filtros, status da API e controles de atualização. */
-function getLocalIsoDate() {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+
 
 export function Header({
   formattedDate, dark, toggleTheme, selectedDate, setSelectedDate, apiStatus,

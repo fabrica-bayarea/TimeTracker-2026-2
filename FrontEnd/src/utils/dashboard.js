@@ -29,3 +29,14 @@ export function getProductiveSeconds(summary) {
     0,
   );
 }
+
+/**
+ * Retorna a data local no formato ISO (AAAA-MM-DD)
+ * @returns {string} - Data local formatada
+ */
+export function getLocalIsoDate() {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}

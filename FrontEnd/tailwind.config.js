@@ -7,13 +7,13 @@ export default {
   darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
-      // Cores personalizadas da marca
+      // Cores personalizadas da marca (brand e page usam CSS vars como single source of truth)
       colors: {
         ink: '#20233b',
         muted: '#7b8098',
         line: '#e9eaf2',
-        brand: '#6956e9',
-        page: '#f7f8fc',
+        brand: 'var(--brand, #6956e9)',
+        page: 'var(--page, #f7f8fc)',
       },
       // Famílias de fontes personalizadas
       fontFamily: {
