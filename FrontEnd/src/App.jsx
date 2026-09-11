@@ -143,8 +143,6 @@ function App() {
         {/* Seção de relatórios e agente */}
         <div className="mt-5 grid gap-5">
           <ReportsAndAgent
-            realtimePeople={realtimePeople}
-            useDemoData={!data}
             selectedDate={selectedDate}
             selectedUsername={selectedUsername}
             autoRefresh={autoRefresh}

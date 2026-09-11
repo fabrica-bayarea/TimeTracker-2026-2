@@ -8,17 +8,32 @@ import { SectionHeading } from "./SectionHeading";
  */
 export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
   const people = realtimePeople.length
-    ? realtimePeople.map((person, index) => [
-        person.username,
-        person.username.slice(0, 2).toUpperCase(),
-        person.hostname,
-        person.process_name,
-        person.window_title || "Sem título de janela",
-        person.category || "Outros",
-        person.status === "online" ? "Online" : "Ausente",
-        `há ${person.seconds_since_last_activity}s`,
-        ["bg-rose-300", "bg-blue-300", "bg-pink-300", "bg-emerald-300", "bg-yellow-300", "bg-cyan-300"][index % 6],
-      ])
+    ? realtimePeople.map((person, index) => {
+        const username = String(person.username || "Desconhecido");
+        const secondsSinceLastActivity = Math.max(
+          0,
+          Number(person.seconds_since_last_activity) || 0,
+        );
+
+        return [
+          username,
+          username.slice(0, 2).toUpperCase(),
+          person.hostname,
+          person.process_name,
+          person.window_title || "Sem título de janela",
+          person.category || "Outros",
+          person.status === "online" ? "Online" : "Ausente",
+          `há ${secondsSinceLastActivity}s`,
+          [
+            "bg-rose-300",
+            "bg-blue-300",
+            "bg-pink-300",
+            "bg-emerald-300",
+            "bg-yellow-300",
+            "bg-cyan-300",
+          ][index % 6],
+        ];
+      })
     : useDemoData
       ? demoPeople
       : [];

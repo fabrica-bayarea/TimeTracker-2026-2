@@ -1,25 +1,10 @@
-import { people as demoPeople } from "../data/dashboardData";
 import { getReportUrl } from "../services/api";
 
 /** Exportação local e preferências de atualização; não altera o agente nem a API. */
 export function ReportsAndAgent({
-  realtimePeople = [], useDemoData, selectedDate, autoRefresh, setAutoRefresh,
+  selectedDate, autoRefresh, setAutoRefresh,
   selectedUsername = "",
 }) {
-  const reportPeople = realtimePeople.length
-    ? realtimePeople.map((person) => [
-        person.username,
-        person.username.slice(0, 2).toUpperCase(),
-        person.hostname,
-        person.process_name,
-        person.window_title || "Sem título de janela",
-        person.category || "Outros",
-        person.status === "online" ? "Online" : "Ausente",
-        "",
-        "",
-      ])
-    : useDemoData ? demoPeople : [];
-
   return (
     <>
       <section id="relatorios" className="flex flex-col items-start justify-between gap-4 rounded-[13px] border border-indigo-100 bg-indigo-50 p-5 dark:border-indigo-900 dark:bg-indigo-950/40 sm:flex-row sm:items-center">
