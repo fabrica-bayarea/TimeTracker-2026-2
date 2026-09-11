@@ -23,7 +23,10 @@ export function useDashboardData(selectedDate, selectedUsername = "", autoRefres
       loading: current.dataDate !== `${selectedDate}:${selectedUsername}`,
       refreshing: current.dataDate === `${selectedDate}:${selectedUsername}` && Boolean(current.data),
       error: null,
-      updatedAt: current.dataDate === selectedDate ? current.updatedAt : null,
+      updatedAt:
+        current.dataDate === `${selectedDate}:${selectedUsername}`
+          ? current.updatedAt
+          : null,
       dataDate: current.dataDate === `${selectedDate}:${selectedUsername}` ? current.dataDate : null,
     }));
 

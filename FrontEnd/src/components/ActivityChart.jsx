@@ -8,6 +8,7 @@ import {
   YAxis,
 } from "recharts";
 import { week } from "../data/dashboardData";
+import { getProductiveSeconds, getSummaryTotalSeconds } from "../utils/dashboard";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
 
@@ -15,26 +16,10 @@ import { SectionHeading } from "./SectionHeading";
  * Componente ActivityChart
  * Gráfico de barras mostrando atividade semanal (monitorado vs produtivo)
  */
-function getDailySeconds(summary) {
-  return (summary?.users ?? []).reduce(
-    (total, user) => total + (Number(user.total_seconds) || 0),
-    0,
-  );
-}
-
-function getProductiveSeconds(summary) {
-  return (summary?.users ?? []).reduce(
-    (total, user) => total + (user.by_category ?? [])
-      .filter((category) => !["Social", "Outros"].includes(category.category))
-      .reduce((categoryTotal, category) => categoryTotal + (Number(category.total_seconds) || 0), 0),
-    0,
-  );
-}
-
 export function ActivityChart({ weeklySummaries = [], useDemoData = true }) {
   const chartData = weeklySummaries.length
     ? weeklySummaries.map((summary) => {
-        const monitored = Math.round(getDailySeconds(summary) / 3600 * 10);
+        const monitored = Math.round((getSummaryTotalSeconds(summary) / 3600) * 10);
         const productive = Math.round(getProductiveSeconds(summary) / 3600 * 10);
         return {
           day: new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
@@ -48,15 +33,19 @@ export function ActivityChart({ weeklySummaries = [], useDemoData = true }) {
     : useDemoData
       ? week
       : [];
+  const chartMaximum = Math.max(
+    10,
+    ...chartData.flatMap(({ monitored, productive }) => [monitored, productive]),
+  );
   return (
-    <Card className="min-h-[286px] lg:col-span-1">
+    <Card id="atividade" className="min-h-[286px] lg:col-span-1">
       <SectionHeading
         title="Atividade da equipe"
         description="Tempo monitorado e produtivo"
         action={
-          <button className="control">
-            Últimos 7 dias <span>⌄</span>
-          </button>
+          <span className="control inline-flex items-center" aria-label="Período exibido">
+            Últimos 7 dias
+          </span>
         }
       />
       <div className="mt-1 flex justify-end gap-4 text-[11px] text-muted">
@@ -86,7 +75,7 @@ export function ActivityChart({ weeklySummaries = [], useDemoData = true }) {
               tickLine={false}
               tick={{ fill: "#8d91a1", fontSize: 11 }}
             />
-            <YAxis hide domain={[0, 80]} />
+            <YAxis hide domain={[0, Math.ceil(chartMaximum / 10) * 10]} />
             <Tooltip
               cursor={{ fill: "transparent" }}
               content={({ active, payload }) =>

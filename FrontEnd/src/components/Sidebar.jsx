@@ -32,12 +32,12 @@ export function Sidebar({ activeSection }) {
         ))}
       </nav>
       <div className="mt-auto border-t border-line pt-4 dark:border-slate-700">
-        <a
-          href="#configuracoes"
-          className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-sm font-semibold text-slate-500"
+        <span
+          className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3.5 py-3 text-sm font-semibold text-slate-400"
+          title="Configurações ainda não disponíveis"
         >
           <span className="w-5 text-center text-lg">⚙</span>Configurações
-        </a>
+        </span>
         <div className="mt-4 flex items-center gap-2 px-1">
           <div className="avatar bg-violet-100 text-violet-700">LM</div>
           <div>

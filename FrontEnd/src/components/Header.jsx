@@ -22,10 +22,11 @@ export function Header({
         <p className="mt-2 text-sm text-muted">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
+        <button type="button" className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
           {dark ? "☀" : "☾"}
         </button>
         <button
+          type="button"
           className="icon-control"
           onClick={onRefresh}
           disabled={refreshing || apiStatus === "loading"}

@@ -73,9 +73,8 @@ O build é gerado em `dist/`; o preview costuma ficar disponível em [http://loc
 | `npm.cmd run dev` | Inicia o servidor de desenvolvimento. |
 | `npm.cmd run build` | Gera o bundle otimizado em `dist/`. |
 | `npm.cmd run preview` | Serve localmente o build de produção. |
-| `npm.cmd run format` | Formata os arquivos com Prettier. |
 
-Ainda não há suíte de testes automatizados ou configuração de lint no projeto. Antes de enviar alterações, execute o build e valide as telas em desktop e mobile.
+Ainda não há suíte de testes automatizados. Antes de enviar alterações, execute o build e valide as telas em desktop e mobile.
 
 ## Integração com a API
 

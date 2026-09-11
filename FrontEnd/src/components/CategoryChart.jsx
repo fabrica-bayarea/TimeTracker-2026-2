@@ -1,5 +1,6 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { categories as demoCategories } from "../data/dashboardData";
+import { formatDuration } from "../utils/dashboard";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
 
@@ -15,9 +16,9 @@ export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
       const current = categoryMap.get(category.category) ?? {
         name: category.category,
         value: 0,
-        color: category.color,
+        color: category.color || "#94a3b8",
       };
-      current.value += category.total_seconds;
+      current.value += Number(category.total_seconds) || 0;
       categoryMap.set(category.category, current);
     });
   });
@@ -25,7 +26,7 @@ export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
   const categories = categoryMap.size
     ? [...categoryMap.values()].map((category) => ({
         ...category,
-        time: `${Math.floor(category.value / 3600)}h ${Math.floor((category.value % 3600) / 60)}min`,
+        time: formatDuration(category.value),
       }))
     : useDemoData
       ? demoCategories
@@ -37,9 +38,7 @@ export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
         title="Tempo por categoria"
         description="Classificação por palavras-chave"
         action={
-          <button className="icon-control" aria-label="Mais opções">
-            •••
-          </button>
+          <span className="text-xs text-muted">Dados do período</span>
         }
       />
       <div className="mt-5 flex items-center justify-center gap-6">
@@ -62,7 +61,7 @@ export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
           </ResponsiveContainer>
           <div className="absolute inset-0 grid place-content-center text-center">
             <strong className="font-display text-[23px] text-ink dark:text-white">
-              {Math.floor(totalSeconds / 3600)}h {String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0")}
+              {formatDuration(totalSeconds)}
             </strong>
             <span className="text-[10px] text-muted">monitoradas</span>
           </div>
