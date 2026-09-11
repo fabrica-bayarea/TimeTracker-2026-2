@@ -1,31 +1,65 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { navItems } from "../data/dashboardData";
 import { fetchDashboardData } from "../services/api";
 
-export function useDashboardData(selectedDate) {
+export function useDashboardData(selectedDate, autoRefresh = true) {
   const [state, setState] = useState({
     data: null,
     loading: true,
+    refreshing: false,
     error: null,
+    updatedAt: null,
+    dataDate: null,
   });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = useCallback(() => setRefreshKey((current) => current + 1), []);
 
   useEffect(() => {
     const controller = new AbortController();
+    let refreshTimer;
 
-    setState({ data: null, loading: true, error: null });
+    setState((current) => ({
+      data: current.dataDate === selectedDate ? current.data : null,
+      loading: current.dataDate !== selectedDate,
+      refreshing: current.dataDate === selectedDate && Boolean(current.data),
+      error: null,
+      updatedAt: current.dataDate === selectedDate ? current.updatedAt : null,
+      dataDate: current.dataDate === selectedDate ? current.dataDate : null,
+    }));
 
     fetchDashboardData(selectedDate, controller.signal)
-      .then((data) => setState({ data, loading: false, error: null }))
+      .then((data) =>
+        setState({
+          data,
+          loading: false,
+          refreshing: false,
+          error: null,
+          updatedAt: new Date(),
+          dataDate: selectedDate,
+        }),
+      )
       .catch((error) => {
         if (error.name !== "AbortError") {
-          setState({ data: null, loading: false, error });
+          setState((current) => ({
+            data: current.data,
+            loading: false,
+            refreshing: false,
+            error,
+            updatedAt: current.updatedAt,
+            dataDate: current.dataDate,
+          }));
         }
       });
 
-    return () => controller.abort();
-  }, [selectedDate]);
+    if (autoRefresh) refreshTimer = window.setInterval(refresh, 30_000);
 
-  return state;
+    return () => {
+      controller.abort();
+      window.clearInterval(refreshTimer);
+    };
+  }, [selectedDate, autoRefresh, refreshKey, refresh]);
+
+  return { ...state, refresh };
 }
 
 /**

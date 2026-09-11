@@ -1,76 +1,59 @@
-/**
- * Componente Header
- * Cabeçalho da página com data, título e controles
- * @param {string} formattedDate - Data formatada
- * @param {boolean} dark - Se o tema escuro está ativo
- * @param {function} toggleTheme - Função para alternar tema
- * @param {string} selectedDate - Data selecionada
- * @param {function} setSelectedDate - Função para atualizar data
- * @param {string} apiStatus - Estado da conexão com a API
- */
+/** Cabeçalho com filtros, status da API e controles de atualização. */
+function getLocalIsoDate() {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 export function Header({
-  formattedDate,
-  dark,
-  toggleTheme,
-  selectedDate,
-  setSelectedDate,
-  apiStatus,
+  formattedDate, dark, toggleTheme, selectedDate, setSelectedDate, apiStatus,
+  refreshing, onRefresh, updatedAt,
 }) {
   const apiStatusLabel = {
-    loading: "Conectando à API",
-    offline: "API offline",
-    online: "API online",
+    loading: "Conectando à API", offline: "API offline", online: "API online",
   }[apiStatus] || "API offline";
 
   return (
-    <header
-      id="visao-geral"
-      className="mb-8 flex flex-col justify-between gap-6 xl:flex-row xl:items-start"
-    >
+    <header id="visao-geral" className="mb-8 flex flex-col justify-between gap-6 xl:flex-row xl:items-start">
       <div>
         <p className="eyebrow">{formattedDate} · DADOS AO VIVO</p>
-        <h1 className="font-display text-[29px] font-extrabold text-ink dark:text-white">
-          Visão geral da operação
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Acompanhe o ritmo da equipe e a atividade monitorada de hoje.
-        </p>
+        <h1 className="font-display text-[29px] font-extrabold text-ink dark:text-white">Visão geral da operação</h1>
+        <p className="mt-2 text-sm text-muted">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          className="icon-control"
-          onClick={toggleTheme}
-          aria-label="Alternar tema"
-          title="Alternar tema"
-        >
+        <button className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
           {dark ? "☀" : "☾"}
         </button>
         <button
-          className="icon-control relative"
-          aria-label="Notificações"
-          title="Notificações"
+          className="icon-control"
+          onClick={onRefresh}
+          disabled={refreshing || apiStatus === "loading"}
+          aria-label="Atualizar dados"
+          title="Atualizar dados"
         >
-          ♧<i className="notification-dot" />
+          ↻
         </button>
-        <label
-          className="control flex items-center gap-2"
-          title="Selecionar data"
-        >
+        <label className="control flex items-center gap-2" title="Selecionar data">
           ▣
           <input
             className="bg-transparent text-xs outline-none"
             type="date"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
+            max={getLocalIsoDate()}
             aria-label="Data do relatório"
           />
         </label>
-        <span
-          className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}
-        >
+        <span className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}>
           <i className="status-dot" />
           {apiStatusLabel}
         </span>
+        {updatedAt && (
+          <span className="w-full text-right text-[10px] text-muted" aria-live="polite">
+            Atualizado às {updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </div>
     </header>
   );

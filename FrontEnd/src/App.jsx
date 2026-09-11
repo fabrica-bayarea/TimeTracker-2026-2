@@ -16,20 +16,28 @@ import {
   useTheme,
 } from "./hooks/useDashboard";
 
+function getLocalIsoDate() {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /**
  * Componente principal da aplicação
  * Dashboard de rastreamento de tempo para equipes
  */
 function App() {
   const [dark, toggleTheme] = useTheme();
-  const [selectedDate, setSelectedDate] = useState("2026-09-06");
-  const [tracking, setTracking] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(getLocalIsoDate);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const activeSection = useActiveSection();
-  const { data, loading, error } = useDashboardData(selectedDate);
+  const { data, loading, refreshing, error, updatedAt, refresh } =
+    useDashboardData(selectedDate, autoRefresh);
   const summaryUsers = data?.summary?.users ?? [];
   const realtimePeople = data?.realtime ?? [];
   const totalMonitoredSeconds = summaryUsers.reduce(
-    (total, user) => total + user.total_seconds,
+    (total, user) => total + (Number(user.total_seconds) || 0),
     0,
   );
   const onlinePeople = realtimePeople.filter(
@@ -57,6 +65,9 @@ function App() {
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           apiStatus={loading ? "loading" : error ? "offline" : "online"}
+          refreshing={refreshing}
+          onRefresh={refresh}
+          updatedAt={updatedAt}
         />
 
         {/* Cards de métricas */}
@@ -66,7 +77,7 @@ function App() {
             tone="bg-violet-100 text-violet-600"
             label="Tempo monitorado"
             value={
-              totalMonitoredSeconds > 0
+              data
                 ? `${Math.floor(totalMonitoredSeconds / 3600)}h ${Math.floor((totalMonitoredSeconds % 3600) / 60)}min`
                 : "6h 42min"
             }
@@ -104,10 +115,10 @@ function App() {
         {/* Seção de gráficos e tabelas */}
         <section className="grid gap-5 lg:grid-cols-2">
           <ActivityChart />
-          <CategoryChart summaryUsers={summaryUsers} />
+          <CategoryChart summaryUsers={summaryUsers} useDemoData={!data} />
           <AppsCard />
           <TimelineCard />
-          <PeopleCard realtimePeople={realtimePeople} />
+          <PeopleCard realtimePeople={realtimePeople} useDemoData={!data} />
         </section>
 
         {loading && (
@@ -121,7 +132,13 @@ function App() {
 
         {/* Seção de relatórios e agente */}
         <div className="mt-5 grid gap-5">
-          <ReportsAndAgent tracking={tracking} setTracking={setTracking} />
+          <ReportsAndAgent
+            realtimePeople={realtimePeople}
+            useDemoData={!data}
+            selectedDate={selectedDate}
+            autoRefresh={autoRefresh}
+            setAutoRefresh={setAutoRefresh}
+          />
         </div>
       </main>
     </div>

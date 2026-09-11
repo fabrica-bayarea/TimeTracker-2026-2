@@ -7,11 +7,11 @@ import { SectionHeading } from "./SectionHeading";
  * Componente CategoryChart
  * Gráfico de pizza mostrando tempo por categoria de atividade
  */
-export function CategoryChart({ summaryUsers = [] }) {
+export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
   const categoryMap = new Map();
 
   summaryUsers.forEach((user) => {
-    user.by_category.forEach((category) => {
+    (user.by_category ?? []).forEach((category) => {
       const current = categoryMap.get(category.category) ?? {
         name: category.category,
         value: 0,
@@ -27,7 +27,9 @@ export function CategoryChart({ summaryUsers = [] }) {
         ...category,
         time: `${Math.floor(category.value / 3600)}h ${Math.floor((category.value % 3600) / 60)}min`,
       }))
-    : demoCategories;
+    : useDemoData
+      ? demoCategories
+      : [];
   const totalSeconds = categories.reduce((total, category) => total + category.value, 0);
   return (
     <Card className="min-h-[286px]">
@@ -66,7 +68,7 @@ export function CategoryChart({ summaryUsers = [] }) {
           </div>
         </div>
         <div className="grid gap-3.5">
-          {categories.map((category) => (
+          {categories.length ? categories.map((category) => (
             <div key={category.name} className="text-[11px] text-muted">
               <span>
                 <i
@@ -79,7 +81,7 @@ export function CategoryChart({ summaryUsers = [] }) {
                 {category.time}
               </strong>
             </div>
-          ))}
+          )) : <p className="max-w-32 text-center text-xs text-muted">Sem atividades classificadas nesta data.</p>}
         </div>
       </div>
     </Card>

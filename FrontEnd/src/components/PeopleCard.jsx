@@ -6,7 +6,7 @@ import { SectionHeading } from "./SectionHeading";
  * Componente PeopleCard
  * Tabela exibindo colaboradores em atividade
  */
-export function PeopleCard({ realtimePeople = [] }) {
+export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
   const people = realtimePeople.length
     ? realtimePeople.map((person, index) => [
         person.username,
@@ -19,7 +19,9 @@ export function PeopleCard({ realtimePeople = [] }) {
         `há ${person.seconds_since_last_activity}s`,
         ["bg-rose-300", "bg-blue-300", "bg-pink-300", "bg-emerald-300", "bg-yellow-300", "bg-cyan-300"][index % 6],
       ])
-    : demoPeople;
+    : useDemoData
+      ? demoPeople
+      : [];
   return (
     <Card id="equipe" className="overflow-hidden p-5 lg:col-span-2">
       <SectionHeading
@@ -43,7 +45,7 @@ export function PeopleCard({ realtimePeople = [] }) {
             </tr>
           </thead>
           <tbody>
-            {people.map(
+            {people.length ? people.map(
               ([
                 name,
                 initials,
@@ -92,6 +94,12 @@ export function PeopleCard({ realtimePeople = [] }) {
                   </td>
                 </tr>
               ),
+            ) : (
+              <tr>
+                <td colSpan="5" className="px-5 py-8 text-center text-xs text-muted">
+                  Nenhuma atividade em tempo real encontrada.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
