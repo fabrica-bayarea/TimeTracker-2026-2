@@ -1,165 +1,42 @@
-# Documentação de Estilos CSS
+# Estilos e interface
 
-## Visão Geral
+## Organização
 
-Este projeto utiliza **Tailwind CSS** como framework principal de estilos, com componentes customizados definidos em `src/index.css`.
+O projeto usa utilitários Tailwind diretamente no JSX. `src/index.css` complementa-os com reset, variáveis CSS, componentes reutilizáveis, impressão e acessibilidade. Evite criar estilos globais para uma única tela; prefira classes Tailwind no componente ou uma classe reutilizável em `@layer components`.
 
-## Variáveis CSS
+## Tema
 
-### Cores Personalizadas
+`useTheme()` grava `timetracker-theme` no `localStorage` e aplica `data-theme="dark"` ao elemento `<html>`. As variantes `dark:` são ativadas por esse atributo.
 
-As cores personalizadas são definidas no `tailwind.config.js` e aplicadas como Tailwind utilities:
+| Token Tailwind | Valor | Uso |
+| --- | --- | --- |
+| `ink` | `#20233b` | Texto principal. |
+| `muted` | `#7b8098` | Texto secundário. |
+| `line` | `#e9eaf2` | Bordas. |
+| `brand` | `#6956e9` | Ação e identidade visual. |
+| `page` | `#f7f8fc` | Fundo claro. |
 
-- **`ink`**: `#20233b` - Cor principal de texto
-- **`muted`**: `#7b8098` - Cor de texto secundário/desativado
-- **`line`**: `#e9eaf2` - Cor de bordas
-- **`brand`**: `#6956e9` - Cor primária da marca (roxo)
-- **`page`**: `#f7f8fc` - Cor de fundo da página
+## Classes compartilhadas
 
-### Tema Escuro
+| Classe | Finalidade |
+| --- | --- |
+| `control`, `icon-control` | Filtros e botões compactos do cabeçalho. |
+| `primary-button`, `secondary-button` | Ações principais e alternativas. |
+| `eyebrow`, `legend-dot`, `status-dot` | Rótulos e indicadores pequenos. |
+| `avatar`, `pill` | Pessoa e categoria; `pill.communication` e `pill.design` são variantes. |
+| `chart-tooltip` | Conteúdo de tooltip do Recharts. |
 
-O tema escuro é ativado com o atributo `data-theme="dark"` no elemento raiz e pode ser gerenciado com o hook `useTheme()`.
+## Layout e responsividade
 
-## Componentes CSS (@layer components)
+- A barra lateral fica oculta abaixo de `lg` (1024 px).
+- Os cards usam uma coluna em telas estreitas, duas em `sm`/`lg` quando aplicável e quatro métricas em `xl`.
+- Tabelas têm rolagem horizontal, preservando a legibilidade em telas pequenas.
+- `body` tem largura mínima de 320 px.
 
-Todos os componentes reutilizáveis estão definidos em `src/index.css` usando `@layer components` do Tailwind:
+## Acessibilidade e impressão
 
-### Botões
-
-| Classe | Uso | Exemplo |
-|--------|-----|---------|
-| `.control` | Botão padrão com dropdown | Filtro "Últimos 7 dias" |
-| `.icon-control` | Botão quadrado com ícone | Botão de notificações |
-| `.primary-button` | Botão CTA (Call-To-Action) | "Gerar PDF", "Pausar acompanhamento" |
-| `.secondary-button` | Botão alternativo | "Gerar CSV" |
-
-### Indicadores e Badges
-
-| Classe | Uso |
-|--------|-----|
-| `.eyebrow` | Rótulo pequeno sobre títulos |
-| `.legend-dot` | Ponto de cor em legendas de gráficos |
-| `.status-dot` | Indicador de status (online/offline) |
-| `.notification-dot` | Ponto vermelho de notificação |
-| `.avatar` | Círculo com iniciais do usuário |
-| `.pill` | Badge/pílula de categoria |
-| `.pill.communication` | Variante para categoria "Comunicação" |
-| `.pill.design` | Variante para categoria "Design" |
-| `.online-badge` | Badge de status "Online" |
-
-### Outros Componentes
-
-| Classe | Uso |
-|--------|-----|
-| `.chart-tooltip` | Tooltip que aparece ao passar sobre gráficos |
-
-## Fontes
-
-As fontes são carregadas do Google Fonts e configuradas no `tailwind.config.js`:
-
-- **`font-sans`**: DM Sans (corpo de texto)
-- **`font-display`**: Manrope (títulos e headings)
-- **`font-mono`**: Fira Code (código/monoespacado)
-
-## Animações
-
-Animações personalizadas estão definidas em `tailwind.config.js`:
-
-- **`animate-fade-in`**: Desvanecimento suave (0.3s)
-- **`animate-slide-in`**: Deslize horizontal suave (0.3s)
-
-Uso:
-```html
-<div class="animate-fade-in">Conteúdo</div>
-```
-
-## Dark Mode
-
-Alternar tema:
-```javascript
-const [dark, toggleTheme] = useTheme();
-toggleTheme(); // Alterna entre claro/escuro
-```
-
-Usar classes específicas para dark mode:
-```html
-<!-- Tailwind dark: -->
-<div class="text-ink dark:text-white">Texto</div>
-
-<!-- CSS customizado: -->
-[data-theme='dark'] .minha-classe {
-  /* estilos para dark mode */
-}
-```
-
-## Média Queries
-
-### Print (@media print)
-
-Elementos ocultados ao imprimir:
-- `aside` (sidebar)
-- `header` (cabeçalho)
-- Todos os botões
-- Controles de interface
-
-Tabelas recebem `page-break-inside: avoid` para evitar quebras no meio delas.
-
-### Prefers Reduced Motion
-
-Para usuários que preferem reduzir movimento, todas as animações são desabilitadas:
-```css
-@media (prefers-reduced-motion: reduce) {
-  /* Sem animações */
-}
-```
-
-## Exemplo de Criação de Novo Componente CSS
-
-```css
-@layer components {
-  .meu-botao {
-    @apply px-4 py-2 rounded-lg font-semibold transition-colors;
-    @apply bg-brand text-white hover:bg-indigo-700;
-    @apply dark:hover:bg-indigo-800;
-  }
-}
-```
-
-## Classes do Tailwind Mais Usadas
-
-### Espaçamento
-- `p-5` = padding 1.25rem
-- `px-4` = padding horizontal 1rem
-- `gap-3` = espaço entre flex/grid
-
-### Grid/Flex
-- `grid gap-4` = grid com espaço de 1rem
-- `flex items-center justify-between` = flexbox com centralização
-
-### Cores
-- `text-ink` = cor de texto principal
-- `bg-brand` = fundo roxo marca
-- `border-line` = borda padrão
-
-### Dark Mode
-- `dark:bg-slate-900` = fundo escuro
-- `dark:text-white` = texto branco em dark mode
-
-## Acessibilidade
-
-### Focus Visible
-Elementos focados via teclado recebem outline automático:
-```css
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-}
-```
-
-### Semantic HTML
-Use elementos semânticos apropriados:
-- `<article>` para cards
-- `<aside>` para sidebar
-- `<main>` para conteúdo principal
-- `<section>` para seções
-- `<table>` para dados tabulares
+- Use elementos semânticos (`main`, `header`, `section`, `article`, `table`) antes de adicionar ARIA.
+- Todo botão que possui somente ícone precisa de `aria-label` e `title`.
+- O foco de teclado usa contorno definido em `:focus-visible`; não o remova.
+- `prefers-reduced-motion` reduz animações e transições.
+- Em impressão, sidebar, cabeçalho e controles são ocultados para priorizar o conteúdo.
