@@ -25,10 +25,10 @@ npm.cmd --version
 
 ### Desenvolvimento
 
-Na raiz do repositório, instale as dependências e inicie o servidor Vite:
+Na raiz do repositório, entre na pasta do frontend, instale as dependências e inicie o servidor Vite:
 
 ```powershell
-cd TimeTracker.Web
+cd FrontEnd
 npm.cmd install
 npm.cmd run dev
 ```
@@ -40,7 +40,7 @@ O uso de `npm.cmd` evita o erro de política de execução do PowerShell relacio
 ### Build e preview de produção
 
 ```powershell
-cd TimeTracker.Web
+cd FrontEnd
 npm.cmd run build
 npm.cmd run preview
 ```

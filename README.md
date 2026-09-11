@@ -114,10 +114,10 @@ A API estará disponível em `http://localhost:8000` e a documentação Swagger 
 
 ### Executando o Frontend
 
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+cd FrontEnd
+npm.cmd install
+npm.cmd run dev
 ```
 
 ### Compilando o Agente Desktop
