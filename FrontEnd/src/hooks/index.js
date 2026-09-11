@@ -1,7 +1,7 @@
 /**
- * Módulo mantido para retrocompatibilidade.
- * Recomendado importar diretamente de "src/hooks" ou dos módulos específicos.
+ * Ponto de exportação centralizado de hooks customizados do TimeTracker
  */
 export { useDashboardData } from "./useDashboardData";
 export { useTheme } from "./useTheme";
 export { useActiveSection } from "./useActiveSection";
+

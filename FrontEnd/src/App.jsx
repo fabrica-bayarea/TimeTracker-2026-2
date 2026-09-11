@@ -14,7 +14,7 @@ import {
   useActiveSection,
   useDashboardData,
   useTheme,
-} from "./hooks/useDashboard";
+} from "./hooks";
 import {
   formatDuration,
   getProductiveSeconds,

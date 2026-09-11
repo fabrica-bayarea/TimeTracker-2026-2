@@ -100,46 +100,54 @@ FrontEnd/
 ├── index.html                 # Documento HTML, fontes externas e ponto #root
 ├── package.json               # Scripts e dependências do projeto
 ├── vite.config.js             # Servidor, build, chunks e alias @ → /src
+├── vitest.config.js           # Configuração de testes Vitest + jsdom + cobertura
 ├── tailwind.config.js         # Tema, fontes, cores, animações e dark mode
 ├── postcss.config.js          # Tailwind e Autoprefixer no processamento CSS
 ├── src/
 │   ├── main.jsx               # Monta <App /> em modo StrictMode
 │   ├── App.jsx                # Composição, filtros e métricas do dashboard
 │   ├── index.css              # Base global, componentes CSS, impressão e a11y
-│   ├── components/            # Componentes de apresentação
-│   ├── hooks/useDashboard.js  # Busca do dashboard, tema e seção ativa
+│   ├── components/            # Componentes visuais (detalhes em docs/COMPONENTES.md)
+│   ├── constants/             # Constantes compartilhadas de UI (paletas, rótulos)
+│   ├── hooks/                 # Custom hooks modulares (detalhes em docs/HOOKS.md)
+│   │   ├── useDashboardData.js# Orquestrador de busca e atualização
+│   │   ├── useTheme.js        # Tema claro/escuro e persistência
+│   │   ├── useActiveSection.js# Rastreamento de seção com IntersectionObserver
+│   │   └── index.js           # Ponto único de exportação dos hooks
 │   ├── services/api.js        # Cliente HTTP e URLs de exportação
 │   ├── utils/dashboard.js     # Duração, totais e produtividade
 │   ├── utils/report.js        # Utilitários CSV locais reutilizáveis
 │   └── data/dashboardData.js  # Navegação e dados demonstrativos
-├── docs/                      # Guias específicos e capturas de tela
+├── docs/                      # Guias técnicos, catálogo, testes e capturas de tela
 └── legacy/blazor/             # Implementação anterior; fora do build Vite
 ```
 
+Consulte a [Documentação Técnica Completa](docs/README.md), o [Catálogo de Componentes](docs/COMPONENTES.md), a [Documentação de Hooks](docs/HOOKS.md) e o [Guia de Testes Automatizados](docs/TESTES.md).
+
 ### Componentes
 
-| Arquivo | Responsabilidade | Fonte dos dados |
-| --- | --- | --- |
-| `Header.jsx` | Filtros de data/usuário, tema, status e atualização manual. | Estado de `App` e lista de usuários. |
-| `Sidebar.jsx` | Navegação por âncoras e indicação da seção visível. | `navItems` e `useActiveSection`. |
-| `MetricCard.jsx` | Cartão visual de uma métrica. | Propriedades do `App`. |
-| `ActivityChart.jsx` | Barras de monitorado versus produtivo nos últimos sete dias. | Resumos semanais ou `week`. |
-| `CategoryChart.jsx` | Agrega categorias de todos os usuários e exibe pizza. | Resumo diário ou `categories`. |
-| `AppsCard.jsx` | Ranking visual de aplicativos. | Apenas `apps` demonstrativo. |
-| `TimelineCard.jsx` | Faixas de atividade durante o expediente. | Apenas `timeline` demonstrativa. |
-| `PeopleCard.jsx` | Tabela de atividade mais recente de cada pessoa. | `/activities/realtime` ou `people`. |
-| `ReportsAndAgent.jsx` | Links de exportação e chave de atualização automática. | Filtros de `App`. |
-| `Card.jsx` | Contêiner visual semântico reutilizável. | `children` e classes opcionais. |
-| `SectionHeading.jsx` | Título, descrição e ação opcional de uma seção. | Propriedades do componente pai. |
-| `index.js` | Ponto único de exportação dos componentes. | — |
+| Arquivo | Responsabilidade | Fonte dos dados | Documentação |
+| --- | --- | --- | --- |
+| `Header.jsx` | Filtros de data/usuário, tema, status e atualização manual. | Estado de `App` e lista de usuários. | [Ver docs](docs/COMPONENTES.md#header) |
+| `Sidebar.jsx` | Navegação por âncoras e indicação da seção visível. | `navItems` e `useActiveSection`. | [Ver docs](docs/COMPONENTES.md#sidebar) |
+| `MetricCard.jsx` | Cartão visual de uma métrica. | Propriedades do `App`. | [Ver docs](docs/COMPONENTES.md#metriccard) |
+| `ActivityChart.jsx` | Barras de monitorado versus produtivo nos últimos sete dias. | Resumos semanais ou `week`. | [Ver docs](docs/COMPONENTES.md#activitychart) |
+| `CategoryChart.jsx` | Agrega categorias de todos os usuários e exibe pizza. | Resumo diário ou `categories`. | [Ver docs](docs/COMPONENTES.md#categorychart) |
+| `AppsCard.jsx` | Ranking visual de aplicativos. | Apenas `apps` demonstrativo. | [Ver docs](docs/COMPONENTES.md#appscard) |
+| `TimelineCard.jsx` | Faixas de atividade durante o expediente. | Apenas `timeline` demonstrativa. | [Ver docs](docs/COMPONENTES.md#timelinecard) |
+| `PeopleCard.jsx` | Tabela de atividade mais recente de cada pessoa. | `/activities/realtime` ou `people`. | [Ver docs](docs/COMPONENTES.md#peoplecard) |
+| `ReportsAndAgent.jsx` | Links de exportação e chave de atualização automática. | Filtros de `App`. | [Ver docs](docs/COMPONENTES.md#reportsandagent) |
+| `Card.jsx` | Contêiner visual semântico reutilizável. | `children` e classes opcionais. | [Ver docs](docs/COMPONENTES.md#card) |
+| `SectionHeading.jsx` | Título, descrição e ação opcional de uma seção. | Propriedades do componente pai. | [Ver docs](docs/COMPONENTES.md#sectionheading) |
+| `index.js` | Ponto único de exportação dos componentes. | — | — |
 
 ### Hooks, serviços e utilitários
 
 | Arquivo | API pública | Observações |
 | --- | --- | --- |
-| `hooks/useDashboard.js` | `useDashboardData(date, username, autoRefresh)` | Retorna `data`, estados de carregamento/erro, data da atualização e `refresh`. |
-|  | `useTheme()` | Persiste `light`/`dark` em `localStorage` e ajusta `data-theme` no HTML. |
-|  | `useActiveSection()` | Usa `IntersectionObserver` nas âncoras declaradas em `navItems`. |
+| `hooks/useDashboardData.js` | `useDashboardData(date, username, autoRefresh)` | Retorna `data`, estados de carregamento/erro, data da atualização e `refresh`. |
+| `hooks/useTheme.js` | `useTheme()` | Persiste `light`/`dark` em `localStorage` e ajusta `data-theme` no HTML. |
+| `hooks/useActiveSection.js` | `useActiveSection()` | Usa `IntersectionObserver` nas âncoras declaradas em `navItems`. |
 | `services/api.js` | `fetchDashboardData(date, username, signal)` | Busca os recursos necessários em paralelo. |
 |  | `getReportUrl(format, date, username)` | Gera URL de exportação preservando filtros. |
 | `utils/dashboard.js` | `formatDuration`, `getSummaryTotalSeconds`, `getProductiveSeconds` | Normaliza números inválidos para evitar métricas quebradas. |
