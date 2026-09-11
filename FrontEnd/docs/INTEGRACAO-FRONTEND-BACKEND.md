@@ -1,5 +1,20 @@
 # Integracao entre Frontend e Backend
 
+## Atualizacao do dashboard (setembro de 2026)
+
+Esta etapa alterou somente o frontend. Nenhum endpoint, modelo, regra de negócio ou arquivo do backend foi modificado.
+
+Os aprimoramentos usam exclusivamente os endpoints já documentados nesta página:
+
+- a data selecionada inicia no dia atual local e é enviada para o resumo diário;
+- o painel oferece atualização manual e atualização automática a cada 30 segundos, que pode ser desativada pelo usuário;
+- o hook preserva o último resultado válido ao atualizar a mesma data e o mantém visível se uma consulta posterior falhar;
+- ao trocar de data, o resultado anterior é descartado até a resposta da nova consulta, evitando dados inconsistentes;
+- respostas vazias da API são representadas como estados vazios na interface, sem substituir silenciosamente por conteúdo demonstrativo;
+- o CSV é gerado no navegador a partir das atividades exibidas no momento e a impressão do navegador é usada para salvar em PDF.
+
+O controle de “pausar acompanhamento” foi substituído por um controle de atualização automática. Pausar ou retomar o agente exigiria um endpoint próprio e, por isso, não é uma ação disponibilizada pelo frontend.
+
 ## Resumo executivo
 
 Foi realizada a primeira integracao do dashboard React com a API FastAPI existente. O frontend deixou de depender exclusivamente dos dados demonstrativos para as informacoes de equipe, atividade em tempo real, categorias e tempo monitorado.
@@ -49,6 +64,11 @@ Foi criado o hook `useDashboardData` em [src/hooks/useDashboard.js](../src/hooks
 
 Esse hook:
 
+- inicia a consulta com a data atual do ambiente do usuário;
+- expõe `refresh` para atualização manual e pode atualizar automaticamente a cada 30 segundos;
+- diferencia o carregamento inicial (`loading`) de uma atualização com dados visíveis (`refreshing`);
+- registra `updatedAt`, usado para informar ao usuário quando os dados foram atualizados;
+- mantém dados apenas enquanto eles correspondem à data selecionada;
 - recebe a data selecionada no dashboard;
 - dispara as duas consultas da API em paralelo;
 - controla os estados `loading`, `data` e `error`;

@@ -1,5 +1,20 @@
 # TimeTracker Dashboard - Frontend
 
+## Atualização do dashboard — setembro de 2026
+
+O frontend foi aprimorado sem qualquer alteração no backend ou no contrato da API.
+
+- A data inicial do filtro agora é o dia atual no fuso horário local, e datas futuras não podem ser selecionadas.
+- Há atualização manual no cabeçalho e atualização automática, configurada inicialmente para cada 30 segundos.
+- A atualização automática pode ser ativada ou desativada na seção **Atualização do painel**.
+- Durante uma nova consulta, o último resultado da mesma data permanece visível. Se a API falhar após uma carga bem-sucedida, esse resultado é preservado e o painel informa a indisponibilidade.
+- Para uma nova data, resultados de uma data anterior não são apresentados como se fossem atuais.
+- A tabela de equipe e o gráfico de categorias passaram a exibir estados vazios quando a API responde sem registros; dados demonstrativos só são usados quando não há dados da API disponíveis.
+- A exportação CSV usa a atividade exibida no painel e nomeia o arquivo com a data selecionada. A opção de PDF abre a impressão do navegador, que permite salvar o documento como PDF.
+- O controle que simulava pausar o agente foi removido, pois o frontend não possui endpoint para controlar o agente. Ele foi substituído pelo controle real de atualização automática da interface.
+
+O build de produção foi validado com `npm.cmd run build`.
+
 Dashboard de rastreamento de tempo para equipes, construído com React e Tailwind CSS.
 
 ## 🚀 Quick Start
