@@ -51,7 +51,6 @@ function App() {
   ).length;
   const productiveSeconds = getProductiveSeconds(data?.summary);
 
-  // Formata a data para exibição
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "2-digit",
@@ -62,9 +61,15 @@ function App() {
 
   return (
     <div className="min-h-screen bg-page text-ink dark:bg-slate-950">
+      <a className="skip-link" href="#conteudo-principal">
+        Pular para o conteúdo principal
+      </a>
       <Sidebar activeSection={activeSection} />
-      <main className="mx-auto w-full max-w-[1610px] px-5 py-7 sm:px-8 lg:ml-64 lg:w-[calc(100%_-_16rem)] lg:px-12 lg:py-10">
-        {/* Header com título, filtros e controles */}
+      <main
+        id="conteudo-principal"
+        tabIndex="-1"
+        className="mx-auto w-full max-w-[1610px] px-5 py-7 sm:px-8 lg:ml-64 lg:w-[calc(100%_-_16rem)] lg:px-12 lg:py-10"
+      >
         <Header
           formattedDate={formattedDate}
           dark={dark}
@@ -80,24 +85,39 @@ function App() {
           updatedAt={updatedAt}
         />
 
-        {/* Cards de métricas */}
-        <section className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {error && (
+          <div
+            className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+            role="status"
+            aria-live="polite"
+          >
+            <div>
+              <strong className="block font-bold">Modo demonstração</strong>
+              <span>API indisponível. Os dados exibidos podem ser fictícios.</span>
+            </div>
+            <button type="button" className="secondary-button" onClick={refresh}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
+        <section
+          className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          aria-labelledby="metricas-heading"
+        >
+          <h2 id="metricas-heading" className="sr-only">Métricas principais</h2>
           <MetricCard
             icon="◷"
             tone="bg-violet-100 text-violet-600"
             label="Tempo monitorado"
-            value={
-              data
-                ? formatDuration(totalMonitoredSeconds)
-                : "6h 42min"
-            }
-            detail={data ? "dados da API" : "dados demonstrativos"}
+            value={data ? formatDuration(totalMonitoredSeconds) : "—"}
+            detail={data ? "dados da API" : "aguardando dados"}
           />
           <MetricCard
             icon="⌁"
             tone="bg-blue-100 text-blue-600"
             label="Tempo produtivo"
-            value={data ? formatDuration(productiveSeconds) : "--"}
+            value={data ? formatDuration(productiveSeconds) : "—"}
             detail={data ? "categorias produtivas" : "aguardando dados"}
             positive={Boolean(data)}
           />
@@ -106,24 +126,25 @@ function App() {
             tone="bg-orange-100 text-orange-600"
             label="Em atividade agora"
             value={
-              <>
-                {data ? onlinePeople : 12}{" "}
-                <span className="text-xs font-medium text-muted">pessoas</span>
-              </>
+              data ? (
+                <>
+                  {onlinePeople}{" "}
+                  <span className="text-xs font-medium text-muted">pessoas</span>
+                </>
+              ) : "—"
             }
-            detail={data ? `${realtimePeople.length} na equipe` : "de 16 na equipe"}
+            detail={data ? `${realtimePeople.length} na equipe` : "aguardando dados"}
           />
           <MetricCard
             icon="◆"
             tone="bg-emerald-100 text-emerald-600"
             label="Software mais usado"
-            value={data ? "Não disponível" : "VS Code"}
-            detail={data ? "endpoint ainda não disponível" : "2h 42min monitoradas"}
+            value={data ? "Não disponível" : "—"}
+            detail={data ? "endpoint ainda não disponível" : "aguardando dados"}
           />
         </section>
 
-        {/* Seção de gráficos e tabelas */}
-        <section className="grid gap-5 lg:grid-cols-2">
+        <section className="grid gap-5 lg:grid-cols-2" aria-label="Indicadores e atividade">
           <ActivityChart weeklySummaries={data?.weeklySummaries ?? []} useDemoData={!data} />
           <CategoryChart summaryUsers={summaryUsers} useDemoData={!data} />
           <AppsCard useDemoData={!data} />
@@ -132,16 +153,12 @@ function App() {
         </section>
 
         {loading && (
-          <p className="mt-4 text-xs text-muted">Consultando dados da API...</p>
-        )}
-        {error && (
-          <p className="mt-4 text-xs text-amber-600">
-            API indisponível. Exibindo dados demonstrativos.
+          <p className="mt-4 text-xs text-muted" role="status" aria-live="polite">
+            Consultando dados da API…
           </p>
         )}
 
-        {/* Seção de relatórios e agente */}
-        <div className="mt-5 grid gap-5">
+        <div id="relatorios" className="mt-5 grid gap-5">
           <ReportsAndAgent
             selectedDate={selectedDate}
             selectedUsername={selectedUsername}
