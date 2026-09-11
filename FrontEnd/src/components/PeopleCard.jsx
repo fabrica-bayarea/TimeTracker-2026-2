@@ -1,4 +1,5 @@
 import { people as demoPeople } from "../data/dashboardData";
+import { formatRelativeActivityTime } from "../utils/dashboard";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
 
@@ -23,7 +24,7 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
           person.window_title || "Sem título de janela",
           person.category || "Outros",
           person.status === "online" ? "Online" : "Ausente",
-          `há ${secondsSinceLastActivity}s`,
+          formatRelativeActivityTime(secondsSinceLastActivity),
           [
             "bg-rose-300",
             "bg-blue-300",
@@ -48,7 +49,11 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
           </a>
         }
       />
-      <div className="-mx-5 mt-5 overflow-x-auto">
+      <div
+        className="-mx-5 mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-brand"
+        tabIndex={0}
+        aria-label="Tabela de colaboradores em atividade com rolagem horizontal"
+      >
         <table className="w-full min-w-[760px] border-collapse text-left">
           <thead>
             <tr className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400 dark:bg-slate-800">
@@ -60,31 +65,32 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
             </tr>
           </thead>
           <tbody>
-            {people.length ? people.map(
-              ([
-                name,
-                initials,
-                machine,
-                app,
-                windowName,
-                category,
-                status,
-                time,
-                avatar,
-              ]) => (
-                <tr
-                  key={name}
-                  className="border-t border-slate-100 text-[11px] text-muted dark:border-slate-700"
-                >
-                  <td className="px-5 py-3">
-                    <div className="flex min-w-[155px] items-center gap-2">
-                      <div className={`avatar ${avatar}`}>{initials}</div>
-                      <strong className="text-xs text-ink dark:text-white">
-                        {name}
-                      </strong>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 font-mono text-[10px]">{machine}</td>
+            {people.length ? (
+              people.map(
+                ([
+                  name,
+                  initials,
+                  machine,
+                  app,
+                  windowName,
+                  category,
+                  status,
+                  time,
+                  avatar,
+                ]) => (
+                  <tr
+                    key={name}
+                    className="border-t border-slate-100 text-[11px] text-muted dark:border-slate-700"
+                  >
+                    <td className="px-5 py-3">
+                      <div className="flex min-w-[155px] items-center gap-2">
+                        <div className={`avatar ${avatar}`}>{initials}</div>
+                        <strong className="text-xs text-ink dark:text-white">
+                          {name}
+                        </strong>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 font-mono text-[10px]">{machine}</td>
                   <td className="px-5 py-3">
                     <strong className="block text-xs text-ink dark:text-white">
                       {app}
@@ -108,7 +114,7 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
                     <small className="mt-1 block">{time}</small>
                   </td>
                 </tr>
-              ),
+              ))
             ) : (
               <tr>
                 <td colSpan="5" className="px-5 py-8 text-center text-xs text-muted">

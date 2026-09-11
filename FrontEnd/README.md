@@ -161,13 +161,27 @@ O Tailwind é a fonte principal de estilos. `src/index.css` complementa-o com as
 
 Detalhes de estilos: [docs/STYLES.md](docs/STYLES.md). Detalhes do contrato e das pendências de integração: [docs/INTEGRACAO-FRONTEND-BACKEND.md](docs/INTEGRACAO-FRONTEND-BACKEND.md).
 
+## Testes automatizados
+
+A suíte de testes unitários e de integração de componentes é executada com Vitest e Testing Library:
+
+```powershell
+npm.cmd test
+```
+
+Para executar em modo contínuo (watch) ou com relatório de cobertura de código:
+
+```powershell
+npm.cmd run test:watch
+npm.cmd run test:coverage
+```
+
 ## Limitações conhecidas
 
-- Não há testes automatizados configurados.
-- Ranking de aplicativos e timeline precisam de endpoints próprios.
-- O card “Software mais usado” não usa dados reais.
-- A regra de produtividade é provisória e pertence ao frontend.
-- A área de configurações na barra lateral é apenas informativa.
+- Ranking de aplicativos e timeline dependem de endpoints próprios da API para exibir dados reais.
+- O card “Software mais usado” aguarda endpoint dedicado.
+- A regra de produtividade é provisória e aplicada no cliente somando categorias operacionais.
+- A área de configurações na barra lateral é informativa até a existência de módulo de perfil/configurações.
 
 ## Tecnologias
 

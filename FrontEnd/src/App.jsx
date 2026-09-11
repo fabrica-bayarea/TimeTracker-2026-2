@@ -19,14 +19,8 @@ import {
   formatDuration,
   getProductiveSeconds,
   getSummaryTotalSeconds,
+  safeIsoDate,
 } from "./utils/dashboard";
-
-function getLocalIsoDate() {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 /**
  * Componente principal da aplicação
@@ -34,12 +28,13 @@ function getLocalIsoDate() {
  */
 function App() {
   const [dark, toggleTheme] = useTheme();
-  const [selectedDate, setSelectedDate] = useState(getLocalIsoDate);
+  const [selectedDate, setSelectedDate] = useState(() => safeIsoDate());
   const [selectedUsername, setSelectedUsername] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const activeSection = useActiveSection();
+  const activeDate = safeIsoDate(selectedDate);
   const { data, loading, refreshing, error, updatedAt, refresh } =
-    useDashboardData(selectedDate, selectedUsername, autoRefresh);
+    useDashboardData(activeDate, selectedUsername, autoRefresh);
   const summaryUsers = data?.summary?.users ?? [];
   const realtimePeople = (data?.realtime ?? []).filter(
     (person) => !selectedUsername || person.username === selectedUsername,
@@ -56,8 +51,9 @@ function App() {
     day: "2-digit",
     month: "long",
   })
-    .format(new Date(`${selectedDate}T12:00:00`))
+    .format(new Date(`${activeDate}T12:00:00`))
     .toUpperCase();
+
 
   return (
     <div className="min-h-screen bg-page text-ink dark:bg-slate-950">
@@ -160,10 +156,11 @@ function App() {
 
         <div id="relatorios" className="mt-5 grid gap-5">
           <ReportsAndAgent
-            selectedDate={selectedDate}
+            selectedDate={activeDate}
             selectedUsername={selectedUsername}
             autoRefresh={autoRefresh}
             setAutoRefresh={setAutoRefresh}
+            realtimePeople={realtimePeople}
           />
         </div>
       </main>

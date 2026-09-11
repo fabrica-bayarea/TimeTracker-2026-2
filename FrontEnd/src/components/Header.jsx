@@ -1,11 +1,6 @@
-/** Cabeçalho com filtros, status da API e controles de atualização. */
-function getLocalIsoDate() {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+import { safeIsoDate } from "../utils/dashboard";
 
+/** Cabeçalho com filtros, status da API e controles de atualização. */
 export function Header({
   formattedDate, dark, toggleTheme, selectedDate, setSelectedDate, apiStatus,
   selectedUsername, setSelectedUsername, users, refreshing, onRefresh, updatedAt,
@@ -51,21 +46,21 @@ export function Header({
             type="date"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
-            max={getLocalIsoDate()}
+            max={safeIsoDate()}
             aria-label="Data do relatório"
           />
         </label>
         <label className="control gap-2" title="Filtrar colaborador">
           <span aria-hidden="true">♙</span>
           <select
-            className="min-w-0 max-w-[190px] bg-transparent text-xs outline-none"
+            className="min-w-0 max-w-[190px] bg-transparent text-xs outline-none dark:bg-slate-900"
             value={selectedUsername}
             onChange={(event) => setSelectedUsername(event.target.value)}
             aria-label="Filtrar colaborador"
           >
-            <option value="">Toda a equipe</option>
+            <option value="" className="dark:bg-slate-900 dark:text-slate-200">Toda a equipe</option>
             {users.map((user) => (
-              <option key={user.username} value={user.username}>
+              <option key={user.username} value={user.username} className="dark:bg-slate-900 dark:text-slate-200">
                 {user.full_name || user.username}
               </option>
             ))}

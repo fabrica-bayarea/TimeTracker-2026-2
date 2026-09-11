@@ -1,4 +1,4 @@
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { categories as demoCategories } from "../data/dashboardData";
 import { formatDuration } from "../utils/dashboard";
 import { Card } from "./Card";
@@ -45,6 +45,26 @@ export function CategoryChart({ summaryUsers = [], useDemoData = true }) {
         <div className="relative h-36 w-36 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const item = payload[0].payload;
+                  const percent = totalSeconds > 0
+                    ? ((item.value / totalSeconds) * 100).toFixed(1)
+                    : "0.0";
+                  return (
+                    <div className="chart-tooltip flex flex-col gap-0.5 text-[11px]">
+                      <span className="flex items-center gap-1.5 font-bold text-white">
+                        <i className="legend-dot" style={{ backgroundColor: item.color }} />
+                        {item.name}
+                      </span>
+                      <span className="text-slate-200">
+                        {item.time} ({percent}%)
+                      </span>
+                    </div>
+                  );
+                }}
+              />
               <Pie
                 data={categories}
                 dataKey="value"

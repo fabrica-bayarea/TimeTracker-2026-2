@@ -54,11 +54,30 @@ export function useDashboardData(selectedDate, selectedUsername = "", autoRefres
         }
       });
 
-    if (autoRefresh) refreshTimer = window.setInterval(refresh, 30_000);
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (refreshTimer) {
+          window.clearInterval(refreshTimer);
+          refreshTimer = null;
+        }
+      } else {
+        refresh();
+        if (autoRefresh && !refreshTimer) {
+          refreshTimer = window.setInterval(refresh, 30_000);
+        }
+      }
+    };
+
+    if (autoRefresh && !document.hidden) {
+      refreshTimer = window.setInterval(refresh, 30_000);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       controller.abort();
-      window.clearInterval(refreshTimer);
+      if (refreshTimer) window.clearInterval(refreshTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [selectedDate, selectedUsername, autoRefresh, refreshKey, refresh]);
 
@@ -67,14 +86,20 @@ export function useDashboardData(selectedDate, selectedUsername = "", autoRefres
 
 /**
  * Hook para gerenciar o tema (escuro/claro)
- * Persiste a preferência do usuário no localStorage
+ * Persiste a preferência do usuário no localStorage com fallback para o sistema operacional
  * 
  * @returns {[boolean, function]} - [isDarkMode, toggleTheme]
  */
 export function useTheme() {
   const [dark, setDark] = useState(() => {
-    // Inicializa com valor persistido no localStorage ou false
-    return localStorage.getItem("timetracker-theme") === "dark";
+    const savedTheme = localStorage.getItem("timetracker-theme");
+    if (savedTheme !== null) {
+      return savedTheme === "dark";
+    }
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
   });
 
   // Atualiza o documento e localStorage quando o tema muda

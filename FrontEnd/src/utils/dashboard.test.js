@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDuration,
+  formatRelativeActivityTime,
   getProductiveSeconds,
   getSummaryTotalSeconds,
+  safeIsoDate,
 } from "./dashboard";
 
 describe("dashboard utilities", () => {
@@ -35,4 +37,26 @@ describe("dashboard utilities", () => {
       }),
     ).toBe(1800);
   });
+
+  it("formats relative activity time appropriately", () => {
+    expect(formatRelativeActivityTime(0)).toBe("há 0s");
+    expect(formatRelativeActivityTime(15)).toBe("há 15s");
+    expect(formatRelativeActivityTime(59)).toBe("há 59s");
+    expect(formatRelativeActivityTime(60)).toBe("há 1min");
+    expect(formatRelativeActivityTime(150)).toBe("há 2min");
+    expect(formatRelativeActivityTime(3600)).toBe("há 1h");
+    expect(formatRelativeActivityTime(3720)).toBe("há 1h 2min");
+    expect(formatRelativeActivityTime(7200)).toBe("há 2h");
+  });
+
+  it("validates and sanitizes ISO dates safely", () => {
+    expect(safeIsoDate("2026-09-11")).toBe("2026-09-11");
+    // Datas inválidas retornam o formato YYYY-MM-DD da data atual
+    const fallbackRegex = /^\d{4}-\d{2}-\d{2}$/;
+    expect(safeIsoDate("")).toMatch(fallbackRegex);
+    expect(safeIsoDate(null)).toMatch(fallbackRegex);
+    expect(safeIsoDate("invalid-date")).toMatch(fallbackRegex);
+    expect(safeIsoDate("2026-02-31")).toMatch(fallbackRegex);
+  });
 });
+
