@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   VARIÁVEIS CSS E CONFIGURAÇÃO GLOBAL
+   ============================================================================ */
+
+:root {
+  --page: #f7f8fc;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --page: #020617;
+}
+
+/* ============================================================================
+   RESET E BASE
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--page);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ============================================================================
+   COMPONENTES REUTILIZÁVEIS
+   ============================================================================ */
+
+@layer components {
+  /* Rótulo pequeno/eyebrow para seções */
+  .eyebrow {
+    @apply mb-2 text-[11px] font-bold tracking-[1.1px] text-slate-400;
+  }
+
+  /* Botão padrão de controle */
+  .control {
+    @apply h-10 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300;
+  }
+
+  .control span {
+    @apply pl-3 text-slate-400;
+  }
+
+  /* Botão com ícone (quadrado) */
+  .icon-control {
+    @apply relative grid h-10 w-10 place-items-center rounded-lg border border-line bg-white text-lg text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300;
+  }
+
+  /* Indicador de notificação (ponto vermelho) */
+  .notification-dot {
+    @apply absolute right-2 top-2 h-1.5 w-1.5 rounded-full border border-white bg-rose-500;
+  }
+
+  /* Ponto de legenda para gráficos */
+  .legend-dot {
+    @apply mr-1.5 inline-block h-2 w-2 rounded-full;
+  }
+
+  /* Tooltip para gráficos */
+  .chart-tooltip {
+    @apply rounded-md bg-slate-800 px-2 py-1 text-[10px] text-white shadow-lg;
+  }
+
+  /* Avatar/Círculo com iniciais */
+  .avatar {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-[11px] font-bold;
+  }
+
+  /* Pílula/Badge padrão */
+  .pill {
+    @apply inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300;
+  }
+
+  /* Variante de pílula para Comunicação */
+  .pill.communication {
+    @apply bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300;
+  }
+
+  /* Variante de pílula para Design */
+  .pill.design {
+    @apply bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300;
+  }
+
+  /* Badge de status online */
+  .online-badge {
+    @apply ml-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300;
+  }
+
+  /* Indicador de status (ponto) */
+  .status-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full bg-current;
+  }
+
+  /* Botão primário (CTA) */
+  .primary-button {
+    @apply rounded-lg bg-brand px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 dark:hover:bg-indigo-800 active:scale-95;
+  }
+
+  /* Botão secundário (alternativa) */
+  .secondary-button {
+    @apply rounded-lg border border-line bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800;
+  }
+}
+
+/* ============================================================================
+   IMPRESSÃO (PRINT)
+   ============================================================================ */
+
+@media print {
+  aside,
+  header,
+  button,
+  .control,
+  .icon-control {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 20px !important;
+  }
+
+  /* Garante que tabelas sejam visíveis em impressão */
+  table {
+    page-break-inside: avoid;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+/* ============================================================================
+   ACESSIBILIDADE
+   ============================================================================ */
+
+/* Remove outline padrão apenas quando não em foco via teclado */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Reduz animações para usuários que preferem movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

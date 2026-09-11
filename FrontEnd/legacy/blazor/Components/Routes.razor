@@ -1,0 +1,15 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        @* Todas as páginas encontradas usam o layout principal por padrão. *@
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        @* Mantém o foco no título ao trocar de rota, facilitando a navegação por teclado. *@
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        @* Resposta exibida quando a URL não corresponde a nenhuma página registrada. *@
+        <PageTitle>Página não encontrada</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <p>Esta página não existe.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

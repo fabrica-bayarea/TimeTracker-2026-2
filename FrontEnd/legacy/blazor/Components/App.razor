@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    @* Metadados básicos e recursos compartilhados por todas as páginas. *@
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="app.css" />
+    <HeadOutlet />
+</head>
+<body>
+    @* O roteador decide qual página renderizar neste ponto do documento. *@
+    <Routes />
+    @* app.js contém comportamentos do navegador; Blazor fornece a comunicação interativa. *@
+    <script src="app.js"></script>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>
