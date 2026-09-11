@@ -15,7 +15,39 @@ import { SectionHeading } from "./SectionHeading";
  * Componente ActivityChart
  * Gráfico de barras mostrando atividade semanal (monitorado vs produtivo)
  */
-export function ActivityChart() {
+function getDailySeconds(summary) {
+  return (summary?.users ?? []).reduce(
+    (total, user) => total + (Number(user.total_seconds) || 0),
+    0,
+  );
+}
+
+function getProductiveSeconds(summary) {
+  return (summary?.users ?? []).reduce(
+    (total, user) => total + (user.by_category ?? [])
+      .filter((category) => !["Social", "Outros"].includes(category.category))
+      .reduce((categoryTotal, category) => categoryTotal + (Number(category.total_seconds) || 0), 0),
+    0,
+  );
+}
+
+export function ActivityChart({ weeklySummaries = [], useDemoData = true }) {
+  const chartData = weeklySummaries.length
+    ? weeklySummaries.map((summary) => {
+        const monitored = Math.round(getDailySeconds(summary) / 3600 * 10);
+        const productive = Math.round(getProductiveSeconds(summary) / 3600 * 10);
+        return {
+          day: new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
+            .format(new Date(`${summary.date}T12:00:00`))
+            .replace(".", ""),
+          monitored,
+          productive,
+          hours: `${(monitored / 10).toFixed(1)}h monitoradas`,
+        };
+      })
+    : useDemoData
+      ? week
+      : [];
   return (
     <Card className="min-h-[286px] lg:col-span-1">
       <SectionHeading
@@ -37,13 +69,13 @@ export function ActivityChart() {
           Produtivo
         </span>
       </div>
-      <div
+      {chartData.length ? <div
         className="mt-3 h-[190px]"
         aria-label="Gráfico de atividades semanais"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={week}
+            data={chartData}
             barGap={4}
             margin={{ top: 12, right: 4, left: -24, bottom: 0 }}
           >
@@ -69,7 +101,9 @@ export function ActivityChart() {
             <Bar dataKey="productive" fill="#6350df" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </div> : <div className="grid h-[190px] place-items-center text-center text-xs text-muted">
+        O backend ainda não disponibiliza o histórico semanal necessário para este gráfico.
+      </div>}
     </Card>
   );
 }

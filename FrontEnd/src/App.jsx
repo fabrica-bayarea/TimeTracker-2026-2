@@ -30,12 +30,16 @@ function getLocalIsoDate() {
 function App() {
   const [dark, toggleTheme] = useTheme();
   const [selectedDate, setSelectedDate] = useState(getLocalIsoDate);
+  const [selectedUsername, setSelectedUsername] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const activeSection = useActiveSection();
   const { data, loading, refreshing, error, updatedAt, refresh } =
-    useDashboardData(selectedDate, autoRefresh);
+    useDashboardData(selectedDate, selectedUsername, autoRefresh);
   const summaryUsers = data?.summary?.users ?? [];
-  const realtimePeople = data?.realtime ?? [];
+  const realtimePeople = (data?.realtime ?? []).filter(
+    (person) => !selectedUsername || person.username === selectedUsername,
+  );
+  const users = data?.users ?? [];
   const totalMonitoredSeconds = summaryUsers.reduce(
     (total, user) => total + (Number(user.total_seconds) || 0),
     0,
@@ -43,6 +47,13 @@ function App() {
   const onlinePeople = realtimePeople.filter(
     (person) => person.status === "online",
   ).length;
+  const productiveSeconds = summaryUsers.reduce(
+    (total, user) =>
+      total + (user.by_category ?? [])
+        .filter((category) => !["Social", "Outros"].includes(category.category))
+        .reduce((categoryTotal, category) => categoryTotal + (Number(category.total_seconds) || 0), 0),
+    0,
+  );
 
   // Formata a data para exibição
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
@@ -64,6 +75,9 @@ function App() {
           toggleTheme={toggleTheme}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
+          selectedUsername={selectedUsername}
+          setSelectedUsername={setSelectedUsername}
+          users={users}
           apiStatus={loading ? "loading" : error ? "offline" : "online"}
           refreshing={refreshing}
           onRefresh={refresh}
@@ -87,9 +101,9 @@ function App() {
             icon="⌁"
             tone="bg-blue-100 text-blue-600"
             label="Tempo produtivo"
-            value="5h 18min"
-            detail="↑ 8%  vs. ontem"
-            positive
+            value={data ? `${Math.floor(productiveSeconds / 3600)}h ${Math.floor((productiveSeconds % 3600) / 60)}min` : "--"}
+            detail={data ? "categorias produtivas" : "aguardando dados"}
+            positive={Boolean(data)}
           />
           <MetricCard
             icon="●"
@@ -114,10 +128,10 @@ function App() {
 
         {/* Seção de gráficos e tabelas */}
         <section className="grid gap-5 lg:grid-cols-2">
-          <ActivityChart />
+          <ActivityChart weeklySummaries={data?.weeklySummaries ?? []} useDemoData={!data} />
           <CategoryChart summaryUsers={summaryUsers} useDemoData={!data} />
-          <AppsCard />
-          <TimelineCard />
+          <AppsCard useDemoData={!data} />
+          <TimelineCard useDemoData={!data} />
           <PeopleCard realtimePeople={realtimePeople} useDemoData={!data} />
         </section>
 
@@ -136,6 +150,7 @@ function App() {
             realtimePeople={realtimePeople}
             useDemoData={!data}
             selectedDate={selectedDate}
+            selectedUsername={selectedUsername}
             autoRefresh={autoRefresh}
             setAutoRefresh={setAutoRefresh}
           />

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { navItems } from "../data/dashboardData";
 import { fetchDashboardData } from "../services/api";
 
-export function useDashboardData(selectedDate, autoRefresh = true) {
+export function useDashboardData(selectedDate, selectedUsername = "", autoRefresh = true) {
   const [state, setState] = useState({
     data: null,
     loading: true,
@@ -19,15 +19,15 @@ export function useDashboardData(selectedDate, autoRefresh = true) {
     let refreshTimer;
 
     setState((current) => ({
-      data: current.dataDate === selectedDate ? current.data : null,
-      loading: current.dataDate !== selectedDate,
-      refreshing: current.dataDate === selectedDate && Boolean(current.data),
+      data: current.dataDate === `${selectedDate}:${selectedUsername}` ? current.data : null,
+      loading: current.dataDate !== `${selectedDate}:${selectedUsername}`,
+      refreshing: current.dataDate === `${selectedDate}:${selectedUsername}` && Boolean(current.data),
       error: null,
       updatedAt: current.dataDate === selectedDate ? current.updatedAt : null,
-      dataDate: current.dataDate === selectedDate ? current.dataDate : null,
+      dataDate: current.dataDate === `${selectedDate}:${selectedUsername}` ? current.dataDate : null,
     }));
 
-    fetchDashboardData(selectedDate, controller.signal)
+    fetchDashboardData(selectedDate, selectedUsername, controller.signal)
       .then((data) =>
         setState({
           data,
@@ -35,7 +35,7 @@ export function useDashboardData(selectedDate, autoRefresh = true) {
           refreshing: false,
           error: null,
           updatedAt: new Date(),
-          dataDate: selectedDate,
+          dataDate: `${selectedDate}:${selectedUsername}`,
         }),
       )
       .catch((error) => {
@@ -57,7 +57,7 @@ export function useDashboardData(selectedDate, autoRefresh = true) {
       controller.abort();
       window.clearInterval(refreshTimer);
     };
-  }, [selectedDate, autoRefresh, refreshKey, refresh]);
+  }, [selectedDate, selectedUsername, autoRefresh, refreshKey, refresh]);
 
   return { ...state, refresh };
 }

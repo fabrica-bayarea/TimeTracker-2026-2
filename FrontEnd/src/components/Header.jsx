@@ -8,7 +8,7 @@ function getLocalIsoDate() {
 
 export function Header({
   formattedDate, dark, toggleTheme, selectedDate, setSelectedDate, apiStatus,
-  refreshing, onRefresh, updatedAt,
+  selectedUsername, setSelectedUsername, users, refreshing, onRefresh, updatedAt,
 }) {
   const apiStatusLabel = {
     loading: "Conectando à API", offline: "API offline", online: "API online",
@@ -44,6 +44,22 @@ export function Header({
             max={getLocalIsoDate()}
             aria-label="Data do relatório"
           />
+        </label>
+        <label className="control flex items-center gap-2" title="Filtrar colaborador">
+          <span aria-hidden="true">♙</span>
+          <select
+            className="bg-transparent text-xs outline-none"
+            value={selectedUsername}
+            onChange={(event) => setSelectedUsername(event.target.value)}
+            aria-label="Filtrar colaborador"
+          >
+            <option value="">Toda a equipe</option>
+            {users.map((user) => (
+              <option key={user.username} value={user.username}>
+                {user.full_name || user.username}
+              </option>
+            ))}
+          </select>
         </label>
         <span className={`flex items-center gap-1.5 text-xs font-semibold ${apiStatus === "online" ? "text-emerald-600" : "text-amber-600"}`}>
           <i className="status-dot" />

@@ -1,9 +1,10 @@
 import { people as demoPeople } from "../data/dashboardData";
-import { convertRowsToCsv, createDailyReport, downloadTextFile } from "../utils/report";
+import { getReportUrl } from "../services/api";
 
 /** Exportação local e preferências de atualização; não altera o agente nem a API. */
 export function ReportsAndAgent({
   realtimePeople = [], useDemoData, selectedDate, autoRefresh, setAutoRefresh,
+  selectedUsername = "",
 }) {
   const reportPeople = realtimePeople.length
     ? realtimePeople.map((person) => [
@@ -19,14 +20,6 @@ export function ReportsAndAgent({
       ])
     : useDemoData ? demoPeople : [];
 
-  const handleDownloadCsv = () => {
-    downloadTextFile(
-      convertRowsToCsv(createDailyReport(reportPeople)),
-      `timetrack-relatorio-${selectedDate}.csv`,
-      "text/csv;charset=utf-8",
-    );
-  };
-
   return (
     <>
       <section id="relatorios" className="flex flex-col items-start justify-between gap-4 rounded-[13px] border border-indigo-100 bg-indigo-50 p-5 dark:border-indigo-900 dark:bg-indigo-950/40 sm:flex-row sm:items-center">
@@ -38,8 +31,8 @@ export function ReportsAndAgent({
           </div>
         </div>
         <div className="flex gap-2">
-          <button className="secondary-button" onClick={handleDownloadCsv}>⇩ CSV</button>
-          <button className="primary-button" onClick={() => window.print()}>Imprimir / PDF</button>
+          <a className="secondary-button" href={getReportUrl("csv", selectedDate, selectedUsername)} download>⇩ CSV</a>
+          <a className="primary-button" href={getReportUrl("pdf", selectedDate, selectedUsername)} download>⇩ PDF</a>
         </div>
       </section>
       <section id="timesheet" className="flex flex-col items-start justify-between gap-4 rounded-[13px] border border-line bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center">

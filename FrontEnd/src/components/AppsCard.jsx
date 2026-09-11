@@ -6,7 +6,7 @@ import { SectionHeading } from "./SectionHeading";
  * Componente AppsCard
  * Card exibindo os aplicativos mais usados com barras de progresso
  */
-export function AppsCard() {
+export function AppsCard({ useDemoData = true }) {
   return (
     <Card className="min-h-[257px]">
       <SectionHeading
@@ -18,7 +18,7 @@ export function AppsCard() {
           </a>
         }
       />
-      <div className="mt-5 grid gap-4">
+      {useDemoData ? <div className="mt-5 grid gap-4">
         {apps.map((app) => (
           <div
             key={app.name}
@@ -43,7 +43,9 @@ export function AppsCard() {
             </strong>
           </div>
         ))}
-      </div>
+      </div> : <p className="mt-8 text-center text-xs text-muted">
+        O backend ainda não disponibiliza o ranking de aplicativos por período.
+      </p>}
     </Card>
   );
 }
