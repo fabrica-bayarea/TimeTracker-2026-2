@@ -1,0 +1,214 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Globalization
+
+<PageTitle>Visão geral | TimeTrack</PageTitle>
+
+@* Cabeçalho com saudação, período selecionado e ações rápidas. *@
+<header class="topbar" id="visao-geral">
+    <div>
+        <p class="eyebrow">@SelectedDate.ToString("dddd, dd 'de' MMMM", PortugueseCulture).ToUpperInvariant() · DADOS AO VIVO</p>
+        <h1>Visão geral da operação</h1>
+        <p class="subtitle">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
+    </div>
+    <div class="header-actions">
+        <button class="icon-button theme-button" type="button" onclick="timeTrackerTheme.toggle()" aria-label="Alternar tema" title="Alternar tema">☾</button>
+        <button class="icon-button" aria-label="Notificações" title="Notificações">♧<i></i></button>
+        <label class="date-picker" title="Selecionar data">
+            <span aria-hidden="true">▣</span>
+            <input class="date-input" type="date" @bind="SelectedDate" aria-label="Data do relatório" />
+        </label>
+        <span class="api-status" title="Última verificação há 12 segundos"><i></i> API online</span>
+    </div>
+</header>
+
+@* Indicadores resumidos do dia. Os valores são demonstrativos nesta versão. *@
+<section class="metrics" aria-label="Indicadores de hoje">
+    <article class="metric-card">
+        <div class="metric-icon purple">◷</div>
+        <div><p>Tempo monitorado</p><h2>6h 42min</h2><small class="positive">↑ 12% <span>vs. ontem</span></small></div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-icon blue">⌁</div>
+        <div><p>Tempo produtivo</p><h2>5h 18min</h2><small class="positive">↑ 8% <span>vs. ontem</span></small></div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-icon orange">●</div>
+        <div><p>Em atividade agora</p><h2>12 <span class="unit">pessoas</span></h2><small class="muted">de 16 na equipe</small></div>
+    </article>
+    <article class="metric-card">
+        <div class="metric-icon green">◆</div>
+        <div><p>Software mais usado</p><h2>VS Code</h2><small class="muted">2h 42min monitoradas</small></div>
+    </article>
+</section>
+
+@* Painéis analíticos com diferentes perspectivas dos dados simulados. *@
+<section class="dashboard-grid">
+    <article class="panel activity-panel" id="atividade">
+        <div class="panel-heading">
+            <div><h2>Atividade da equipe</h2><p>Tempo monitorado e produtivo</p></div>
+            <button class="select-button" type="button">Últimos 7 dias <span>⌄</span></button>
+        </div>
+        <div class="chart-key"><span><i class="key-dot monitored"></i>Monitorado</span><span><i class="key-dot productive"></i>Produtivo</span></div>
+        <div class="bar-chart" aria-label="Gráfico de atividades semanais">
+            @* As alturas das barras são percentuais definidos no conjunto Week. *@
+            @foreach (var item in Week)
+            {
+                <div class="@GetBarColumnClass(item)">
+                    <div class="chart-tooltip">@FormatHours(item.Hours) h</div>
+                    <div class="bars"><i style="@GetBarHeight(item.Monitored)"></i><b style="@GetBarHeight(item.Productive)"></b></div>
+                    <span>@item.Day</span>
+                </div>
+            }
+        </div>
+    </article>
+
+    <article class="panel focus-panel">
+        <div class="panel-heading"><div><h2>Tempo por categoria</h2><p>Classificação por palavras-chave</p></div><button class="dots" type="button" aria-label="Mais opções" title="Mais opções">•••</button></div>
+        <div class="focus-content">
+            <div class="donut"><div><strong>6h 42</strong><span>monitoradas</span></div></div>
+            <div class="legend-list">
+                @foreach (var category in Categories)
+                {
+                    <div><span><i class="legend-dot @category.Style"></i>@category.Name</span><strong>@category.Time</strong></div>
+                }
+            </div>
+        </div>
+    </article>
+
+    <article class="panel apps-panel">
+        <div class="panel-heading"><div><h2>Aplicativos mais usados</h2><p>Hoje, por tempo de uso</p></div><a href="#relatorios">Ver relatório <span>→</span></a></div>
+        <div class="app-list">
+            @* Cada linha combina identificação, proporção visual e tempo total de uso. *@
+            @foreach (var app in Apps)
+            {
+                <div class="app-row"><div class="app-name"><span class="app-logo @app.Style">@app.Symbol</span><span>@app.Name</span></div><div class="app-progress"><i style="@GetProgressWidth(app.Percent)"></i></div><strong>@app.Time</strong></div>
+            }
+        </div>
+    </article>
+
+    <article class="panel timeline-panel" id="timeline">
+        <div class="panel-heading"><div><h2>Timeline do expediente</h2><p>Divisão das atividades monitoradas</p></div><span class="timeline-range">08:00 — 18:00</span></div>
+        <div class="timeline" aria-label="Timeline das atividades do expediente">
+            @foreach (var item in Timeline)
+            {
+                <div class="timeline-segment @item.Style" style="width:@item.Width%" title="@item.Name: @item.Time"><span>@item.Name</span></div>
+            }
+        </div>
+        <div class="timeline-labels"><span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span><span>16:00</span><span>18:00</span></div>
+    </article>
+
+    <article class="panel people-panel" id="equipe">
+        <div class="panel-heading"><div><h2>Equipe em atividade</h2><p>Última leitura de cada colaborador</p></div><a href="#timesheet">Ver equipe <span>→</span></a></div>
+        <div class="live-table-wrap">
+            <table class="live-table">
+                <thead><tr><th>Colaborador</th><th>Máquina</th><th>Aplicativo / janela</th><th>Categoria</th><th>Status</th></tr></thead>
+                <tbody>
+                    @foreach (var person in People)
+                    {
+                        <tr>
+                            <td><div class="person"><div class="avatar @person.Color">@person.Initials</div><strong>@person.Name</strong></div></td>
+                            <td class="machine">@person.Machine</td>
+                            <td><strong>@person.App</strong><small>@person.Window</small></td>
+                            <td><span class="category-pill @person.CategoryStyle">@person.Category</span></td>
+                            <td><span class="status @person.StatusStyle"><i></i>@person.Status</span><small>@person.Time</small></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+
+<section class="reports-strip" id="relatorios" aria-label="Relatórios e conexão">
+    <div class="report-copy"><span class="report-icon">↓</span><div><h2>Relatório diário</h2><p>Exporte a atividade consolidada da equipe.</p></div></div>
+    <div class="report-actions"><button class="secondary-button" type="button" onclick="timeTrackerExports.downloadCsv()">⇩ CSV</button><button class="primary-button" type="button" onclick="timeTrackerExports.printReport()">▣ PDF</button></div>
+</section>
+
+@* Estado visual do agente local e controle de pausa do acompanhamento. *@
+<section class="timesheet-card" id="timesheet">
+    <div><span class="agent-icon">⌁</span><div><h2>Agente TimeTrack conectado <span class="connected-badge"><i></i>Online</span></h2><p>Windows · LAPTOP-LUAN · última sincronização há 12s</p></div></div>
+    <button class="pause-button" @onclick="ToggleTracking">@GetTrackingButtonText()</button>
+</section>
+
+@code {
+    // Alternado pelo botão do agente; ainda não persiste estado em uma API.
+    private bool IsTracking = true;
+    private DateTime SelectedDate { get; set; } = new(2026, 9, 6);
+    private static CultureInfo PortugueseCulture => CultureInfo.GetCultureInfo("pt-BR");
+
+    private void ToggleTracking()
+    {
+        IsTracking = GetNextTrackingState(IsTracking);
+    }
+
+    private static bool GetNextTrackingState(bool currentState) => !currentState;
+
+    private static string GetBarColumnClass(DayActivity item) => item.Today ? "bar-column today" : "bar-column";
+
+    private static string GetBarHeight(int percentage) => $"height:{percentage}%";
+
+    private static string GetProgressWidth(int percentage) => $"width:{percentage}%";
+
+    private static string FormatHours(decimal hours) => hours.ToString("0.0");
+
+    private string GetTrackingButtonText() => IsTracking
+        ? "❚❚ Pausar acompanhamento"
+        : "▶ Retomar acompanhamento";
+
+    // Modelos tipados mantêm os dados de apresentação próximos da tela que os utiliza.
+    private readonly record struct DayActivity(string Day, int Monitored, int Productive, decimal Hours, bool Today = false);
+    private readonly record struct AppUsage(string Name, string Time, int Percent, string Symbol, string Style);
+    private readonly record struct CategorySummary(string Name, string Time, string Style);
+    private readonly record struct TimelineActivity(string Name, string Time, int Width, string Style);
+    private readonly record struct TeamMember(string Name, string Initials, string Machine, string App, string Window, string Category, string CategoryStyle, string Status, string StatusStyle, string Time, string Color);
+
+    // Dados fictícios usados pelo gráfico semanal.
+    private readonly DayActivity[] Week =
+    [
+        new("Seg", 60, 50, 6.1m),
+        new("Ter", 74, 64, 7.4m, true),
+        new("Qua", 52, 42, 5.2m),
+        new("Qui", 68, 56, 6.8m),
+        new("Sex", 62, 48, 6.3m),
+        new("Sáb", 20, 12, 2.0m),
+        new("Dom", 10, 6, 1.0m)
+    ];
+
+    // Aplicativos ordenados pelo tempo de uso apresentado no painel.
+    private readonly AppUsage[] Apps =
+    [
+        new("Visual Studio Code", "2h 42min", 88, "<> ", "vscode"),
+        new("Google Chrome", "1h 36min", 57, "●", "chrome"),
+        new("Microsoft Teams", "54min", 33, "T", "teams"),
+        new("Figma", "31min", 20, "F", "figma")
+    ];
+
+    private readonly CategorySummary[] Categories =
+    [
+        new("Desenvolvimento", "3h 18min", "deep"),
+        new("Comunicação", "1h 42min", "cyan"),
+        new("Design", "1h 08min", "yellow-dot"),
+        new("Social", "26min", "social-dot"),
+        new("Outros", "34min", "pale")
+    ];
+
+    private readonly TimelineActivity[] Timeline =
+    [
+        new("Desenvolvimento", "08:10 - 10:35", 25, "timeline-development"),
+        new("Comunicação", "10:35 - 11:20", 8, "timeline-communication"),
+        new("Desenvolvimento", "11:20 - 12:30", 12, "timeline-development"),
+        new("Pausa", "12:30 - 13:30", 10, "timeline-break"),
+        new("Design", "13:30 - 15:20", 18, "timeline-design"),
+        new("Comunicação", "15:20 - 16:05", 8, "timeline-communication"),
+        new("Desenvolvimento", "16:05 - 17:45", 19, "timeline-development")
+    ];
+
+    private readonly TeamMember[] People =
+    [
+        new("Ana Carolina", "AC", "DESK-AC-01", "VS Code", "feature/dashboard.razor", "Desenvolvimento", "development", "Online", "online", "há 12s", "coral"),
+        new("Bruno Mendes", "BM", "DESK-BM-02", "Chrome", "Documentação da API", "Comunicação", "communication", "Online", "online", "há 28s", "blue-avatar"),
+        new("Camila Rocha", "CR", "MAC-CR-01", "Figma", "Design System v2", "Design", "design", "Online", "online", "há 41s", "pink"),
+        new("Diego Santos", "DS", "DESK-DS-03", "Teams", "Reunião semanal", "Comunicação", "communication", "Ausente", "away", "há 6min", "yellow")
+    ];
+}

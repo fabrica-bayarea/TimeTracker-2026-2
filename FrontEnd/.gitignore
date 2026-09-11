@@ -1,0 +1,147 @@
+# ============================================================================
+# Node.js / Frontend (Vite + React)
+# ============================================================================
+
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+.pnpm-debug.log*
+.yarn/install-state.gz
+
+# Dependências
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================================================
+# .NET / C# / Backend
+# ============================================================================
+
+# Pasta de compilação
+bin/
+obj/
+.vs/
+
+# Visual Studio
+.vsconfig
+*.sln.iml
+.vscode/
+.idea/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio cache/options
+.vs/
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+
+# Entity Framework
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================================================
+# Ambientes e Configurações
+# ============================================================================
+
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Configurações de IDE
+.vscode/
+.vscode/settings.json
+.vscode/extensions.json
+.vs/
+
+# ============================================================================
+# Arquivos do Sistema
+# ============================================================================
+
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+
+# ============================================================================
+# Logs
+# ============================================================================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ============================================================================
+# Diretórios Temporários
+# ============================================================================
+
+temp/
+tmp/
+*.tmp
+.cache/
+
+# ============================================================================
+# IDE específicas
+# ============================================================================
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# OS específicas
+# ============================================================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db

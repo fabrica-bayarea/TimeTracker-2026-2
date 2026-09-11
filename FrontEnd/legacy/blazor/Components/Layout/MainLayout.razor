@@ -1,0 +1,34 @@
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    @* Navegação fixa e identificação do usuário atual. *@
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a class="brand" href="/">
+                <span class="brand-mark">T</span>
+                <span>time<span>track</span></span>
+            </a>
+            <button class="sidebar-toggle" type="button" aria-label="Minimizar menu lateral" aria-expanded="true" title="Minimizar menu lateral" onclick="timeTrackerSidebar.toggle()"><span aria-hidden="true">‹</span></button>
+        </div>
+        <nav aria-label="Menu principal">
+            <a class="nav-link active" href="#visao-geral" data-section="visao-geral" onclick="timeTrackerNavigation.setActive(this)"><span>▦</span> Visão geral</a>
+            <a class="nav-link" href="#atividade" data-section="atividade" onclick="timeTrackerNavigation.setActive(this)"><span>◷</span> Atividades</a>
+            <a class="nav-link" href="#timesheet" data-section="timesheet" onclick="timeTrackerNavigation.setActive(this)"><span>▤</span> Timesheet</a>
+            <a class="nav-link" href="#equipe" data-section="equipe" onclick="timeTrackerNavigation.setActive(this)"><span>♧</span> Equipe</a>
+            <a class="nav-link" href="#relatorios" onclick="timeTrackerNavigation.setActive(this)"><span>▱</span> Relatórios</a>
+        </nav>
+        @* Mantém as opções secundárias no final da barra lateral. *@
+        <div class="sidebar-bottom">
+            <a class="nav-link" href="#configuracoes" onclick="timeTrackerNavigation.setActive(this)"><span>⚙</span> Configurações</a>
+            <div class="profile">
+                <div class="avatar">LM</div>
+                <div><strong>Luan Menezes</strong><small>Administrador</small></div>
+                <span class="more">•••</span>
+            </div>
+        </div>
+    </aside>
+    @* O conteúdo de cada página é inserido pelo LayoutComponentBase em @Body. *@
+    <main class="content">
+        @Body
+    </main>
+</div>
