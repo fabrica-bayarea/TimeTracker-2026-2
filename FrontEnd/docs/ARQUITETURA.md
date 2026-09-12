@@ -5,10 +5,11 @@
 ```mermaid
 flowchart TB
   M[main.jsx] --> A[App.jsx]
-  A --> H[hooks/useDashboard.js]
+  A --> H[hooks: useDashboardData, useTheme, useActiveSection]
   H --> S[services/api.js]
-  S --> API[API HTTP]
+  S --> API[API HTTP FastAPI]
   A --> C[components]
+  C --> CONST[constants/ui.js]
   C --> U[utils e data demonstrativa]
   A --> CSS[index.css + Tailwind]
 ```
@@ -16,45 +17,54 @@ flowchart TB
 | Camada | Local | Responsabilidade |
 | --- | --- | --- |
 | Entrada | `src/main.jsx` | Monta `App` no elemento `#root` usando `StrictMode`. |
-| Composição | `src/App.jsx` | Mantém filtros/preferências e calcula métricas para os componentes. |
-| Estado e efeitos | `src/hooks/useDashboard.js` | Busca dados, agenda atualização, persiste tema e rastreia seção visível. |
-| HTTP | `src/services/api.js` | Centraliza URL base, `fetch`, tratamento HTTP e URLs de exportação. |
-| Apresentação | `src/components/` | Renderiza as seções e não deve conhecer detalhes de `fetch`. |
-| Regras auxiliares | `src/utils/` | Formatação de tempo, totais, produtividade e CSV local. |
-| Demonstração | `src/data/dashboardData.js` | Dados estáticos usados quando não há dados reais. |
+| Composição | `src/App.jsx` | Mantém filtros/preferências e orquestra a passagem de dados para os componentes. |
+| Hooks modulares | `src/hooks/` | Busca de dados (`useDashboardData`), controle de tema (`useTheme`) e rastreamento de scroll (`useActiveSection`). |
+| Constantes de UI | `src/constants/ui.js` | Paletas de avatares, status de atividade e rótulos de API compartilhados. |
+| HTTP | `src/services/api.js` | Centraliza URL base, `fetch`, resiliência a falhas secundárias e URLs de exportação. |
+| Apresentação | `src/components/` | Renderiza seções visuais sem acoplamento direto com a camada de rede. |
+| Regras auxiliares | `src/utils/` | Formatação de tempo, totais, produtividade e exportação CSV. |
+| Demonstração | `src/data/dashboardData.js` | Dados estáticos para modo offline / demonstração. |
 
-## Estado do dashboard
+## Estado do dashboard e Hooks
 
-`useDashboardData(selectedDate, selectedUsername, autoRefresh)` retorna:
+A camada de estado do frontend está modularizada em `src/hooks/`:
 
-| Campo | Significado |
-| --- | --- |
-| `data` | Objeto com `summary`, `realtime`, `users` e `weeklySummaries`; é `null` antes de uma resposta válida para o filtro. |
-| `loading` | Verdadeiro na primeira consulta de um filtro. |
-| `refreshing` | Verdadeiro quando atualiza preservando dados do mesmo filtro. |
-| `error` | Último erro não cancelado da consulta. |
-| `updatedAt` | Momento local em que a última resposta válida chegou. |
-| `refresh()` | Dispara uma nova consulta sem alterar os filtros. |
+- **`useDashboardData(selectedDate, selectedUsername, autoRefresh)`:** Responsável pelo ciclo de vida das requisições, controle de concorrência com `AbortController`, pausas automáticas quando a aba está em segundo plano (Visibility API) e *stale-while-revalidate*.
+- **`useTheme()`:** Gerencia tema claro/escuro com persistência em `localStorage` e sincronização do atributo `data-theme` no `<html>`.
+- **`useActiveSection()`:** Utiliza `IntersectionObserver` para destacar a seção visível na barra lateral de forma performática.
 
-Cada efeito cria um `AbortController`. A limpeza do efeito cancela a requisição e o temporizador, evitando vazamento e atualização após desmontagem.
+Consulte [Documentação de Hooks](HOOKS.md) para a especificação detalhada de parâmetros e tipos de retorno.
 
-## Componentes e contratos
+## Componentes e Contratos
 
-Os componentes são exportados por `src/components/index.js`. Os dados são recebidos como propriedades; a página não usa Context ou store global.
+Os componentes visuais estão organizados em `src/components/` e são exportados por `src/components/index.js`. Os dados fluem de cima para baixo como propriedades (*props*).
 
-| Componente | Propriedades relevantes |
-| --- | --- |
-| `Header` | Filtros, tema, status, usuários, atualização e horário. |
-| `ActivityChart` | `weeklySummaries`, `useDemoData`. |
-| `CategoryChart` | `summaryUsers`, `useDemoData`. |
-| `PeopleCard` | `realtimePeople`, `useDemoData`. |
-| `ReportsAndAgent` | Data, usuário e controle da atualização automática. |
-| `Card`, `MetricCard`, `SectionHeading` | Componentes visuais reutilizáveis. |
+| Componente | Responsabilidade | Documentação |
+| --- | --- | --- |
+| `Header` | Filtros de data, seleção de colaborador, status da API e tema. | [Catálogo de Componentes](COMPONENTES.md#header) |
+| `Sidebar` | Navegação desktop por âncoras e perfil do usuário. | [Catálogo de Componentes](COMPONENTES.md#sidebar) |
+| `MetricCard` | Cartões de indicadores operacionais resumidos. | [Catálogo de Componentes](COMPONENTES.md#metriccard) |
+| `ActivityChart` | Gráfico de barras semanais (monitorado vs. produtivo). | [Catálogo de Componentes](COMPONENTES.md#activitychart) |
+| `CategoryChart` | Gráfico de rosca com distribuição de categorias. | [Catálogo de Componentes](COMPONENTES.md#categorychart) |
+| `PeopleCard` | Tabela em tempo real com atividades da equipe. | [Catálogo de Componentes](COMPONENTES.md#peoplecard) |
+| `ReportsAndAgent` | Exportação de relatórios (CSV/PDF) e auto-refresh. | [Catálogo de Componentes](COMPONENTES.md#reportsandagent) |
+| `Card`, `SectionHeading` | Blocos visuais reutilizáveis de apresentação. | [Catálogo de Componentes](COMPONENTES.md#componentes-base) |
 
-## Configuração de build
+## Testes Automatizados
 
-- `vite.config.js`: porta preferencial 5173, alias `@` para `/src`, divisão de bundles de React e Recharts, source maps desativados e remoção de `console` no build.
-- `tailwind.config.js`: classes pesquisadas em `index.html` e `src/`; cores, fontes e animações do projeto; dark mode por `[data-theme="dark"]`.
-- `postcss.config.js`: executa Tailwind e Autoprefixer.
+O frontend adota **Vitest** e **React Testing Library** com cobertura de componentes, hooks, serviços e utilitários.
 
-Para validar qualquer mudança: `npm.cmd run build` a partir de `FrontEnd/`.
+```powershell
+npm.cmd test
+npm.cmd run test:coverage
+```
+
+Consulte [Guia de Testes Automatizados](TESTES.md) para diretrizes de escrita e execução.
+
+## Configuração de Build
+
+- `vite.config.js`: porta 5173, alias `@` para `/src`, divisão de bundles (`vendor` para React e `charts` para Recharts) e remoção de `console` em produção.
+- `tailwind.config.js`: tema customizado (`ink`, `brand`, `muted`, `line`, `page`), dark mode por `[data-theme="dark"]`.
+- `postcss.config.js`: integração do Tailwind e Autoprefixer.
+
+Para validar o build: `npm.cmd run build` a partir de `FrontEnd/`.

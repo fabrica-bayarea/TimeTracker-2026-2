@@ -8,7 +8,7 @@ O TimeTrack é uma página única de acompanhamento de tempo de uma equipe. O co
 2. O dashboard busca dados da API e mostra o estado “Conectando à API”.
 3. Após a resposta, o usuário pode filtrar por data e por colaborador, alternar o tema e atualizar manualmente.
 4. A atualização automática vem ativada e refaz a consulta a cada 30 segundos; ela pode ser desligada na seção “Atualização do painel”.
-5. Os links CSV e PDF baixam o relatório do backend já respeitando os filtros em uso.
+5. Os links CSV e PDF baixam o relatório do backend já respeitando os filtros em uso. Caso haja dados visíveis na tela, o botão CSV executa exportação imediata pelo navegador com resiliência.
 
 ## O que cada área mostra
 
@@ -24,19 +24,21 @@ O TimeTrack é uma página única de acompanhamento de tempo de uma equipe. O co
 | Aplicativos mais usados | Exibe amostra enquanto não existe endpoint de ranking. | `src/data/dashboardData.js`. |
 | Timeline | Exibe amostra enquanto não existe endpoint de intervalos. | `src/data/dashboardData.js`. |
 | Equipe em atividade | Exibe última leitura por pessoa, aplicativo, janela, categoria e status. | `/activities/realtime`. |
-| Relatórios | Oferece download CSV e PDF da API para data e pessoa atuais. | `/dashboard/export/*`. |
+| Relatórios | Oferece download CSV e PDF da API para data e pessoa atuais, além de fallback local. | `/dashboard/export/*`. |
+
+Para detalhes detalhados de propriedades e comportamentos de cada card, consulte o [Catálogo de Componentes](COMPONENTES.md).
 
 ## Carregamento, falha e ausência de dados
 
 - **Carregando:** a primeira consulta do filtro limpa dados de outro filtro e informa que está consultando a API.
-- **Atualizando:** quando já há dados para o mesmo filtro, eles continuam visíveis enquanto a nova consulta ocorre.
+- **Atualizando:** quando já há dados para o mesmo filtro, eles continuam visíveis enquanto a nova consulta ocorre (*stale-while-revalidate*).
 - **Falha:** uma mensagem informa que a API está indisponível. Componentes que possuem amostra usam conteúdo demonstrativo para o protótipo continuar navegável.
 - **Resposta vazia:** quando a API respondeu, mas não há atividades, o componente mostra um estado vazio; não deve simular dados reais.
-- **Troca rápida de filtros:** a consulta anterior é cancelada para impedir que uma resposta atrasada sobrescreva o filtro atual.
+- **Troca rápida de filtros:** a consulta anterior é cancelada via `AbortController` para impedir que uma resposta atrasada sobrescreva o filtro atual.
 
 ## O que não funciona ainda
 
 - Não é possível pausar ou retomar o agente: isso exigiria endpoint específico.
 - Ranking real de aplicativos e timeline real dependem de endpoints ainda inexistentes.
-- A seção Configurações é apenas visual.
-- Não há autenticação, autorização ou testes automatizados neste frontend.
+- A seção Configurações é apenas informativa.
+- Não há autenticação ou autorização neste frontend (a API atual opera de forma aberta).

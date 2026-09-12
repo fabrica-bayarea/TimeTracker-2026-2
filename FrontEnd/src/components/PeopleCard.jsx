@@ -1,10 +1,31 @@
+import { AVATAR_COLOR_PALETTE, USER_STATUS_LABELS } from "../constants/ui";
 import { people as demoPeople } from "../data/dashboardData";
+import { formatRelativeActivityTime } from "../utils/dashboard";
 import { Card } from "./Card";
 import { SectionHeading } from "./SectionHeading";
 
 /**
+ * @typedef {Object} RealtimePerson
+ * @property {string} username - Identificador do colaborador
+ * @property {string} [hostname] - Nome da máquina
+ * @property {string} [process_name] - Nome do executável ou aplicação em primeiro plano
+ * @property {string} [window_title] - Título da janela ativa
+ * @property {string} [category] - Categoria da atividade (ex: Desenvolvimento, Comunicação)
+ * @property {"online"|"idle"|"offline"} [status] - Status de presença
+ * @property {number} [seconds_since_last_activity] - Segundos decorridos desde a última interação
+ */
+
+/**
+ * @typedef {Object} PeopleCardProps
+ * @property {RealtimePerson[]} [realtimePeople=[]] - Lista de colaboradores monitorados em tempo real
+ * @property {boolean} [useDemoData=true] - Se deve usar dados de demonstração caso realtimePeople esteja vazio
+ */
+
+/**
  * Componente PeopleCard
- * Tabela exibindo colaboradores em atividade
+ * Tabela exibindo os colaboradores da equipe em atividade em tempo real.
+ *
+ * @param {PeopleCardProps} props
  */
 export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
   const people = realtimePeople.length
@@ -14,29 +35,28 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
           0,
           Number(person.seconds_since_last_activity) || 0,
         );
+        const statusLabel =
+          USER_STATUS_LABELS[person.status] ||
+          (person.status === "online" ? "Online" : "Ausente");
+        const avatarColor =
+          AVATAR_COLOR_PALETTE[index % AVATAR_COLOR_PALETTE.length];
 
         return [
           username,
           username.slice(0, 2).toUpperCase(),
-          person.hostname,
-          person.process_name,
+          person.hostname || "—",
+          person.process_name || "—",
           person.window_title || "Sem título de janela",
           person.category || "Outros",
-          person.status === "online" ? "Online" : "Ausente",
-          `há ${secondsSinceLastActivity}s`,
-          [
-            "bg-rose-300",
-            "bg-blue-300",
-            "bg-pink-300",
-            "bg-emerald-300",
-            "bg-yellow-300",
-            "bg-cyan-300",
-          ][index % 6],
+          statusLabel,
+          formatRelativeActivityTime(secondsSinceLastActivity),
+          avatarColor,
         ];
       })
     : useDemoData
       ? demoPeople
       : [];
+
   return (
     <Card id="equipe" className="overflow-hidden p-5 lg:col-span-2">
       <SectionHeading
@@ -48,7 +68,11 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
           </a>
         }
       />
-      <div className="-mx-5 mt-5 overflow-x-auto">
+      <div
+        className="-mx-5 mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-brand"
+        tabIndex={0}
+        aria-label="Tabela de colaboradores em atividade com rolagem horizontal"
+      >
         <table className="w-full min-w-[760px] border-collapse text-left">
           <thead>
             <tr className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400 dark:bg-slate-800">
@@ -60,55 +84,69 @@ export function PeopleCard({ realtimePeople = [], useDemoData = true }) {
             </tr>
           </thead>
           <tbody>
-            {people.length ? people.map(
-              ([
-                name,
-                initials,
-                machine,
-                app,
-                windowName,
-                category,
-                status,
-                time,
-                avatar,
-              ]) => (
-                <tr
-                  key={name}
-                  className="border-t border-slate-100 text-[11px] text-muted dark:border-slate-700"
-                >
-                  <td className="px-5 py-3">
-                    <div className="flex min-w-[155px] items-center gap-2">
-                      <div className={`avatar ${avatar}`}>{initials}</div>
-                      <strong className="text-xs text-ink dark:text-white">
-                        {name}
+            {people.length ? (
+              people.map(
+                ([
+                  name,
+                  initials,
+                  machine,
+                  app,
+                  windowName,
+                  category,
+                  status,
+                  time,
+                  avatar,
+                ]) => (
+                  <tr
+                    key={name}
+                    className="border-t border-slate-100 text-[11px] text-muted dark:border-slate-700"
+                  >
+                    <td className="px-5 py-3">
+                      <div className="flex min-w-[155px] items-center gap-2">
+                        <div className={`avatar ${avatar}`}>{initials}</div>
+                        <strong className="text-xs text-ink dark:text-white">
+                          {name}
+                        </strong>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 font-mono text-[10px]">{machine}</td>
+                    <td className="px-5 py-3">
+                      <strong className="block text-xs text-ink dark:text-white">
+                        {app}
                       </strong>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 font-mono text-[10px]">{machine}</td>
-                  <td className="px-5 py-3">
-                    <strong className="block text-xs text-ink dark:text-white">
-                      {app}
-                    </strong>
-                    <small>{windowName}</small>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`pill ${category === "Comunicação" ? "communication" : category === "Design" ? "design" : ""}`}
-                    >
-                      {category}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`flex items-center gap-1.5 font-bold ${status === "Online" ? "text-emerald-600" : "text-amber-600"}`}
-                    >
-                      <i className="status-dot" />
-                      {status}
-                    </span>
-                    <small className="mt-1 block">{time}</small>
-                  </td>
-                </tr>
-              ),
+                      <small className="block truncate max-w-[280px]" title={windowName}>
+                        {windowName}
+                      </small>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`pill ${
+                          category === "Comunicação"
+                            ? "communication"
+                            : category === "Design"
+                              ? "design"
+                              : ""
+                        }`}
+                      >
+                        {category}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`flex items-center gap-1.5 font-bold ${
+                          status === "Online"
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }`}
+                      >
+                        <i className="status-dot" />
+                        {status}
+                      </span>
+                      <small className="mt-1 block">{time}</small>
+                    </td>
+                  </tr>
+                ),
+              )
             ) : (
               <tr>
                 <td colSpan="5" className="px-5 py-8 text-center text-xs text-muted">
