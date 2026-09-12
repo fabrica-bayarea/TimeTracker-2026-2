@@ -54,7 +54,6 @@ function App() {
     .format(new Date(`${activeDate}T12:00:00`))
     .toUpperCase();
 
-
   return (
     <div className="min-h-screen bg-page text-ink dark:bg-slate-950">
       <a className="skip-link" href="#conteudo-principal">

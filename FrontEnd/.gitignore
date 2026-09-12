@@ -8,6 +8,7 @@ yarn-error.log
 dist/
 build/
 coverage/
+legacy/
 .pnpm-debug.log*
 .yarn/install-state.gz
 
