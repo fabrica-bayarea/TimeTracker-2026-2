@@ -7,6 +7,7 @@
    ============================================================================ */
 
 :root {
+  --brand: #6956e9;
   --page: #f7f8fc;
 }
 
@@ -35,12 +36,18 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
 button {
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ============================================================================

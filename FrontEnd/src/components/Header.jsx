@@ -1,10 +1,7 @@
+import { getLocalIsoDate } from "../utils/dashboard";
+
 /** Cabeçalho com filtros, status da API e controles de atualização. */
-function getLocalIsoDate() {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+
 
 export function Header({
   formattedDate, dark, toggleTheme, selectedDate, setSelectedDate, apiStatus,
@@ -22,10 +19,11 @@ export function Header({
         <p className="mt-2 text-sm text-muted">Acompanhe o ritmo da equipe e a atividade monitorada de hoje.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
+        <button type="button" className="icon-control" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
           {dark ? "☀" : "☾"}
         </button>
         <button
+          type="button"
           className="icon-control"
           onClick={onRefresh}
           disabled={refreshing || apiStatus === "loading"}

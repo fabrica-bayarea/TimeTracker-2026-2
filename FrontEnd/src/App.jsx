@@ -15,13 +15,13 @@ import {
   useDashboardData,
   useTheme,
 } from "./hooks/useDashboard";
+import {
+  formatDuration,
+  getLocalIsoDate,
+  getProductiveSeconds,
+  getSummaryTotalSeconds,
+} from "./utils/dashboard";
 
-function getLocalIsoDate() {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 /**
  * Componente principal da aplicação
@@ -40,20 +40,11 @@ function App() {
     (person) => !selectedUsername || person.username === selectedUsername,
   );
   const users = data?.users ?? [];
-  const totalMonitoredSeconds = summaryUsers.reduce(
-    (total, user) => total + (Number(user.total_seconds) || 0),
-    0,
-  );
+  const totalMonitoredSeconds = getSummaryTotalSeconds(data?.summary);
   const onlinePeople = realtimePeople.filter(
     (person) => person.status === "online",
   ).length;
-  const productiveSeconds = summaryUsers.reduce(
-    (total, user) =>
-      total + (user.by_category ?? [])
-        .filter((category) => !["Social", "Outros"].includes(category.category))
-        .reduce((categoryTotal, category) => categoryTotal + (Number(category.total_seconds) || 0), 0),
-    0,
-  );
+  const productiveSeconds = getProductiveSeconds(data?.summary);
 
   // Formata a data para exibição
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
@@ -92,7 +83,7 @@ function App() {
             label="Tempo monitorado"
             value={
               data
-                ? `${Math.floor(totalMonitoredSeconds / 3600)}h ${Math.floor((totalMonitoredSeconds % 3600) / 60)}min`
+                ? formatDuration(totalMonitoredSeconds)
                 : "6h 42min"
             }
             detail={data ? "dados da API" : "dados demonstrativos"}
@@ -101,7 +92,7 @@ function App() {
             icon="⌁"
             tone="bg-blue-100 text-blue-600"
             label="Tempo produtivo"
-            value={data ? `${Math.floor(productiveSeconds / 3600)}h ${Math.floor((productiveSeconds % 3600) / 60)}min` : "--"}
+            value={data ? formatDuration(productiveSeconds) : "--"}
             detail={data ? "categorias produtivas" : "aguardando dados"}
             positive={Boolean(data)}
           />
@@ -121,8 +112,8 @@ function App() {
             icon="◆"
             tone="bg-emerald-100 text-emerald-600"
             label="Software mais usado"
-            value="VS Code"
-            detail="2h 42min monitoradas"
+            value={data ? "Não disponível" : "VS Code"}
+            detail={data ? "endpoint ainda não disponível" : "2h 42min monitoradas"}
           />
         </section>
 
@@ -147,8 +138,6 @@ function App() {
         {/* Seção de relatórios e agente */}
         <div className="mt-5 grid gap-5">
           <ReportsAndAgent
-            realtimePeople={realtimePeople}
-            useDemoData={!data}
             selectedDate={selectedDate}
             selectedUsername={selectedUsername}
             autoRefresh={autoRefresh}
