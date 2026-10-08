@@ -66,8 +66,10 @@ public class QueueSenderService : IDisposable
                     _currentBackoffMs = (
                         Math.Min(_currentBackoffMs * 2, _config.MaxBackoffMs)
                     );
+
                     SendAttempted?.Invoke(false);
                     _timer?.Change(_currentBackoffMs, _config.SendIntervalMs);
+
                     return;
                 }
             }
@@ -92,5 +94,5 @@ public class QueueSenderService : IDisposable
         CapturedAt = DateTime.SpecifyKind(s.CapturedAtUtc, DateTimeKind.Utc)
     };
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose() => _timer?.Dispose(); // warning: CA1816
 }

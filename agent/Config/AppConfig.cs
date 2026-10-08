@@ -6,6 +6,7 @@ public class ApiEndpointsConfig
 {
     public string SendActivity { get; set; } = "activities/";
     public string GetSettings { get; set; } = "config/";
+    public string Associate { get; set; } = "associate/";
 }
 
 public class ApiConfig
@@ -17,7 +18,7 @@ public class ApiConfig
     public int TimeoutSeconds { get; set; } = 15;
 }
 
-public class AgentConfig
+public class AgentDefaultsConfig
 {
     // Usado somente até a primeira consulta bem-sucedida a GET /config/.
     public int FallbackCaptureIntervalSeconds { get; set; } = 10;
@@ -37,7 +38,7 @@ public class QueueConfig
 public class AppConfig
 {
     public ApiConfig Api { get; set; } = new();
-    public AgentConfig Agent { get; set; } = new();
+    public AgentDefaultsConfig Agent { get; set; } = new();
     public QueueConfig Queue { get; set; } = new();
 
     private static AppConfig? _instance;
@@ -53,7 +54,7 @@ public class AppConfig
 
         string json = File.ReadAllText(path);
         AppConfig? config = JsonSerializer.Deserialize<AppConfig>(
-            json, new JsonSerializerOptions {
+            json, new JsonSerializerOptions { // warning CA1869
                 PropertyNameCaseInsensitive = true
             }
         );

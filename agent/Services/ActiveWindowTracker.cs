@@ -11,15 +11,15 @@ public record ActiveWindowInfo(string ProcessName, string? WindowTitle);
 public static class ActiveWindowTracker
 {
     [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
+    private static extern IntPtr GetForegroundWindow(); // warning: SYSLIB1054
 
     [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint GetWindowThreadProcessId(
+    private static extern uint GetWindowThreadProcessId( // warning: SYSLIB1054
         IntPtr hWnd, out uint lpdwProcessId
     );
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowTextLength(IntPtr hWnd);
+    private static extern int GetWindowTextLength(IntPtr hWnd); // warning: SYSLIB1054
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowText(
@@ -48,8 +48,9 @@ public static class ActiveWindowTracker
         }
         catch
         {
-            // Processos do sistema/elevados podem negar acesso — tratado como
-            // "sem informação" em vez de propagar exceção e parar a captura.
+            // Processos do sistema/elevados podem negar acesso
+            // tratado como "sem informação" em vez de propagar exceção
+            // e parar a captura.
             return null;
         }
     }
@@ -61,7 +62,7 @@ public static class ActiveWindowTracker
 
         StringBuilder builder = new(length + 1);
 
-        GetWindowText(hWnd, builder, builder.Capacity);
+        GetWindowText(hWnd, builder, builder.Capacity); // warning: CA1806
 
         string title = builder.ToString();
 

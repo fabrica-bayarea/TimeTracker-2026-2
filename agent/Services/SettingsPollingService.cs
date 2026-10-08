@@ -17,7 +17,7 @@ public class SettingsPollingService : IDisposable
     public SettingsPollingService(IApiClient api)
     {
         _api = api;
-        AgentConfig fallback = AppConfig.Instance.Agent;
+        AgentDefaultsConfig fallback = AppConfig.Instance.Agent;
         CurrentSettings = new AgentSettings
         {
             CaptureIntervalSeconds = fallback.FallbackCaptureIntervalSeconds,
@@ -49,8 +49,8 @@ public class SettingsPollingService : IDisposable
             };
 
             if ((updated.CaptureIntervalSeconds
-                != CurrentSettings.CaptureIntervalSeconds)
-                || (updated.IdleTimeoutSeconds
+                != CurrentSettings.CaptureIntervalSeconds) ||
+                (updated.IdleTimeoutSeconds
                 != CurrentSettings.IdleTimeoutSeconds))
             {
                 CurrentSettings = updated;
@@ -65,5 +65,5 @@ public class SettingsPollingService : IDisposable
         }
     }
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose() => _timer?.Dispose(); // warning: CA1816
 }

@@ -3,10 +3,10 @@ using TimeTracker.Agent.Models;
 
 namespace TimeTracker.Agent.Services;
 
-// a cada config.capture_interval_seconds), registra uma
+// A cada config.capture_interval_seconds, registra uma
 // leitura da janela ativa, com duration_seconds igual
 // ao intervalo de captura (amostragem periódica).
-/// O tempo de idle obtido via GetLastInputInfo
+/// Tempo de idle obtido via GetLastInputInfo
 public class CaptureService : IDisposable
 {
     private readonly LocalQueue _queue;
@@ -39,7 +39,7 @@ public class CaptureService : IDisposable
         int intervalMs = (
             _settings.CurrentSettings.CaptureIntervalSeconds * 1000
         );
-        _timer = new System.Threading.Timer(OnTick, null, 0, intervalMs);
+        _timer = new(OnTick, null, 0, intervalMs);
     }
 
     public void Pause() => _paused = true;
@@ -90,7 +90,7 @@ public class CaptureService : IDisposable
         }
     }
 
-    public void Dispose()
+    public void Dispose() // warning: CA1816
     {
         _settings.SettingsChanged -= OnSettingsChanged;
         _timer?.Dispose();

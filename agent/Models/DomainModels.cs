@@ -18,3 +18,17 @@ public class AgentSettings
     public int CaptureIntervalSeconds { get; set; } = 10;
     public int IdleTimeoutSeconds { get; set; } = 300;
 }
+
+public enum AssociationOutcome
+{
+    Success,
+    InvalidCode,
+    ServerError
+}
+
+// Resultado da tentativa de associação
+public record AssociationResult(
+    AssociationOutcome Outcome,
+    string Message,
+    string? Token = null
+);

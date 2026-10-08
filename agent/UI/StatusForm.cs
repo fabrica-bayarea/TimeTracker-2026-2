@@ -13,6 +13,7 @@ public class StatusForm : Form
     private readonly Label _intervalLabel;
     private readonly Label _queueLabel;
     private readonly Label _onlineLabel;
+    private readonly Label _associationLabel;
     private readonly System.Windows.Forms.Timer _refreshTimer;
 
     public StatusForm(AgentOrchestrator orchestrator)
@@ -24,53 +25,59 @@ public class StatusForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new Size(420, 260);
+        ClientSize = new(420, 260);
 
-        Label titleLabel = new Label
+        Label titleLabel = new()
         {
             Text = "Estado atual do agente",
             AutoSize = true,
-            Location = new Point(15, 15),
+            Location = new(15, 15),
             Font = new Font(Font, FontStyle.Bold)
         };
-        _identityLabel = new Label
+        _identityLabel = new()
         {
             AutoSize = true,
-            Location = new Point(15, 45)
+            Location = new(15, 45)
         };
-        _windowLabel = new Label
+        _windowLabel = new()
         {
             AutoSize = false,
             Size = new Size(390, 40),
-            Location = new Point(15, 75)
+            Location = new(15, 75)
         };
-        _idleLabel = new Label
+        _idleLabel = new()
         {
             AutoSize = true,
-            Location = new Point(15, 120)
+            Location = new(15, 120)
         };
         _intervalLabel = new Label
         {
             AutoSize = true,
-            Location = new Point(15, 145)
+            Location = new(15, 145)
         };
         _queueLabel = new Label
         {
             AutoSize = true,
-            Location = new Point(15, 170)
+            Location = new(15, 170)
         };
         _onlineLabel = new Label
         {
             AutoSize = true,
-            Location = new Point(15, 195),
+            Location = new(15, 195),
             Font = new Font(Font, FontStyle.Bold)
         };
+        _associationLabel = new()
+        {
+            AutoSize = true,
+            Location = new(15, 220),
+            Font = new(Font, FontStyle.Bold)
+        };
 
-        Button closeButton = new Button
+        Button closeButton = new()
         {
             Text = "Fechar",
-            Location = new Point(315, 225),
-            Size = new Size(90, 28),
+            Location = new(315, 225),
+            Size = new(90, 28),
             DialogResult = DialogResult.OK
         };
 
@@ -81,6 +88,7 @@ public class StatusForm : Form
         Controls.Add(_intervalLabel);
         Controls.Add(_queueLabel);
         Controls.Add(_onlineLabel);
+        Controls.Add(_associationLabel);
         Controls.Add(closeButton);
 
         _refreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
@@ -101,7 +109,7 @@ public class StatusForm : Form
             $"| Estação: {_orchestrator.Hostname}"
         );
 
-        var window = _orchestrator.Capture.LastCapturedWindow;
+        ActiveWindowInfo? window = _orchestrator.Capture.LastCapturedWindow;
         _windowLabel.Text = (window != null)?
             ($"Última captura: {window.ProcessName}\n" +
             $"Título: {window.WindowTitle ?? "(sem título)"}")
@@ -131,6 +139,15 @@ public class StatusForm : Form
         );
         _onlineLabel.ForeColor = (
             _orchestrator.IsOnline ? Color.DarkGreen : Color.DarkRed
+        );
+
+        bool associated = _orchestrator.IsAssociated;
+
+        _associationLabel.Text = (
+            $"Associação: {(associated ? "Associado" : "Não associado")}"
+        );
+        _associationLabel.ForeColor = (
+            associated ? Color.DarkGreen : Color.DarkRed
         );
 
         if (_orchestrator.Capture.IsPaused)

@@ -67,6 +67,7 @@ public class LocalQueue
                 ($username, $hostname, $process,
                 $title, $duration, $idle, $capturedAt);
         """;
+
         cmd.Parameters.AddWithValue("$username", sample.Username);
         cmd.Parameters.AddWithValue("$hostname", sample.Hostname);
         cmd.Parameters.AddWithValue("$process", sample.ProcessName);

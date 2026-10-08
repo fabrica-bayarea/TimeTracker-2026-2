@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace TimeTracker.Agent.Services;
 
-// detecção por mouse/teclado de idle
+// Detecção por mouse/teclado de idle
 public static class IdleDetector
 {
     [StructLayout(LayoutKind.Sequential)]

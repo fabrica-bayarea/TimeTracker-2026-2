@@ -11,7 +11,7 @@ public class FirstRunNoticeForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new Size(440, 300);
+        ClientSize = new(440, 300);
 
         string text =
             "Este computador possui o Time Tracker Agent em execução.\n\n" +
@@ -31,21 +31,21 @@ public class FirstRunNoticeForm : Form
             "a qualquer momento pelo\n" +
             "menu \"Status\" na bandeja do sistema.";
 
-        TextBox infoBox = new TextBox
+        TextBox infoBox = new()
         {
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Vertical,
-            Location = new Point(15, 15),
-            Size = new Size(410, 220),
+            Location = new(15, 15),
+            Size = new(410, 220),
             Text = text
         };
 
-        Button okButton = new Button
+        Button okButton = new()
         {
             Text = "Entendi",
-            Location = new Point(340, 245),
-            Size = new Size(85, 32),
+            Location = new(340, 245),
+            Size = new(85, 32),
             DialogResult = DialogResult.OK
         };
 
