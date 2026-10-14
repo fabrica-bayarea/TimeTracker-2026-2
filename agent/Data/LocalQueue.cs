@@ -37,11 +37,23 @@ public class LocalQueue
                 WindowTitle TEXT,
                 DurationSeconds INTEGER NOT NULL,
                 IsIdle INTEGER NOT NULL,
-                CapturedAtUtc TEXT NOT NULL
+                CapturedAtUtc TEXT NOT NULL,
+                TaskId TEXT
             );
         """;
 
         cmd.ExecuteNonQuery();
+
+        try
+        {
+            using SqliteCommand alterCmd = conn.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE PendingActivities ADD COLUMN TaskId TEXT;";
+            alterCmd.ExecuteNonQuery();
+        }
+        catch
+        {
+            // Coluna já existe em bancos existentes, ignora
+        }
     }
 
     private SqliteConnection Open()
@@ -62,10 +74,10 @@ public class LocalQueue
         cmd.CommandText = """
             INSERT INTO PendingActivities
                 (Username, Hostname, ProcessName,
-                WindowTitle, DurationSeconds, IsIdle, CapturedAtUtc)
+                WindowTitle, DurationSeconds, IsIdle, CapturedAtUtc, TaskId)
             VALUES
                 ($username, $hostname, $process,
-                $title, $duration, $idle, $capturedAt);
+                $title, $duration, $idle, $capturedAt, $taskId);
         """;
 
         cmd.Parameters.AddWithValue("$username", sample.Username);
@@ -78,6 +90,9 @@ public class LocalQueue
         cmd.Parameters.AddWithValue("$idle", sample.IsIdle ? 1 : 0);
         cmd.Parameters.AddWithValue(
             "$capturedAt", sample.CapturedAtUtc.ToString("O")
+        );
+        cmd.Parameters.AddWithValue(
+            "$taskId", (object?)sample.TaskId?.ToString() ?? DBNull.Value
         );
 
         cmd.ExecuteNonQuery();
@@ -105,6 +120,14 @@ public class LocalQueue
         while (reader.Read())
         {
             long id = reader.GetInt64(reader.GetOrdinal("Id"));
+
+            int taskIdOrdinal = -1;
+            try { taskIdOrdinal = reader.GetOrdinal("TaskId"); } catch { }
+
+            string? taskIdStr = (taskIdOrdinal >= 0 && !reader.IsDBNull(taskIdOrdinal))
+                ? reader.GetString(taskIdOrdinal)
+                : null;
+
             ActivitySample sample = new()
             {
                 Username = reader.GetString(reader.GetOrdinal("Username")),
@@ -124,7 +147,10 @@ public class LocalQueue
                     reader.GetString(reader.GetOrdinal("CapturedAtUtc")),
                     System.Globalization.CultureInfo.InvariantCulture,
                     System.Globalization.DateTimeStyles.RoundtripKind
-                )
+                ),
+                TaskId = !string.IsNullOrEmpty(taskIdStr) && Guid.TryParse(taskIdStr, out Guid parsedId)
+                    ? parsedId
+                    : null
             };
 
             result.Add((id, sample));

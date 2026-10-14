@@ -19,6 +19,7 @@ public class QueueSenderService : IDisposable
     private bool _sending;
 
     public event Action<bool>? SendAttempted;
+    public event Action? UnauthorizedDetected;
 
     public QueueSenderService(IApiClient api, LocalQueue queue)
     {
@@ -57,6 +58,12 @@ public class QueueSenderService : IDisposable
                     await _api.SendActivityAsync(ToDto(sample));
                     _queue.Remove(id); // só remove após HTTP 201
                 }
+                catch (HttpRequestException hex) when (hex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    UnauthorizedDetected?.Invoke();
+                    SendAttempted?.Invoke(false);
+                    return;
+                }
                 catch
                 {
                     // Mantém este e os demais itens na fila;
@@ -91,7 +98,8 @@ public class QueueSenderService : IDisposable
         WindowTitle = s.WindowTitle,
         DurationSeconds = s.DurationSeconds,
         IsIdle = s.IsIdle,
-        CapturedAt = DateTime.SpecifyKind(s.CapturedAtUtc, DateTimeKind.Utc)
+        CapturedAt = DateTime.SpecifyKind(s.CapturedAtUtc, DateTimeKind.Utc),
+        TaskId = s.TaskId
     };
 
     public void Dispose() => _timer?.Dispose(); // warning: CA1816

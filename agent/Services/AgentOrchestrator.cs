@@ -22,6 +22,7 @@ public class AgentOrchestrator : IDisposable
     // o monitoramento só é liberado depois que o agente está associado
     public bool IsAssociated => AgentConfig.Instance.IsAssociated;
     public event Action<bool>? OnlineStatusChanged;
+    public event Action? AssociationRevoked;
 
     public AgentOrchestrator()
     {
@@ -45,6 +46,12 @@ public class AgentOrchestrator : IDisposable
 
             IsOnline = success;
             OnlineStatusChanged?.Invoke(success);
+        };
+        Sender.UnauthorizedDetected += () =>
+        {
+            AgentConfig.Instance.ClearAssociation();
+            Api.SetAuthToken(null);
+            AssociationRevoked?.Invoke();
         };
     }
 
@@ -89,6 +96,11 @@ public class AgentOrchestrator : IDisposable
     }
 
     public int PendingCount() => Queue.CountPending();
+
+    public async Task<List<Dtos.TaskDto>> GetMyTasksAsync(CancellationToken ct = default)
+    {
+        return await Api.GetMyTasksAsync(ct);
+    }
 
     public void Dispose() // warning: CA1816
     {

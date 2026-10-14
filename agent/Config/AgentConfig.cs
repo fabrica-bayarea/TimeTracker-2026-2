@@ -66,6 +66,19 @@ public class AgentConfig
         AssociatedAtUtc = associatedAt;
     }
 
+    public void ClearAssociation()
+    {
+        lock (FileLock)
+        {
+            if (File.Exists(FilePath))
+            {
+                try { File.Delete(FilePath); } catch { }
+            }
+        }
+        AuthToken = null;
+        AssociatedAtUtc = null;
+    }
+
     private static AgentConfig Load()
     {
         AgentConfig config = new();

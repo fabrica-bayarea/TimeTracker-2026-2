@@ -10,6 +10,7 @@ public class ActivitySample
     public int DurationSeconds { get; set; }
     public bool IsIdle { get; set; }
     public DateTime CapturedAtUtc { get; set; }
+    public Guid? TaskId { get; set; }
 }
 
 // Configurações vindas de GET /config/

@@ -8,25 +8,35 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
-        ApplicationConfiguration.Initialize();
+        try
+        {
+            ApplicationConfiguration.Initialize();
 
-        // Garante instância única
-        using Mutex singleInstanceMutex = new(
-            true, "Global\\TimeTracker.Agent.SingleInstance",
-            out bool isNewInstance
-        );
+            // Garante instância única
+            using Mutex singleInstanceMutex = new(
+                true, "Local\\TimeTracker.Agent.SingleInstance",
+                out bool isNewInstance
+            );
 
-        if (!isNewInstance)
+            if (!isNewInstance)
+            {
+                MessageBox.Show(
+                    "O Time Tracker Agent já está em execução.", "Time Tracker",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information
+                );
+                return;
+            }
+
+            AgentOrchestrator orchestrator = new();
+
+            Application.Run(new TrayApplicationContext(orchestrator));
+        }
+        catch (Exception ex)
         {
             MessageBox.Show(
-                "O Time Tracker Agent já está em execução.", "Time Tracker",
-                MessageBoxButtons.OK, MessageBoxIcon.Information
+                $"Erro inesperado ao iniciar o agente: {ex.Message}", "Time Tracker",
+                MessageBoxButtons.OK, MessageBoxIcon.Error
             );
-            return;
         }
-
-        AgentOrchestrator orchestrator = new();
-
-        Application.Run(new TrayApplicationContext(orchestrator));
     }
 }

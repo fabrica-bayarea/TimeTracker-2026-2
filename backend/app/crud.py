@@ -32,12 +32,11 @@ def get_or_create_user(db: Session, username: str) -> models.User:
     return user
 
 
-def list_users(db: Session) -> list[models.User]:
-    return (
-        db.query(models.User)
-          .order_by(models.User.username)
-          .all()
-    )
+def list_users(db: Session, manager_id: uuid.UUID | None = None) -> list[models.User]:
+    query = db.query(models.User)
+    if manager_id:
+        query = query.filter(models.User.manager_id == manager_id)
+    return query.order_by(models.User.username).all()
 
 
 # Managers (autenticação do gestor)
@@ -53,6 +52,22 @@ def get_manager_by_email(db: Session, email: str) -> models.Manager | None:
     )
 
 
+def get_manager_by_association_code(db: Session, code: str) -> models.Manager | None:
+    return (
+        db.query(models.Manager)
+          .filter(models.Manager.association_code == code.strip())
+          .first()
+    )
+
+
+def get_or_create_manager_association_code(db: Session, manager: models.Manager) -> str:
+    if not manager.association_code:
+        manager.association_code = security.generate_association_code(db)
+        db.commit()
+        db.refresh(manager)
+    return manager.association_code
+
+
 def create_manager(
         db: Session,
         manager: schemas.ManagerCreate
@@ -60,9 +75,11 @@ def create_manager(
     if get_manager_by_email(db, manager.email):
         raise EmailAlreadyRegisteredError(manager.email)
 
+    code = security.generate_association_code(db)
     db_manager = models.Manager(
         email=manager.email,
         password_hash=security.hash_password(manager.password),
+        association_code=code,
     )
 
     db.add(db_manager)
@@ -77,6 +94,25 @@ def create_manager(
     db.refresh(db_manager)
 
     return db_manager
+
+
+def associate_agent(
+    db: Session,
+    code: str,
+    username: str,
+    hostname: str
+) -> tuple[models.User, str]:
+    manager = get_manager_by_association_code(db, code)
+    if not manager:
+        raise ValueError("Código inválido ou expirado.")
+
+    user = get_or_create_user(db, username)
+    user.manager_id = manager.id
+    db.commit()
+    db.refresh(user)
+
+    token = security.create_agent_token(user.id)
+    return user, token
 
 
 def authenticate_manager(
@@ -209,12 +245,122 @@ def categorize(
     return None
 
 
+# Tasks
+def create_task(
+    db: Session, manager_id: uuid.UUID, task_in: schemas.TaskCreate
+) -> models.Task:
+    task = models.Task(
+        title=task_in.title,
+        description=task_in.description,
+        status=task_in.status,
+        manager_id=manager_id,
+    )
+    if task_in.assigned_user_ids:
+        users = (
+            db.query(models.User)
+            .filter(
+                models.User.id.in_(task_in.assigned_user_ids),
+                models.User.manager_id == manager_id,
+            )
+            .all()
+        )
+        task.assigned_users = users
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def list_tasks(
+    db: Session,
+    manager_id: uuid.UUID,
+    status: str | None = None
+) -> list[models.Task]:
+    query = db.query(models.Task).filter(models.Task.manager_id == manager_id)
+    if status:
+        query = query.filter(models.Task.status == status)
+    return query.order_by(models.Task.created_at.desc()).all()
+
+
+def get_task(
+    db: Session,
+    task_id: uuid.UUID,
+    manager_id: uuid.UUID | None = None
+) -> models.Task | None:
+    query = db.query(models.Task).filter(models.Task.id == task_id)
+    if manager_id:
+        query = query.filter(models.Task.manager_id == manager_id)
+    return query.first()
+
+
+def update_task(
+    db: Session,
+    task_id: uuid.UUID,
+    manager_id: uuid.UUID,
+    update: schemas.TaskUpdate
+) -> models.Task | None:
+    task = get_task(db, task_id, manager_id)
+    if not task:
+        return None
+
+    if update.title is not None:
+        task.title = update.title
+    if update.description is not None:
+        task.description = update.description
+    if update.status is not None:
+        task.status = update.status
+    if update.assigned_user_ids is not None:
+        users = (
+            db.query(models.User)
+            .filter(
+                models.User.id.in_(update.assigned_user_ids),
+                models.User.manager_id == manager_id,
+            )
+            .all()
+        )
+        task.assigned_users = users
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def delete_task(db: Session, task_id: uuid.UUID, manager_id: uuid.UUID) -> bool:
+    task = get_task(db, task_id, manager_id)
+    if not task:
+        return False
+    db.delete(task)
+    db.commit()
+    return True
+
+
+def list_collaborator_tasks(db: Session, user: models.User) -> list[models.Task]:
+    # Retorna tarefas atribuídas diretamente ao colaborador OU tarefas do mesmo gestor sem atribuição específica
+    return (
+        db.query(models.Task)
+        .outerjoin(models.Task.assigned_users)
+        .filter(
+            (models.User.id == user.id) |
+            (
+                (models.Task.manager_id == user.manager_id) &
+                ~models.Task.assigned_users.any()
+            )
+        )
+        .filter(models.Task.status != "completed")
+        .order_by(models.Task.created_at.desc())
+        .distinct()
+        .all()
+    )
+
+
 # Activity Logs
 def create_activity_log(
         db: Session,
-        log: schemas.ActivityLogCreate
+        log: schemas.ActivityLogCreate,
+        current_user: models.User | None = None,
 ) -> models.ActivityLog:
-    user = get_or_create_user(db, log.username)
+    user = current_user or get_or_create_user(db, log.username)
     category_id = categorize(db, log.process_name, log.window_title)
 
     db_log = models.ActivityLog(
@@ -224,6 +370,7 @@ def create_activity_log(
         window_title=log.window_title,
         duration_seconds=log.duration_seconds,
         category_id=category_id,
+        task_id=log.task_id,
         is_idle=log.is_idle,
         captured_at=log.captured_at or datetime.now(timezone.utc),
     )
@@ -236,25 +383,32 @@ def create_activity_log(
 
 
 # Realtime View
-def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
+def get_realtime_view(
+    db: Session, manager_id: uuid.UUID | None = None
+) -> list[schemas.RealtimeEntry]:
     display_cutoff = (
         datetime.now(timezone.utc)
         - timedelta(hours=REALTIME_DISPLAY_WINDOW_HOURS)
     )
-    
+
     # Última atividade de cada usuário (subquery pelo maior captured_at)
-    latest_ids = (
+    latest_ids_query = (
         db.query(
             models.ActivityLog.user_id,
             func.max(models.ActivityLog.captured_at).label("last_captured_at"),
         )
         .filter(models.ActivityLog.captured_at >= display_cutoff)
-        .group_by(models.ActivityLog.user_id)
-        .subquery()
     )
 
+    if manager_id:
+        latest_ids_query = latest_ids_query.join(
+            models.User, models.User.id == models.ActivityLog.user_id
+        ).filter(models.User.manager_id == manager_id)
+
+    latest_ids = latest_ids_query.group_by(models.ActivityLog.user_id).subquery()
+
     rows = (
-        db.query(models.ActivityLog, models.User, models.Category)
+        db.query(models.ActivityLog, models.User, models.Category, models.Task)
         .join(latest_ids, and_(
             models.ActivityLog.user_id == latest_ids.c.user_id,
             models.ActivityLog.captured_at == latest_ids.c.last_captured_at,
@@ -262,6 +416,8 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
         .join(models.User, models.User.id == models.ActivityLog.user_id)
         .outerjoin(models.Category, 
                    models.Category.id == models.ActivityLog.category_id)
+        .outerjoin(models.Task,
+                   models.Task.id == models.ActivityLog.task_id)
         .all()
     )
 
@@ -269,8 +425,9 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
 
     result = []
 
-    for log, user, category in rows:
-        seconds_since = int((now - log.captured_at).total_seconds())
+    for log, user, category, task in rows:
+        captured_at = log.captured_at.replace(tzinfo=timezone.utc) if log.captured_at.tzinfo is None else log.captured_at
+        seconds_since = max(0, int((now - captured_at).total_seconds()))
 
         if log.is_idle or seconds_since > OFFLINE_AFTER_SECONDS:
             status = "offline"
@@ -286,6 +443,8 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
                 process_name=log.process_name,
                 window_title=log.window_title,
                 category=category.name if category else None,
+                task_id=log.task_id,
+                task_title=task.title if task else None,
                 is_idle=log.is_idle,
                 seconds_since_last_activity=seconds_since,
                 status=status,
@@ -298,7 +457,8 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
 def get_daily_summary(
         db: Session,
         target_date: date,
-        username: str | None = None
+        username: str | None = None,
+        manager_id: uuid.UUID | None = None,
 ) -> schemas.DailySummaryResponse:
     query = (
         db.query(
@@ -316,6 +476,8 @@ def get_daily_summary(
           .filter(func.date(models.ActivityLog.captured_at) == target_date)
     )
 
+    if manager_id:
+        query = query.filter(models.User.manager_id == manager_id)
     if username:
         query = query.filter(models.User.username == username)
 
@@ -331,7 +493,7 @@ def get_daily_summary(
     for row in rows:
         entry = users_map.setdefault(
             row.username, 
-            {"total_seconds": 0, "by_category": []}
+            {"total_seconds": 0, "by_category": [], "by_task": []}
         )
         entry["total_seconds"] += row.total_seconds
         entry["by_category"].append(
@@ -342,11 +504,42 @@ def get_daily_summary(
             )
         )
 
+    # Subquery / agregação por task para a mesma data
+    task_query = (
+        db.query(
+            models.User.username,
+            models.Task.id.label("task_id"),
+            models.Task.title.label("task_title"),
+            func.coalesce(func.sum(models.ActivityLog.duration_seconds), 0).label("task_seconds"),
+        )
+        .join(models.User, models.User.id == models.ActivityLog.user_id)
+        .join(models.Task, models.Task.id == models.ActivityLog.task_id)
+        .filter(func.date(models.ActivityLog.captured_at) == target_date)
+    )
+    if manager_id:
+        task_query = task_query.filter(models.User.manager_id == manager_id)
+    if username:
+        task_query = task_query.filter(models.User.username == username)
+    task_query = task_query.group_by(
+        models.User.username, models.Task.id, models.Task.title
+    )
+
+    for trow in task_query.all():
+        if trow.username in users_map:
+            users_map[trow.username]["by_task"].append(
+                schemas.TaskDailySummary(
+                    task_id=trow.task_id,
+                    title=trow.task_title,
+                    total_seconds=trow.task_seconds,
+                )
+            )
+
     users_summary = [
         schemas.UserDailySummary(
             username=uname,
             total_seconds=data["total_seconds"],
-            by_category=data["by_category"]
+            by_category=data["by_category"],
+            by_task=data.get("by_task", []),
         )
         for uname, data in users_map.items()
     ]

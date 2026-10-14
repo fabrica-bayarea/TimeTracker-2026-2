@@ -81,15 +81,10 @@ def run():
 
         seed_rules(db, name_to_id)
 
-        settings = (
-            db.query(models.SystemSettings)
-              .filter(models.SystemSettings.id == 1)
-              .first()
-        )
+        settings = db.query(models.SystemSettings).first()
 
         if not settings:
             db.add(models.SystemSettings(
-                id=1,
                 capture_interval_seconds=10,
                 idle_timeout_seconds=300)
             )

@@ -80,6 +80,8 @@ def login(
     },
 )
 def read_current_manager(
-    manager: models.Manager = Depends(security.get_current_manager)
+    manager: models.Manager = Depends(security.get_current_manager),
+    db: Session = Depends(get_db),
 ):
+    crud.get_or_create_manager_association_code(db, manager)
     return manager

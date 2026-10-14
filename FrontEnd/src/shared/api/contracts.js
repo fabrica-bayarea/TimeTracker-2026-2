@@ -41,12 +41,36 @@
 /** @typedef {{ email: string, password: string }} ManagerCredentials */
 
 /**
- * Public manager fields returned by `ManagerOut`. The backend does not include
- * `association_code` in this schema.
- * @typedef {{ id: string, email: string, created_at: string }} Manager
+ * @typedef {Object} ManagerProfile
+ * @property {string} id
+ * @property {string} email
+ * @property {string | null} [association_code]
+ * @property {string} created_at
  */
 
-/** @typedef {{ access_token: string, token_type: 'bearer', expires_in: number }} ManagerToken */
+/** @typedef {ManagerProfile} Manager */
+
+/**
+ * @typedef {Object} AuthToken
+ * @property {string} access_token
+ * @property {string} token_type
+ * @property {number} expires_in
+ */
+
+/** @typedef {AuthToken} ManagerToken */
+
+/**
+ * @typedef {Object} Task
+ * @property {string} id
+ * @property {string} title
+ * @property {string | null} [description]
+ * @property {'pending' | 'in_progress' | 'completed' | string} status
+ * @property {string} manager_id
+ * @property {string} created_at
+ * @property {string} updated_at
+ * @property {User[]} [assigned_users]
+ * @property {number} [total_duration_seconds]
+ */
 
 /** @typedef {'client' | 'server' | 'network' | 'timeout' | 'canceled' | 'invalid-response'} ApiErrorType */
 
@@ -58,9 +82,16 @@
  * @property {(signal?: AbortSignal) => Promise<SystemSettings>} settings
  * @property {(payload: SystemSettings, signal?: AbortSignal) => Promise<SystemSettings>} saveSettings
  * @property {(format: 'csv' | 'pdf', date: string, username?: string, signal?: AbortSignal) => Promise<Blob>} exportFile
- * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<Manager>} registerManager
- * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<ManagerToken>} loginManager
- * @property {(accessToken: string, signal?: AbortSignal) => Promise<Manager>} getCurrentManager
+ * @property {(credentials: { email: string, password: string }, signal?: AbortSignal) => Promise<AuthToken>} login
+ * @property {(data: { email: string, password: string }, signal?: AbortSignal) => Promise<ManagerProfile>} register
+ * @property {(signal?: AbortSignal) => Promise<ManagerProfile>} me
+ * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<Manager>} [registerManager]
+ * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<ManagerToken>} [loginManager]
+ * @property {(accessToken: string, signal?: AbortSignal) => Promise<Manager>} [getCurrentManager]
+ * @property {(status?: string, signal?: AbortSignal) => Promise<Task[]>} tasks
+ * @property {(payload: { title: string, description?: string, status?: string, assigned_user_ids?: string[] }, signal?: AbortSignal) => Promise<Task>} createTask
+ * @property {(taskId: string, payload: { title?: string, description?: string, status?: string, assigned_user_ids?: string[] }, signal?: AbortSignal) => Promise<Task>} updateTask
+ * @property {(taskId: string, signal?: AbortSignal) => Promise<void>} deleteTask
  */
 
 export {};

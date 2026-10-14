@@ -162,8 +162,52 @@ def decode_access_token(token: str) -> uuid.UUID:
 # Dependência de rotas protegidas
 bearer_scheme = HTTPBearer(
     auto_error=False,
-    description="Token JWT obtido em `POST /auth/login`.",
+    description="Token JWT obtido em `POST /auth/login` ou `POST /associate/`.",
 )
+
+
+AGENT_JWT_AUDIENCE = "time-tracker:agent"
+DEFAULT_AGENT_TOKEN_EXPIRE_DAYS = 365
+
+
+def create_agent_token(
+    user_id: uuid.UUID | str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """
+    Emite um JWT de longa duração para o agente desktop vinculado ao usuário.
+    """
+    now = datetime.now(timezone.utc)
+
+    if expires_delta is None:
+        expires_delta = timedelta(days=DEFAULT_AGENT_TOKEN_EXPIRE_DAYS)
+
+    payload = {
+        "sub": str(user_id),
+        "aud": AGENT_JWT_AUDIENCE,
+        "iat": now,
+        "exp": now + expires_delta,
+        "role": "agent",
+    }
+
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_agent_token(token: str) -> uuid.UUID:
+    """
+    Valida token emitido para o agente desktop e devolve o id do colaborador.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            audience=AGENT_JWT_AUDIENCE,
+            options={"require": ["exp", "iat", "sub", "aud"]},
+        )
+        return uuid.UUID(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:
+        raise InvalidTokenError("Token de agente inválido ou expirado.") from exc
 
 
 def get_current_manager(
@@ -198,3 +242,86 @@ def get_current_manager(
         raise unauthorized
 
     return manager
+
+
+def get_current_agent(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    """
+    Dependência do FastAPI: exige token de agente válido emitido em /associate/
+    e devolve o colaborador (User) correspondente.
+    """
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não autorizado: token do agente ausente, inválido ou expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if credentials is None:
+        raise unauthorized
+
+    try:
+        user_id = decode_agent_token(credentials.credentials)
+    except InvalidTokenError:
+        raise unauthorized from None
+
+    user = db.get(models.User, user_id)
+    if user is None:
+        raise unauthorized
+
+    return user
+
+
+def get_current_actor(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.Manager | models.User:
+    """
+    Permite acesso a rotas compartilhadas por gestor ou agente (ex: consulta de configs).
+    """
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não autenticado: token ausente, inválido ou expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if credentials is None:
+        raise unauthorized
+
+    token = credentials.credentials
+    # Tenta gestor primeiro
+    try:
+        manager_id = decode_access_token(token)
+        manager = db.get(models.Manager, manager_id)
+        if manager is not None:
+            return manager
+    except InvalidTokenError:
+        pass
+
+    # Tenta agente
+    try:
+        user_id = decode_agent_token(token)
+        user = db.get(models.User, user_id)
+        if user is not None:
+            return user
+    except InvalidTokenError:
+        pass
+
+    raise unauthorized
+
+
+def generate_association_code(db: Session) -> str:
+    """
+    Gera um código numérico único de 6 dígitos para o gestor.
+    """
+    for _ in range(100):
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        exists = (
+            db.query(models.Manager.id)
+            .filter(models.Manager.association_code == code)
+            .first()
+        )
+        if not exists:
+            return code
+    raise RuntimeError("Falha ao gerar código de associação único.")

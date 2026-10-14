@@ -6,9 +6,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from fastapi.security import HTTPAuthorizationCredentials
 from fpdf import FPDF
 
-from .. import schemas, crud
+from .. import schemas, crud, security
 from ..database import get_db
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -28,9 +29,17 @@ def daily_summary(
                               description="Data no formato AAAA-MM-DD"),
     username: Optional[str] = Query(None,
                                     description="Filtrar por colaborador"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security.bearer_scheme),
     db: Session = Depends(get_db),
 ):
-    return crud.get_daily_summary(db, target_date, username)
+    manager_id = None
+    if credentials:
+        try:
+            manager_id = security.decode_access_token(credentials.credentials)
+        except security.InvalidTokenError:
+            pass
+
+    return crud.get_daily_summary(db, target_date, username=username, manager_id=manager_id)
 
 
 @router.get(
@@ -41,9 +50,17 @@ def daily_summary(
 def export_csv(
     target_date: date = Query(..., alias="date"),
     username: Optional[str] = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security.bearer_scheme),
     db: Session = Depends(get_db),
 ):
-    summary = crud.get_daily_summary(db, target_date, username)
+    manager_id = None
+    if credentials:
+        try:
+            manager_id = security.decode_access_token(credentials.credentials)
+        except security.InvalidTokenError:
+            pass
+
+    summary = crud.get_daily_summary(db, target_date, username=username, manager_id=manager_id)
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -72,9 +89,17 @@ def export_csv(
 def export_pdf(
     target_date: date = Query(..., alias="date"),
     username: Optional[str] = Query(None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security.bearer_scheme),
     db: Session = Depends(get_db),
 ):
-    summary = crud.get_daily_summary(db, target_date, username)
+    manager_id = None
+    if credentials:
+        try:
+            manager_id = security.decode_access_token(credentials.credentials)
+        except security.InvalidTokenError:
+            pass
+
+    summary = crud.get_daily_summary(db, target_date, username=username, manager_id=manager_id)
 
     pdf = FPDF()
 

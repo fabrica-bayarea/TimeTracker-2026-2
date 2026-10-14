@@ -39,7 +39,7 @@ public class AssociationForm : Form
         {
             Text = (
                 $"Estação: {orchestrator.Hostname}\n" +
-                "Usuário: {orchestrator.Username}\n\n" +
+                $"Usuário: {orchestrator.Username}\n\n" +
                 "Digite o código de 6 dígitos fornecido pelo seu gestor:"
             ),
             AutoSize = false,

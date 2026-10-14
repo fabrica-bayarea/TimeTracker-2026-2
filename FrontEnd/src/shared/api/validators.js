@@ -99,6 +99,16 @@ export function validManager(value) {
   );
 }
 
+/** @param {any} value @returns {value is import('./contracts').ManagerProfile} */
+export function validManagerProfile(value) {
+  return Boolean(
+    value &&
+    typeof value.id === 'string' &&
+    typeof value.email === 'string' &&
+    optionalText(value.association_code)
+  );
+}
+
 /** @param {any} value @returns {value is import('./contracts').ManagerToken} */
 export function validManagerToken(value) {
   return Boolean(
@@ -113,4 +123,28 @@ export function validManagerToken(value) {
     Number.isSafeInteger(value.expires_in) &&
     value.expires_in > 0,
   );
+}
+
+/** @param {any} value @returns {value is import('./contracts').AuthToken} */
+export function validAuthToken(value) {
+  return Boolean(
+    value &&
+    typeof value.access_token === 'string' &&
+    value.access_token.length > 0
+  );
+}
+
+/** @param {any} value @returns {value is import('./contracts').Task} */
+export function validTask(value) {
+  return Boolean(
+    value &&
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.status === 'string'
+  );
+}
+
+/** @param {any} value @returns {value is import('./contracts').Task[]} */
+export function validTasks(value) {
+  return Array.isArray(value) && value.every(validTask);
 }

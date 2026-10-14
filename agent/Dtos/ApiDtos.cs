@@ -11,6 +11,15 @@ public class ActivityLogCreateDto
     public bool IsIdle { get; set; }
     // enviado como UTC (Kind=Utc) -> serializa com sufixo "Z"
     public DateTime? CapturedAt { get; set; }
+    public Guid? TaskId { get; set; }
+}
+
+public class TaskDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = "";
+    public string? Description { get; set; }
+    public string Status { get; set; } = "pending";
 }
 
 // GET /config/ — corresponde a schemas.SystemSettingsOut

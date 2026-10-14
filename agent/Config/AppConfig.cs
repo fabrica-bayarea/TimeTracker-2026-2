@@ -7,6 +7,7 @@ public class ApiEndpointsConfig
     public string SendActivity { get; set; } = "activities/";
     public string GetSettings { get; set; } = "config/";
     public string Associate { get; set; } = "associate/";
+    public string MyTasks { get; set; } = "tasks/my-tasks";
 }
 
 public class ApiConfig

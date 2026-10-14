@@ -1,16 +1,43 @@
 import { isIsoDate } from '../lib/date';
 import {
-  validManager,
-  validManagerToken,
+  validAuthToken,
   validJwtAccessToken,
+  validManager,
+  validManagerProfile,
+  validManagerToken,
   validRealtime,
   validSettings,
   validSummary,
+  validTask,
+  validTasks,
   validUsers,
 } from './validators';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const TIMEOUT = 15000;
+const TOKEN_KEY = 'timetracker_auth_token';
+
+export function getStoredToken() {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token, persist = false) {
+  try {
+    if (token) {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      if (persist) localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    // Falha silenciosa caso armazenamento esteja indisponível
+  }
+}
 
 /**
  * @typedef {{ type?: import('./contracts').ApiErrorType, status?: number | null,
@@ -73,7 +100,6 @@ async function request(
   { signal, omitErrorDetails = false, ...options } = {},
   read = (response) => response.json(),
 ) {
-  // O controller próprio permite timeout; timedOut o distingue do cancelamento externo.
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   if (signal?.aborted) abort();
@@ -86,12 +112,17 @@ async function request(
   }, TIMEOUT);
   try {
     controller.signal.throwIfAborted();
+    const token = getStoredToken();
+    const headers = {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       signal: controller.signal,
-      headers: options.body
-        ? { 'Content-Type': 'application/json', ...options.headers }
-        : options.headers,
+      headers,
     });
     controller.signal.throwIfAborted();
     if (!response.ok) throw await httpError(response, !omitErrorDetails);
@@ -237,4 +268,39 @@ export const api = {
       return response.blob();
     });
   },
+  login: async (credentials, signal) => {
+    const res = await validateResponse(
+      request('/auth/login', { method: 'POST', body: JSON.stringify(credentials), signal }),
+      validAuthToken,
+    );
+    setStoredToken(res.access_token);
+    return res;
+  },
+  register: (data, signal) =>
+    validateResponse(
+      request('/auth/register', { method: 'POST', body: JSON.stringify(data), signal }),
+      validManagerProfile,
+    ),
+  me: (signal) => validateResponse(request('/auth/me', { signal }), validManagerProfile),
+  tasks: (statusFilter, signal) =>
+    validateResponse(
+      request(statusFilter ? `/tasks/?status=${encodeURIComponent(statusFilter)}` : '/tasks/', {
+        signal,
+      }),
+      validTasks,
+    ),
+  createTask: (payload, signal) =>
+    validateResponse(
+      request('/tasks/', { method: 'POST', body: JSON.stringify(payload), signal }),
+      validTask,
+    ),
+  updateTask: (taskId, payload, signal) =>
+    validateResponse(
+      request(`/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(payload), signal }),
+      validTask,
+    ),
+  deleteTask: (taskId, signal) =>
+    request(`/tasks/${taskId}`, { method: 'DELETE', signal }, () => Promise.resolve()),
+  logout: () => setStoredToken(null),
+  getToken: () => getStoredToken(),
 };

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .database import Base, engine
 from . import models # registra modelos antes do create_all.
-from .routers import activities, auth, dashboard, categories, config, users
+from .routers import activities, associate, auth, dashboard, categories, config, tasks, users
 
 _ = models
 
@@ -64,6 +64,8 @@ async def validation_exception_handler(
 
 
 app.include_router(auth.router)
+app.include_router(associate.router)
+app.include_router(tasks.router)
 app.include_router(activities.router)
 app.include_router(dashboard.router)
 app.include_router(categories.router)

@@ -21,6 +21,9 @@ public interface IApiClient
         string code, string username,
         string hostname, CancellationToken ct = default
     );
+    Task<List<TaskDto>> GetMyTasksAsync(
+        CancellationToken ct = default
+    );
     void SetAuthToken(string? token);
 }
 
@@ -181,6 +184,47 @@ public class HttpApiClient : IApiClient
                 "Não foi possível conectar ao servidor. " +
                 "Verifique sua conexão e tente novamente."
             );
+        }
+    }
+
+    public async Task<List<TaskDto>> GetMyTasksAsync(
+        CancellationToken ct = default
+    )
+    {
+        try
+        {
+            HttpResponseMessage response = await _http.GetAsync(
+                _config.Endpoints.MyTasks, ct
+            );
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                throw new HttpRequestException(
+                    "Token de acesso expirado ou inválido.",
+                    null,
+                    HttpStatusCode.Unauthorized
+                );
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            List<TaskDto>? tasks = await response.Content.ReadFromJsonAsync<List<TaskDto>>(
+                JsonOptions, ct
+            );
+
+            return tasks ?? [];
+        }
+        catch (HttpRequestException hex) when (hex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return [];
         }
     }
 }

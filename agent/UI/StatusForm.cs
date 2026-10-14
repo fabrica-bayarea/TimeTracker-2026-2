@@ -14,6 +14,7 @@ public class StatusForm : Form
     private readonly Label _queueLabel;
     private readonly Label _onlineLabel;
     private readonly Label _associationLabel;
+    private readonly Label _taskLabel;
     private readonly System.Windows.Forms.Timer _refreshTimer;
 
     public StatusForm(AgentOrchestrator orchestrator)
@@ -25,7 +26,7 @@ public class StatusForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new(420, 260);
+        ClientSize = new(420, 290);
 
         Label titleLabel = new()
         {
@@ -72,11 +73,17 @@ public class StatusForm : Form
             Location = new(15, 220),
             Font = new(Font, FontStyle.Bold)
         };
+        _taskLabel = new()
+        {
+            AutoSize = true,
+            Location = new(15, 245),
+            Font = new(Font, FontStyle.Bold)
+        };
 
         Button closeButton = new()
         {
             Text = "Fechar",
-            Location = new(315, 225),
+            Location = new(315, 245),
             Size = new(90, 28),
             DialogResult = DialogResult.OK
         };
@@ -89,6 +96,7 @@ public class StatusForm : Form
         Controls.Add(_queueLabel);
         Controls.Add(_onlineLabel);
         Controls.Add(_associationLabel);
+        Controls.Add(_taskLabel);
         Controls.Add(closeButton);
 
         _refreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
@@ -149,6 +157,10 @@ public class StatusForm : Form
         _associationLabel.ForeColor = (
             associated ? Color.DarkGreen : Color.DarkRed
         );
+
+        string taskTitle = _orchestrator.Capture.ActiveTaskTitle ?? "(nenhuma - monitoramento em espera)";
+        _taskLabel.Text = $"Tarefa ativa: {taskTitle}";
+        _taskLabel.ForeColor = _orchestrator.Capture.ActiveTaskId != null ? Color.DarkBlue : Color.DarkOrange;
 
         if (_orchestrator.Capture.IsPaused)
             _idleLabel.Text += " (monitoramento pausado)";

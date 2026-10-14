@@ -22,6 +22,17 @@ public class CaptureService : IDisposable
     public bool LastCapturedIsIdle { get; private set; }
     public DateTime? LastCaptureAtUtc { get; private set; }
 
+    public Guid? ActiveTaskId { get; private set; }
+    public string? ActiveTaskTitle { get; private set; }
+    public event Action? ActiveTaskChanged;
+
+    public void SetActiveTask(Guid? taskId, string? taskTitle)
+    {
+        ActiveTaskId = taskId;
+        ActiveTaskTitle = taskTitle;
+        ActiveTaskChanged?.Invoke();
+    }
+
     public CaptureService(
         LocalQueue queue, SettingsPollingService settings,
         string username, string hostname
@@ -68,6 +79,12 @@ public class CaptureService : IDisposable
             LastCapturedIsIdle = isIdle;
             LastCaptureAtUtc = DateTime.UtcNow;
 
+            // Se nenhuma tarefa estiver selecionada, não gera registros de atividade
+            if (ActiveTaskId == null)
+            {
+                return;
+            }
+
             ActivitySample sample = new()
             {
                 Username = _username,
@@ -78,7 +95,8 @@ public class CaptureService : IDisposable
                     _settings.CurrentSettings.CaptureIntervalSeconds
                 ),
                 IsIdle = isIdle,
-                CapturedAtUtc = LastCaptureAtUtc.Value
+                CapturedAtUtc = LastCaptureAtUtc.Value,
+                TaskId = ActiveTaskId
             };
 
             _queue.Enqueue(sample);
