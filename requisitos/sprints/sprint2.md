@@ -1,7 +1,12 @@
-> **Documento de Requisitos — fabrica-bayarea/TimeTracker-2026-2**  
+> **Documento de Requisitos — fabrica-bayarea/TimeTracker-2026-2**
+</br>
 > **responsáveis:** Patricia Pereira Martins e Marley Eduardo Rocha Guedes
-> (Time de requisitos e testes) 
+> (Time de requisitos e testes)
+</br>
+>**Figma:** https://www.figma.com/design/gu4VzuZMFzqcryfTEjlGsW/timeTracker?node-id=28-1260&p=f&t=AoZugVmEY6kE1QpQ-0
+</br>
 > **Data:** 21/setembro/2026
+</br>
 > **Versão:** 1.2 — Sprint 2
 
 > EP-01 (US-03) - Disponibilizar dados (falsos) para o Dashboard
