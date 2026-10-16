@@ -67,7 +67,7 @@ describe('DashboardPage', () => {
         .getByText('Online')
         .closest('article'),
     ).toHaveTextContent('1');
-    expect(screen.getAllByText('Editor')).toHaveLength(2);
+    expect(screen.getAllByText('Editor')).toHaveLength(3);
   });
 
   it('mostra offline da API e separa usuários sem entrada realtime', () => {
@@ -121,6 +121,58 @@ describe('DashboardPage', () => {
     render(<DashboardPage dark={false} toggleTheme={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'ana' } });
     expect(useDashboardData.mock.calls.at(-1)[1]).toBe('ana');
+  });
+
+  it('combina usuário e aplicativo na última atividade sem alterar os indicadores por aplicativo', () => {
+    const data = {
+      ...fullData,
+      users: [
+        { username: 'ana', full_name: 'Ana' },
+        { username: 'bia', full_name: 'Bia' },
+      ],
+      realtime: [
+        {
+          username: 'ana',
+          status: 'online',
+          seconds_since_last_activity: 5,
+          process_name: 'Editor',
+        },
+        {
+          username: 'bia',
+          status: 'online',
+          seconds_since_last_activity: 8,
+          process_name: 'Chrome',
+        },
+      ],
+      summary: {
+        date: '2026-09-25',
+        users: [
+          { username: 'ana', total_seconds: 3600, by_category: [] },
+          { username: 'bia', total_seconds: 3600, by_category: [] },
+        ],
+      },
+    };
+    useDashboardData.mockReturnValue({ data, loading: false, refreshing: false, refresh: vi.fn() });
+    render(<DashboardPage dark={false} toggleTheme={vi.fn()} />);
+
+    const metrics = screen.getByText('Tempo registrado').closest('article');
+    const activity = screen.getByLabelText('Tabela de última atividade com rolagem horizontal');
+    expect(metrics).toHaveTextContent('2h 00min');
+    expect(activity).toHaveTextContent('Ana');
+    expect(activity).toHaveTextContent('Bia');
+
+    fireEvent.change(screen.getByLabelText('Aplicativo na última atividade'), {
+      target: { value: 'Chrome' },
+    });
+    expect(activity).toHaveTextContent('Bia');
+    expect(activity).not.toHaveTextContent('Ana');
+    expect(metrics).toHaveTextContent('2h 00min');
+
+    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'ana' } });
+    expect(
+      screen.getByText('Nenhum usuário corresponde aos filtros aplicados.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('0 de 1 usuários nesta lista');
   });
 
   it('mantém a contagem de usuários cadastrados quando realtime falha', () => {

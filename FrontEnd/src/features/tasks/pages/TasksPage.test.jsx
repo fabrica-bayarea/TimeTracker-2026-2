@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TasksPage } from './TasksPage';
 
@@ -33,7 +34,7 @@ describe('TasksPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Criar Task' }));
     expect(await screen.findByText('Revisar relatório')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Task criada em dados simulados');
+    expect(screen.getByText('Task criada em dados simulados.')).toBeInTheDocument();
     expect(devApi.createTask).toHaveBeenCalledWith('Revisar relatório', expect.any(AbortSignal));
   });
 
@@ -69,5 +70,63 @@ describe('TasksPage', () => {
     fireEvent.submit(screen.getByRole('textbox').closest('form'));
     expect(screen.getByRole('alert')).toHaveTextContent('Informe uma descrição');
     expect(devApi.createTask).not.toHaveBeenCalled();
+  });
+
+  it('pesquisa, ordena e seleciona Task somente para consultar detalhes', async () => {
+    const user = userEvent.setup();
+    const tasks = [
+      task,
+      {
+        ...task,
+        id: '7e7b94da-5651-46a0-bf28-fcb8f4f14c04',
+        description: 'Criar orçamento',
+        created_at: '2026-10-14T14:20:00Z',
+      },
+    ];
+    const devApi = { tasks: vi.fn().mockResolvedValue(tasks), createTask: vi.fn() };
+    render(<TasksPage devApi={devApi} />);
+
+    expect(await screen.findByText('2 resultados')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Pesquisar Tasks por descrição' }), {
+      target: { value: 'RELATÓRIO' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('1 resultado');
+    expect(
+      screen.getByRole('button', { name: 'Ver detalhes da Task: Revisar relatório' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar pesquisa' }));
+    fireEvent.change(screen.getByLabelText('Ordenar Tasks'), {
+      target: { value: 'description-asc' },
+    });
+    const list = screen.getByRole('list');
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Ver detalhes da Task: Criar orçamento', 'Ver detalhes da Task: Revisar relatório']);
+
+    screen.getByRole('button', { name: 'Ver detalhes da Task: Revisar relatório' }).focus();
+    await user.keyboard('{Enter}');
+    expect(
+      screen.getByRole('heading', { name: 'Task selecionada para consulta' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Não inicia nem associa monitoramento/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Task selecionada: Revisar relatório' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(devApi.createTask).not.toHaveBeenCalled();
+  });
+
+  it('mostra estado vazio quando a pesquisa não encontra Tasks', async () => {
+    const devApi = { tasks: vi.fn().mockResolvedValue([task]), createTask: vi.fn() };
+    render(<TasksPage devApi={devApi} />);
+    await screen.findByText('Revisar relatório');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Pesquisar Tasks por descrição' }), {
+      target: { value: 'não existe' },
+    });
+    expect(screen.getByText('Nenhuma Task corresponde à pesquisa.')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('0 resultados');
   });
 });

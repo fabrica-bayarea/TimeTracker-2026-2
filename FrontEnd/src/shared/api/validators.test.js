@@ -38,6 +38,8 @@ describe('contratos da API', () => {
     expect(validRealtime([{ ...entry, seconds_since_last_activity: -1 }])).toBe(false);
     expect(validRealtime([{ ...entry, seconds_since_last_activity: 0.5 }])).toBe(false);
     expect(validRealtime([{ ...entry, process_name: {} }])).toBe(false);
+    expect(validRealtime([{ ...entry, is_idle: true }])).toBe(true);
+    expect(validRealtime([{ ...entry, is_idle: 'false' }])).toBe(false);
   });
 
   it('valida data real, identidades e duração por categoria no resumo', () => {
@@ -63,6 +65,12 @@ describe('contratos da API', () => {
         users: [{ ...user, by_category: [{ category: 'Trabalho', total_seconds: -1 }] }],
       }),
     ).toBe(false);
+    expect(
+      validSummary({
+        date: '2026-09-25',
+        users: [{ ...user, by_category: [{ ...user.by_category[0], color: {} }] }],
+      }),
+    ).toBe(false);
     expect(validSummary(null)).toBe(false);
   });
 
@@ -73,6 +81,8 @@ describe('contratos da API', () => {
     expect(validSettings({ ...settings, idle_timeout_seconds: 1.5 })).toBe(false);
     expect(validSettings({ ...settings, idle_timeout_seconds: '300' })).toBe(false);
     expect(validSettings({ capture_interval_seconds: 10 })).toBe(false);
+    expect(validSettings({ ...settings, updated_at: '2026-10-16T12:00:00Z' })).toBe(true);
+    expect(validSettings({ ...settings, updated_at: 42 })).toBe(false);
     expect(validSettings(null)).toBe(false);
   });
 

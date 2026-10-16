@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { EmptyState, ErrorNotice, LoadingSkeleton } from '../../../shared/components/AsyncFeedback';
 import { useTasks } from '../hooks/useTasks';
 import { validTaskDescription } from '../../../shared/api/validators';
+import { filterAndSortTasks } from '../lib/taskList';
 
 function UnavailableTasks() {
   return (
@@ -40,7 +41,12 @@ function UnavailableTasks() {
 function MockTasks({ devApi }) {
   const [description, setDescription] = useState('');
   const [validationError, setValidationError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState('recent');
+  const [selectedTaskId, setSelectedTaskId] = useState('');
   const { tasks, loading, error, saving, saveError, created, load, createTask } = useTasks(devApi);
+  const visibleTasks = filterAndSortTasks(tasks, search, sortOrder);
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
 
   async function submit(event) {
     event.preventDefault();
@@ -50,7 +56,11 @@ function MockTasks({ devApi }) {
       return;
     }
     const saved = await createTask(description);
-    if (saved) setDescription('');
+    if (saved) {
+      setDescription('');
+      setSearch('');
+      setSortOrder('recent');
+    }
   }
 
   return (
@@ -129,16 +139,105 @@ function MockTasks({ devApi }) {
         ) : error && tasks.length === 0 ? null : tasks.length === 0 ? (
           <EmptyState>Nenhuma Task foi criada neste modo de demonstração.</EmptyState>
         ) : (
-          <ul className="mt-3 divide-y divide-line dark:divide-slate-700">
-            {tasks.map((task) => (
-              <li key={task.id} className="py-3">
-                <p className="font-semibold">{task.description}</p>
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label htmlFor="task-search" className="text-xs font-semibold muted">
+                Pesquisar Tasks por descrição
+                <input
+                  id="task-search"
+                  className="form-field mt-1"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label htmlFor="task-sort" className="text-xs font-semibold muted">
+                Ordenar Tasks
+                <select
+                  id="task-sort"
+                  className="form-field mt-1"
+                  value={sortOrder}
+                  onChange={(event) => setSortOrder(event.target.value)}
+                >
+                  <option value="recent">Mais recentes primeiro</option>
+                  <option value="description-asc">Descrição (A–Z)</option>
+                  <option value="description-desc">Descrição (Z–A)</option>
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs font-semibold muted" role="status" aria-live="polite">
+              {search.trim()
+                ? `Pesquisa ativa: ${search.trim()} — ${visibleTasks.length} ${visibleTasks.length === 1 ? 'resultado' : 'resultados'}`
+                : `${visibleTasks.length} ${visibleTasks.length === 1 ? 'resultado' : 'resultados'}`}
+            </p>
+            {search.trim() && (
+              <button type="button" className="secondary-button mt-2" onClick={() => setSearch('')}>
+                Limpar pesquisa
+              </button>
+            )}
+            {selectedTask && (
+              <section
+                className="mt-4 rounded-lg border border-brand/30 bg-indigo-50/60 p-4 dark:bg-indigo-950/30"
+                aria-labelledby="selected-task-title"
+              >
+                <h3 id="selected-task-title" className="font-bold">
+                  Task selecionada para consulta
+                </h3>
+                <p className="mt-2 font-semibold">{selectedTask.description}</p>
+                <p className="mt-1 break-all text-xs muted">ID: {selectedTask.id}</p>
                 <p className="mt-1 text-xs muted">
-                  Criada em {new Date(task.created_at).toLocaleString('pt-BR')}
+                  Criada em {new Date(selectedTask.created_at).toLocaleString('pt-BR')}
                 </p>
-              </li>
-            ))}
-          </ul>
+                <p className="mt-2 text-xs muted">
+                  Esta seleção local serve apenas para consultar detalhes. Não inicia nem associa
+                  monitoramento.
+                </p>
+                <button
+                  type="button"
+                  className="secondary-button mt-3"
+                  onClick={() => setSelectedTaskId('')}
+                >
+                  Limpar seleção
+                </button>
+              </section>
+            )}
+            {visibleTasks.length === 0 ? (
+              <EmptyState className="mt-3">Nenhuma Task corresponde à pesquisa.</EmptyState>
+            ) : (
+              <ul className="mt-3 divide-y divide-line dark:divide-slate-700">
+                {visibleTasks.map((task) => {
+                  const isSelected = selectedTask?.id === task.id;
+                  return (
+                    <li key={task.id} className="py-3">
+                      <button
+                        type="button"
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${isSelected ? 'bg-indigo-50 dark:bg-indigo-950/50' : ''}`}
+                        aria-label={
+                          isSelected
+                            ? `Task selecionada: ${task.description}`
+                            : `Ver detalhes da Task: ${task.description}`
+                        }
+                        aria-pressed={isSelected}
+                        onClick={() =>
+                          setSelectedTaskId((current) => (current === task.id ? '' : task.id))
+                        }
+                      >
+                        <span className="min-w-0 break-words font-semibold">
+                          {task.description}
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold text-brand">
+                          {isSelected ? 'Selecionada' : 'Ver detalhes'}
+                        </span>
+                      </button>
+                      <p className="mt-1 px-2 text-xs muted">
+                        Criada em {new Date(task.created_at).toLocaleString('pt-BR')}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </section>
     </>

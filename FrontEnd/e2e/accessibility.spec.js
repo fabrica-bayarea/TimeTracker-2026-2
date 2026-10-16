@@ -18,7 +18,15 @@ for (const route of ['painel', 'colaboradores', 'relatorios', 'configuracoes']) 
   test(`sem violações WCAG detectadas em ${route}`, async ({ page }) => {
     await page.goto(`/#/${route}`);
     await expect(page.getByRole('main')).toBeVisible();
-    await expect(page.getByRole('status')).toHaveCount(0);
+    if (route === 'painel') {
+      await expect(page.getByText(/0 usuários nesta lista/)).toBeVisible();
+    } else if (route === 'colaboradores') {
+      await expect(page.getByRole('status', { name: 'Atualização da consulta' })).toContainText(
+        'Última atualização da consulta',
+      );
+    } else {
+      await expect(page.getByRole('status')).toHaveCount(0);
+    }
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();

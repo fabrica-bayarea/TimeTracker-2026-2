@@ -2,25 +2,41 @@
 
 Histórico de alterações por data, em ordem da mais recente para a mais antiga. Caminhos registrados em entradas antigas refletem a estrutura usada na época. Consulte [Arquitetura](ARQUITETURA.md) para a organização atual, [Testes](TESTES.md) para os resultados automatizados e [Pendências](PENDENCIAS.md) para bloqueios em aberto; detalhes de versões anteriores também estão no histórico do Git.
 
-## 13/10/2026 — Robustez dos mocks e jornada diária
+## 16/10/2026 — Atividade em tempo real, filtros do painel e busca de tarefas
+
+- **Visualização:** a lista agora mostra o estado de atividade retornado pela API, o aplicativo mais recente e o tempo desde a captura. Essa idade não é apresentada como conexão ou sincronização confirmada.
+- **Filtros:** adicionadas pesquisa por nome/usuário/departamento, filtros combináveis de estado e aplicativo, ordenação por nome/idade da captura, contagem de resultados e limpeza.
+- **Atualização:** a ação manual reutiliza as chamadas já existentes para `/users/` e `/activities/realtime`; o hook mantém cancelamento e ignora respostas antigas. Não foi adicionado polling.
+- **Arquitetura:** a normalização e o filtro exato de `process_name` foram movidos para `shared/lib` e são reutilizados por Dashboard e Colaboradores.
+- **Privacidade:** `hostname` existe na resposta, mas não é exibido nem filtrável até o Backend aplicar autorização e escopo por gestor. `window_title` continua fora da interface.
+- **Contratos externos:** `PENDENCIAS.md` já documenta as lacunas do status de conexão (B-10/I-05), associação (I-02), autorização (B-01) e interface desktop do Agent (A-01); esta revisão acrescenta o bloqueio explícito de exposição de máquina à pendência B-01.
+- **Validação:** resultados desta revisão em [Testes](TESTES.md).
+- **Dashboard:** adicionados seleção e contagem de aplicativos derivados do `process_name` realtime, combináveis com o usuário. O filtro atua somente na lista de última atividade; resumo diário e indicadores permanecem sem filtro de aplicativo. Nomes são formatados para leitura, mas o valor original continua sendo usado na filtragem.
+- **Tasks:** a lista demonstrativa de desenvolvimento recebeu pesquisa por descrição com ação explícita para limpar, contagem que identifica a pesquisa ativa, ordenação por data/descrição e seleção local para consultar detalhes. A lista continua em memória mock; nenhum endpoint foi criado, e a seleção não inicia monitoramento.
+- **Envios:** `useTasks` agora ignora novas chamadas de criação enquanto uma já está em andamento, evitando a criação duplicada por acionamentos rápidos.
+- **Agent:** `PENDENCIAS.md` registra em A-01 o placeholder literal de usuário em `agent/UI/AssociationForm.cs:42` e recomenda correção e revisão visual pela equipe do Agent. Nenhum arquivo fora de `FrontEnd/` foi escrito.
+- **Validação:** baseline e resultados finais constam em [Testes](TESTES.md). `npm.cmd run check:full` passou; nenhum contrato ou dependência de produção foi alterado.
+- **Integração:** routers e schemas usados pelo frontend foram comparados em leitura. Os endpoints, métodos, parâmetros e payloads correspondem aos contratos atuais; não há ambiente real habilitado para uma chamada E2E autorizada. Validadores passaram a rejeitar tipos incorretos em `is_idle`, `CategorySummary.color` e `SystemSettingsOut.updated_at` quando presentes.
+- **Colaboradores:** “Limpar filtros” restaura pesquisa, estado, aplicativo e ordenação por nome; alterar somente a ordenação também habilita a ação.
+- **Aplicativos:** identificadores `process_name` seguem exatos para filtros. Espaços são normalizados só nos rótulos, e rótulos que colidem após a apresentação mostram o valor original para continuar distinguíveis; não foi encontrado catálogo confiável que justifique mapear processos a produtos.
+- **Temporalidade:** o estado registra o momento em que cada resposta válida chegou ao navegador e distingue sucesso completo, parcial e falha. A idade da leitura realtime avança a cada minuto com relógio monotônico, sem nova requisição. A interface não apresenta esse horário como conexão do Agent.
+- **Tasks:** nenhuma componentização adicional foi feita. A separação entre tela indisponível, demonstração em `TasksPage`, fluxo assíncrono em `useTasks` e filtro/ordenação em `taskList.js` já atende ao escopo; novas abstrações não trariam reuso neste momento.
+- **Dependências externas:** B-10 em `PENDENCIAS.md` registra que status confiável de conexão depende de timestamp de recebimento e identidade de Agent/máquina no contrato autorizado do Backend.
+- **Validação:** linha de base, resultados finais, cenários reais ignorados e limites do ambiente estão em [Testes](TESTES.md).
+
+## 13/10/2026 — Atualização do frontend: autenticação, mocks e jornada simulada
 
 - **Inicialização e isolamento:** MSW e cliente simulado só são importados em desenvolvimento quando `VITE_USE_MOCKS=true`. A aplicação aguarda o worker; falha apresenta alerta e não usa a API real. Rotas da API sem handler retornam `501`, e requests não tratados na origem da API são bloqueados pelo MSW. Ao desativar mocks em desenvolvimento, registros antigos do worker são removidos sem atingir outros Service Workers.
 - **Produção:** ramificações de Tasks e jornada simuladas são removidas do build. O verificador do bundle também rejeita o marcador da interface mock, além dos handlers, worker e rotas simuladas.
 - **Cliente e dados:** o cliente de desenvolvimento passou a reutilizar timeout de 15 segundos, `AbortSignal` e erros tipados do cliente compartilhado. Timestamps são construídos com o offset de São Paulo; schemas validam a data de negócio e a ordem dos registros. O filtro por colaborador também é aplicado ao status simulado do Agent.
 - **Tasks e documentos:** a criação simulada é cancelada quando a página sai; os avisos continuam identificando os dados como temporários e sem integração no Backend. `FUNCIONALIDADES.md`, `PENDENCIAS.md` e `CONTRATOS_API.md` distinguem essa demonstração local dos contratos reais.
 - **Validação:** resultados desta revisão estão em [Testes](TESTES.md).
-
-## 13/10/2026 — Correções pós-atualização do frontend
-
 - **Formatação:** os sete arquivos apontados pelo `format:check` foram formatados com Prettier. Nenhum comportamento ou lógica foi alterado nesses sete arquivos.
 - **Contratos JWT:** `getCurrentManager` agora rejeita token ausente, vazio, malformado, com espaços ou caracteres de controle antes de criar o cabeçalho. A checagem valida somente a forma compacta de três segmentos; assinatura, expiração e autorização continuam no backend. Cadastro/login validam o tipo e presença de e-mail/senha, enviam apenas esses campos e não refletem credenciais em erros.
 - **Validadores:** a resposta `Token` agora também precisa trazer token com forma compacta de JWT. Os schemas `ManagerOut` e `Token` continuam rejeitando propriedades extras; campos novos exigem revisão explícita do contrato.
 - **Dependências:** Vite 6.4.3 foi atualizado para 6.4.4 com correções upstream no mesmo ramo; `source-map-js` 1.2.1 foi atualizado para 1.2.2 dentro das faixas existentes. O audit passou de 8 para 7 entradas. As pendências que exigem Tailwind 4 ou não têm versão corrigida estão em [Pendências](PENDENCIAS.md).
 - **Validação executada:** `npm.cmd run check` e `npm.cmd run check:full` passaram. Vitest: 171 testes em 41 arquivos; cobertura 95,98% statements, 94,62% branches, 96,31% functions e 97,69% lines. E2E: 27 passaram, 2 ignorados por dependerem da API real. `git diff --check` passou; nenhum teste de integração real foi configurado.
 - **MVP e escopo:** acesso sem login, `AuthPage` informativa, card de associação oculto, dashboard, navegação, status e contratos de relatórios foram preservados. Não houve alteração fora de `FrontEnd/`, commit, push, PR ou merge.
-
-## 13/10/2026 — Alinhamento às PRs #122 e #123 (estado anterior à revisão pós-atualização)
-
 - **Estado das integrações:** registrada a incorporação da PR #122 do Agent (`ed48ad7cfff9e724406ef9ffffeb6c0f132caf32`, merge `e43673b4dca212eaa991308d14c9dc25b6c64061`) e da PR #123 de autenticação (`c5a053916747751a3894b93e45c1f4e2dafc34b6`, merge `0fc4e7b7333ceb4fdd120f7f1f753f9836163e30`).
 - **Contratos:** `CONTRATOS_API.md` agora documenta `POST /auth/register`, `POST /auth/login` e `GET /auth/me`, separa operações de tela de contratos disponíveis e esclarece que `ManagerOut` não contém `association_code`.
 - **Código:** adicionados à camada isolada da API os métodos `registerManager`, `loginManager` e `getCurrentManager`, validadores para `ManagerOut`/`Token` e testes de contrato, 409/401, resposta inválida, Bearer, cancelamento e não exposição de detalhes de autenticação.

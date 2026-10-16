@@ -10,6 +10,7 @@ export function useTasks(devApi) {
   const [created, setCreated] = useState(false);
   const active = useRef(null);
   const activeSave = useRef(null);
+  const savingRef = useRef(false);
 
   const load = useCallback(async () => {
     active.current?.abort();
@@ -38,15 +39,16 @@ export function useTasks(devApi) {
 
   const createTask = useCallback(
     async (description) => {
+      if (savingRef.current) return false;
       setSaveError(null);
       setCreated(false);
       if (!validTaskDescription(description)) {
         setSaveError('Informe uma descrição de até 200 caracteres.');
         return false;
       }
-      activeSave.current?.abort();
       const controller = new AbortController();
       activeSave.current = controller;
+      savingRef.current = true;
       setSaving(true);
       try {
         const task = await devApi.createTask(description, controller.signal);
@@ -59,9 +61,10 @@ export function useTasks(devApi) {
           setSaveError(cause.message || 'Não foi possível criar a Task.');
         return false;
       } finally {
-        if (!controller.signal.aborted) {
-          setSaving(false);
-          if (activeSave.current === controller) activeSave.current = null;
+        if (activeSave.current === controller) {
+          activeSave.current = null;
+          savingRef.current = false;
+          if (!controller.signal.aborted) setSaving(false);
         }
       }
     },

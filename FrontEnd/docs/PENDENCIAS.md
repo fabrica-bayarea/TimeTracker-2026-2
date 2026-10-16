@@ -1,6 +1,6 @@
 # Pendências do frontend e dependências externas
 
-Revisão: **13/10/2026**. `backend/`, `agent/` e `requisitos/` foram consultados somente para leitura. Os IDs em **Problema/requisito** apontam para [RN/RF](../../requisitos/requisitos/rn_rf.md), [RNF](../../requisitos/requisitos/rnf.md), [critérios de aceite](../../requisitos/requisitos/ca.md) ou [RBAC](../../requisitos/rbac.md). Situação e prioridade refletem o código e os contratos observados neste checkout.
+Revisão: **16/10/2026**. `backend/`, `agent/` e `requisitos/` foram consultados somente para leitura. Os IDs em **Problema/requisito** apontam para [RN/RF](../../requisitos/requisitos/rn_rf.md), [RNF](../../requisitos/requisitos/rnf.md), [critérios de aceite](../../requisitos/requisitos/ca.md) ou [RBAC](../../requisitos/rbac.md). Situação e prioridade refletem o código e os contratos observados neste checkout.
 
 As PRs #122 (Agent, merge `e43673b4dca212eaa991308d14c9dc25b6c64061`) e #123 (autenticação do backend, merge `0fc4e7b7333ceb4fdd120f7f1f753f9836163e30`) já foram incorporadas à `main` da organização. A implementação local do backend confirma os contratos de cadastro/login/JWT/`/auth/me`; a associação no backend continua ausente. O escopo aprovado do MVP de 13/10 permanece sem login na apresentação.
 
@@ -11,6 +11,7 @@ As PRs #122 (Agent, merge `e43673b4dca212eaa991308d14c9dc25b6c64061`) e #123 (au
 - [Resumo das pendências](#resumo-das-pendencias)
 - [Pendências do Backend](#pendencias-backend)
 - [Pendências de integração](#pendencias-integracao)
+- [Pendências do Agent](#pendencias-agent)
 - [Pendências futuras do Frontend](#pendencias-frontend)
 - [Propostas de contratos](#propostas-de-contratos-de-integracao)
   - [Tasks e escopo](#proposta-tasks-crud)
@@ -41,7 +42,7 @@ O resultado atual do `npm audit` não listou Vite, embora advisories oficiais do
 
 <a id="estado-do-mvp"></a>
 
-## Estado do MVP 13/10 nesta revisão
+## Estado do MVP — revisão de 16/10/2026
 
 | Funcionalidade                           | Prioridade              | Estado                          | Área/frontend afetado                         | Contrato/dependência e impacto                                                                                                                                                                                                                                                                                                                                |
 | ---------------------------------------- | ----------------------- | ------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -51,6 +52,11 @@ O resultado atual do `npm audit` não listou Vite, embora advisories oficiais do
 | Acesso direto sem login                  | Alta                    | **OK**                          | `App`, rotas e menu                           | Rotas do MVP abrem diretamente; o link "Criar conta" não aparece no menu e o `AssociationCodeCard` está oculto no Dashboard. Autenticação permanece **ADIADA PARA DEPOIS DO MVP**; implementação futura foi preservada.                                                                                                                                       |
 
 Os bloqueios funcionais impedem concluir o recorte anunciado como utilizável somente com o frontend atual. A apresentação de status realtime e o resumo por categoria continuam sendo fontes distintas; nenhuma delas é convertida em jornada ou Task.
+
+### Entregas frontend desta revisão — 16/10/2026
+
+- O filtro de aplicativo deriva opções dos `process_name` recebidos no realtime e filtra somente a tabela atual de última atividade. Pode ser combinado com o usuário selecionado; não altera os indicadores ou o resumo diário e não responde a perguntas históricas de uso.
+- A demonstração de Tasks em desenvolvimento agora permite pesquisar descrições, ordenar a lista e selecionar uma Task para consultar detalhes. Criação e seleção continuam em dados simulados; a seleção não inicia monitoramento nem representa persistência.
 
 <a id="resumo-das-pendencias"></a>
 
@@ -82,8 +88,9 @@ Os bloqueios funcionais impedem concluir o recorte anunciado como utilizável so
 | F-02 | Instalação PWA e política offline                                 | Frontend             | Média      | FRONTEND FUTURO                    |
 | F-03 | Validação humana e matriz de navegadores                          | Frontend             | Média      | FRONTEND FUTURO                    |
 | D-01 | Atualizar [responsividade.md](../../requisitos/responsividade.md) | Documentação externa | Baixa      | AGUARDANDO REVISÃO EXTERNA         |
+| A-01 | Identidade e revisão visual da interface desktop do Agent         | Agent                | Alta       | ABERTO PARA EQUIPE DO AGENT        |
 
-Cada ID identifica uma pendência específica para facilitar referências no texto e na ordem de execução. A letra indica a área: `B` = backend, `I` = integração entre frontend e backend, `F` = frontend e `D` = documentação externa. O número distingue os itens da mesma área; não indica prioridade nem status, que aparecem em colunas próprias.
+Cada ID identifica uma pendência específica para facilitar referências no texto e na ordem de execução. A letra indica a área: `B` = backend, `I` = integração entre frontend e backend, `F` = frontend, `A` = Agent e `D` = documentação externa. O número distingue os itens da mesma área; não indica prioridade nem status, que aparecem em colunas próprias.
 
 Os status descrevem a dependência atual; a prioridade indica impacto. Eles não indicam que todo o frontend esteja parado.
 
@@ -96,6 +103,7 @@ Os status descrevem a dependência atual; a prioridade indica impacto. Eles não
 | **AGENT INTEGRADO; BACKEND BLOQUEADO** | O cliente Agent da PR #122 foi integrado; geração/consulta de código, associação e vínculo autorizado continuam ausentes no backend; consulte I-02. |
 | **PENDENTE DE AMBIENTE**               | O cenário de integração está preparado; falta serviço real, banco, origem configurada e dados autorizados para executá-lo.                          |
 | **FRONTEND FUTURO**                    | Trabalho previsto para uma etapa posterior do frontend, como instalação PWA ou validação em dispositivos reais.                                     |
+| **ABERTO PARA EQUIPE DO AGENT**        | Há correção ou revisão necessária em arquivos do Agent, que foram consultados somente para leitura nesta auditoria.                                 |
 | **AGUARDANDO REVISÃO EXTERNA**         | Depende da revisão de um documento fora de `FrontEnd/`; neste caso, `requisitos/responsividade.md`.                                                 |
 
 As seções abaixo trazem requisitos, motivo e trabalho necessário para cada ID. O motivo específico aparece em **Motivo do bloqueio** ou **Motivo da pendência**.
@@ -212,12 +220,17 @@ As seções abaixo trazem requisitos, motivo e trabalho necessário para cada ID
 - **Problema/requisito:** a regra mistura inatividade de uso e conexão do agente, embora [RN-10/RF-14](../../requisitos/requisitos/rn_rf.md#rf-14--controlar-atividade-e-inatividade) e [RN-11/RF-16](../../requisitos/requisitos/rn_rf.md#rf-16--acompanhar-colaboradores-online) tratem esses conceitos separadamente.
 - **Frontend afetado:** indicadores e badges de status no Dashboard e em Colaboradores.
 - **Backend relacionado:** classificação de `/activities/realtime` baseada em `is_idle` e no tempo desde o último evento.
-- **Comportamento no backend consultado:** quando `is_idle=true`, a API pode retornar `offline` mesmo para uma captura recém-recebida. Portanto, o estado atual não comprova ausência de registro recente da máquina.
+- **Comportamento no backend consultado:** quando `is_idle=true`, a API pode retornar `offline` mesmo para uma captura recém-recebida. `seconds_since_last_activity` é calculado a partir de `captured_at` enviado pelo Agent; não há timestamp separado de recebimento/persistência. Sincronização atrasada ou relógio divergente também pode distorcer a idade. Portanto, o estado atual não comprova ausência de registro recente da máquina.
 - **Decisão da liderança:** considerar o Agent `offline` quando a máquina ficar mais de 15 minutos sem um novo registro no banco de dados. Inatividade de uso (`is_idle`) não deve, por si só, significar que o Agent perdeu conexão.
-- **Atual/impacto:** a regra acordada ainda não está garantida pelo contrato/runtime atual: a resposta pode classificar `offline` a partir de `is_idle` ou do intervalo sem evento. O frontend continua exibindo o estado fornecido pela API sem reinterpretá-lo.
-- **Alteração necessária:** implementar no backend a regra acordada, associada à última gravação por máquina, e expor um estado/tempo de conexão coerente. Confirmar como identificar a máquina e tratar registros ausentes ou atrasados.
+- **Atual/impacto:** a regra acordada ainda não está garantida pelo contrato/runtime atual: a resposta pode classificar `offline` a partir de `is_idle` ou do intervalo desde `captured_at`, agrupado pelo último registro do usuário. Não informa o último recebimento no banco por máquina.
+- **Alteração necessária:** persistir timestamp de recebimento no servidor, identificar Agents/máquinas de modo estável, calcular a regra acordada por máquina sem usar `is_idle` e expor status/instante de conexão no contrato autorizado. Definir tratamento de máquinas sem registro e de colaboradores com múltiplos Agents.
 - **Workaround frontend:** exibir o status retornado com texto neutro, sem reinterpretar o campo ou afirmar desconexão.
 - **Motivo da pendência:** o critério de produto foi definido, mas precisa ser implementado e exposto pelo backend; o frontend não consegue inferir a última gravação da máquina a partir dos campos atuais.
+
+**Complemento frontend (16/10/2026):** Colaboradores agora distingue o instante local de recepção da consulta da idade realtime calculada pelo servidor. O primeiro não confirma gravação no banco; o segundo ainda depende do `captured_at` enviado pelo Agent e pode refletir relógio divergente ou sincronização atrasada. Nenhum campo novo foi presumido. Para estado de conexão confiável, permanece necessário status e instante do último recebimento por identidade estável de Agent/máquina, com escopo autorizado. A equipe responsável e os critérios de aceitação já constam nesta pendência B-10.
+
+- **Equipe responsável/contrato necessário:** equipe Backend deve persistir o instante de recebimento da gravação e associá-lo a um identificador estável de Agent/máquina; expor esse instante e `connection_status` numa resposta autenticada e limitada à equipe do gestor. O contrato também deve definir máquinas sem registro e múltiplos Agents por colaborador.
+- **Critérios de aceitação:** `offline` após mais de 15 minutos sem novo registro persistido por máquina; `is_idle` não altera o estado de conexão; a resposta identifica cada máquina autorizada, declara o instante de recebimento com timezone e distingue ausência de registro de falha da consulta.
 
 <a id="pendencias-integracao"></a>
 
@@ -267,10 +280,10 @@ As descrições históricas de [Sprint 1](../../requisitos/sprints/sprint1.md), 
 - **Frontend afetado:** `TasksPage`, painel e relatórios.
 - **Backend relacionado:** modelos/schemas/routers não contêm task; atividades não contêm vínculo, início/fim ou classificação de escopo.
 - **Agent relacionado:** `agent/Dtos/ApiDtos.cs`, `agent/Services/QueueSenderService.cs` e payload de atividade não têm `task_id` nem comandos de seleção/início/encerramento.
-- **Atual/impacto:** não há Task model/schema nem `GET /tasks`, `POST /tasks` ou contrato equivalente; a tela permanece informativa e não simula gravação. Categorias não equivalem às aplicações de uma task. A criação persistida pelo Dashboard, quando houver contrato, será distinta do controle de monitoramento pelo Agent.
+- **Atual/impacto:** não há Task model/schema nem `GET /tasks`, `POST /tasks` ou contrato equivalente. Sem mocks de desenvolvimento, a tela é informativa; com `VITE_USE_MOCKS=true`, demonstra criação em memória, pesquisa por descrição, ordenação e seleção local para consultar detalhes. Esses dados não persistem e não representam o Backend. Categorias não equivalem às aplicações de uma task. A criação persistida pelo Dashboard, quando houver contrato, será distinta do controle de monitoramento pelo Agent.
 - **Alinhamento da liderança para Sprint 2:** será solicitado a Danyyel que crie uma task padrão. A solicitação ainda não equivale a task disponível na API nem define se ela será criada como seed, configuração ou registro operacional.
 - **Contrato necessário:** para o recorte mínimo de Tasks, consulta e criação persistentes com schema e validações reais; para RF-06 completo, também edição, descrição, colaboradores atribuídos, aplicações do escopo e autorização. A integração Agent exige ainda listagem/seleção/início/encerramento, `task_id` nos registros e confirmação de ciência.
-- **Workaround frontend:** não existe; armazenamento local, CRUD fictício ou reaproveitar categorias violaria a regra de negócio.
+- **Limite do frontend:** a demonstração não é workaround de produção. Não usar `localStorage`, CRUD fictício em produção ou categorias como substituto da integração real.
 - **Motivo do bloqueio:** depende do modelo central de monitoramento e de implementação backend/agente.
 - **Propostas detalhadas:** [gerenciamento de Tasks](#proposta-tasks-crud) e [atribuição de colaboradores](#proposta-task-collaborators).
 
@@ -291,11 +304,14 @@ As descrições históricas de [Sprint 1](../../requisitos/sprints/sprint1.md), 
 - **Problema/requisito:** [RF-05](../../requisitos/requisitos/rn_rf.md#rf-05--gerenciar-colaboradores-associados)/[RF-16](../../requisitos/requisitos/rn_rf.md#rf-16--acompanhar-colaboradores-online)/[RF-27](../../requisitos/requisitos/rn_rf.md#rf-27--exibir-dashboard-analítico) e [CA-04](../../requisitos/requisitos/ca.md#ca-04--estado-e-execução-da-task) exigem Online enquanto conectado/autenticado.
 - **Frontend afetado:** métricas de estado e tabela de última atividade.
 - **Backend relacionado:** `/activities/realtime`, estados calculados por tempo desde atividade e retenção de até 24 horas.
+- **Agent relacionado:** `AgentOrchestrator.IsOnline` é estado local derivado de tentativas de envio e não é publicado na API. `PendingCount`, pausa do monitoramento e versão também permanecem locais; o Frontend não consegue consultá-los.
 - **Decisão da liderança:** o Agent deverá ser considerado offline após mais de 15 minutos sem novo registro no banco de dados daquela máquina. `is_idle` representa inatividade de uso e não deve substituir esse critério de conexão.
-- **Atual/impacto:** a regra foi definida, mas ainda não está implementada/confirmada no backend. `offline` ainda pode decorrer de `is_idle` ou do intervalo sem evento; ausência na lista após a retenção de 24 horas também não permite inferir o último registro da máquina. O Agent existe, mas não há sessão autenticada; ver B-10.
-- **Contrato necessário:** expor informação calculada a partir da última gravação por máquina e aplicar o limite acordado de 15 minutos, distinguindo conexão de inatividade; autenticação de sessão permanece dependente de I-01.
+- **Atual/impacto:** a regra foi definida, mas ainda não está implementada/confirmada no backend. `offline` ainda pode decorrer de `is_idle` ou do intervalo desde `captured_at`; a consulta retorna somente a captura mais recente por usuário e não informa gravação recebida por máquina. Ausência após retenção de 24 horas não permite inferir o último registro. Falha de envio, fila local, pausa, versão e sincronização não estão disponíveis ao Frontend; ver B-10.
+- **Contrato necessário:** expor informação calculada a partir da última gravação recebida por máquina e aplicar o limite acordado de 15 minutos, distinguindo conexão de inatividade. Se o painel também precisar de fila, pausa, versão ou tentativas de envio, Agent e Backend devem definir telemetria própria; o navegador não deve estimar esses estados. Autenticação de sessão permanece dependente de I-01 e isolamento por gestor de B-01.
 - **Workaround frontend:** mostrar última leitura com aviso é aceitável para o contrato atual; inferir conexão real não é.
-- **Motivo do bloqueio:** navegador do gestor não observa diretamente a conexão do agente.
+- **Critérios de aceite:** status online/offline por máquina usa instante de recebimento no servidor, limite estrito de mais de 900 segundos e não depende de `is_idle`; atividade e falha HTTP têm estados distintos; cada máquina é identificável sem agrupar Agents diferentes; campos operacionais adicionais são enviados pelo Agent, autorizados e não inferidos pelo frontend.
+- **Testes recomendados:** limite de 900/901 segundos, captura inativa recente, envio atrasado da fila local, falha de rede com fila vazia e com pendências, usuário com mais de uma máquina, ausência de telemetria e tentativa de acesso fora do gestor.
+- **Motivo do bloqueio:** navegador do gestor não observa diretamente a conexão, estado da fila ou pausa do Agent; o servidor e o cliente não oferecem contrato de telemetria/autorização suficiente.
 
 ### I-06 — Dashboard, timeline e relatórios completos — Alta
 
@@ -337,6 +353,22 @@ As descrições históricas de [Sprint 1](../../requisitos/sprints/sprint1.md), 
 - **Contrato/alteração necessária:** disponibilizar ambiente de teste autorizado, dados e origem; executar `RUN_REAL_API=1 npm run test:e2e:real` e conferir CSV/PDF, falhas e reinício. Sem alteração de endpoints.
 - **Workaround frontend:** fixtures de teste protegem comportamento do cliente, mas não comprovam a API real.
 - **Motivo da pendência:** o ambiente depende de serviço e banco disponíveis e de dados de teste autorizados; executar o cenário requer o ambiente real configurado.
+
+<a id="pendencias-agent"></a>
+
+## Pendências do Agent
+
+### A-01 — Identidade e revisão visual da interface desktop — Alta
+
+- **Identificação:** A-01; área responsável: equipe do Agent; prioridade P1 para identidade/status enganosos e P2 para revisão visual e de privacidade; status: ABERTO PARA EQUIPE DO AGENT.
+- **Problema:** o formulário de associação mostra o placeholder `{orchestrator.Username}` em vez do nome real. As telas também usam dimensões e posições fixas; a bandeja mantém o ícone genérico do Windows Forms. O formulário de status rotula como conexão atual um indicador que reflete somente tentativas de envio.
+- **Evidência:** em [`AssociationForm.cs`](../../agent/UI/AssociationForm.cs#L42), a estação usa interpolação, mas a linha `"Usuário: {orchestrator.Username}\n\n"` é uma string comum. [`StatusForm.cs`](../../agent/UI/StatusForm.cs#L28) define `ClientSize` 420×260 e posiciona controles por coordenadas fixas; [`AssociationForm.cs`](../../agent/UI/AssociationForm.cs#L36) define 380×230. [`TrayApplicationContext.cs`](../../agent/UI/TrayApplicationContext.cs#L47) usa `SystemIcons.Application` com comentário para substituí-lo por ícone próprio. `StatusForm` exibe o título da janela capturada. `AgentOrchestrator.IsOnline` começa como `true` e é atualizado pelo evento `SendAttempted`; [`QueueSenderService.cs`](../../agent/Services/QueueSenderService.cs#L47) retorna quando a fila está vazia sem confirmar a conexão.
+- **Impacto:** durante a associação, o colaborador não consegue confirmar pela janela qual usuário está sendo associado. “Conexão com o servidor: OK” pode aparecer sem tentativa de envio ou permanecer após o último envio bem-sucedido, sem provar contato atual. Rótulos longos ou escala ampliada podem deixar os formulários apertados; a aparência do ícone não identifica a aplicação. Exibir título de janela amplia a exposição de texto potencialmente sensível.
+- **Justificativa:** identidade correta evita associação feita com contexto equivocado; um status temporalmente honesto e uma hierarquia legível melhoram confiança e compreensão. O código consultado é externo ao escopo autorizado do Frontend.
+- **Solução proposta:** corrigir a string para `$"Usuário: {orchestrator.Username}\n\n"`. Em tarefa própria do Agent, renomear o indicador atual para “Último envio” ou publicar conexão confirmada por heartbeat; não iniciar o estado em conectado sem evidência. Reorganizar controles em layouts ancorados/contêineres com escala adequada, tratar textos longos, revisar teclado/foco e estados, substituir o ícone genérico e confirmar se o título da janela é necessário. Não há justificativa observada para migrar de Windows Forms.
+- **Dependências:** equipe do Agent; não depende de mudança no Frontend. Uma política sobre exibir título de janela deve seguir os requisitos de privacidade do produto.
+- **Critérios de aceite:** formulário de associação mostra o valor real de usuários de teste distintos; usuário consegue concluir os controles por teclado com foco visível; telas permanecem legíveis a 100%, 150% e 200% de escala e com usuário/estação longos; conexão, associação, pausa e erro são distinguíveis sem depender somente de cor; a informação de janela respeita a decisão de privacidade.
+- **Testes recomendados:** teste de apresentação do texto com nomes de usuários distintos; inspeção manual em Windows Forms nas escalas indicadas e com textos longos; verificação de ordem de Tab, foco, estados de conexão/associação/pausa e título de janela; build e testes da solução do Agent após a correção.
 
 <a id="pendencias-frontend"></a>
 
@@ -610,6 +642,8 @@ Authorization: Bearer <JWT_DO_GESTOR>
 ```
 
 A resposta candidata é um array de UserOut limitado aos colaboradores associados ao gestor. GET /users/ existe, mas autenticação JWT e filtro de equipe ainda não estão implementados. POST /activities/ é usado pelo Agent e precisa de autenticação de Agent, identidade associada e autorização do vínculo; não se deve proteger essa rota com JWT de gestor sem definir fluxo compatível. Categorias e configuração global exigem decisão de propriedade antes de receber filtros.
+
+No acompanhamento do Agent, `GET /activities/realtime` também retorna `hostname`, mas a interface não o exibe nem oferece filtro por máquina enquanto a API entrega usuários e capturas sem escopo por gestor. Antes de apresentar esse identificador, o Backend deve autenticar o gestor e restringir tanto `/users/` quanto `/activities/realtime` aos vínculos autorizados; o Agent também precisa de identidade persistente associada. Filtros locais da interface não substituem esse controle.
 
 - O servidor deriva manager_id dos claims validados do JWT, rejeita manager_id enviado pelo cliente e filtra toda leitura, escrita e exportação.
 - Operações sobre IDs de Task, usuário ou registro verificam o vínculo no banco em cada requisição, inclusive relações aninhadas.

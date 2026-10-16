@@ -283,6 +283,21 @@ describe('cliente da API', () => {
     expect(json).toHaveBeenCalledOnce();
   });
 
+  it.each([400, 401, 403, 404, 500])(
+    'preserva o status HTTP %i em consultas de dados',
+    async (status) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: false, status, statusText: 'Erro', json: async () => ({}) })),
+      );
+
+      await expect(api.users()).rejects.toMatchObject({
+        type: status >= 500 ? 'server' : 'client',
+        status,
+      });
+    },
+  );
+
   it('preserva status e detail do FastAPI', async () => {
     vi.stubGlobal(
       'fetch',

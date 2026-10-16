@@ -19,6 +19,14 @@ function optionalText(value) {
   return value == null || typeof value === 'string';
 }
 
+function optionalBoolean(value) {
+  return value === undefined || typeof value === 'boolean';
+}
+
+function optionalDateTime(value) {
+  return value == null || (typeof value === 'string' && Number.isFinite(Date.parse(value)));
+}
+
 function uniqueUsers(value) {
   return (
     Array.isArray(value) &&
@@ -172,7 +180,8 @@ export function validRealtime(value) {
         optionalText(entry.process_name) &&
         optionalText(entry.window_title) &&
         optionalText(entry.hostname) &&
-        optionalText(entry.category),
+        optionalText(entry.category) &&
+        optionalBoolean(entry.is_idle),
     )
   );
 }
@@ -192,6 +201,7 @@ export function validSummary(value) {
           (category) =>
             category &&
             typeof category.category === 'string' &&
+            (category.color === undefined || typeof category.color === 'string') &&
             Number.isSafeInteger(category.total_seconds) &&
             category.total_seconds >= 0,
         ),
@@ -205,7 +215,8 @@ export function validSettings(value) {
     Number.isSafeInteger(value?.capture_interval_seconds) &&
     value.capture_interval_seconds > 0 &&
     Number.isSafeInteger(value?.idle_timeout_seconds) &&
-    value.idle_timeout_seconds > 0
+    value.idle_timeout_seconds > 0 &&
+    optionalDateTime(value.updated_at)
   );
 }
 

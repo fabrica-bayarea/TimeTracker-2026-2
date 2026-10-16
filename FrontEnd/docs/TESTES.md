@@ -1,6 +1,37 @@
 # Testes e validação do frontend
 
-Este guia distingue verificação automatizada, build e verificações manuais ainda pendentes. Há validações registradas em **05/10/2026**, **07/10/2026**, **09/10/2026** e **13/10/2026**. Resultados anteriores permanecem identificados pela data e pelo estado do código em que foram obtidos. O inventário completo das alterações está em [Alterações](ALTERACOES.md).
+Este guia distingue verificação automatizada, build e verificações manuais ainda pendentes. Há validações registradas em **05/10/2026**, **07/10/2026**, **09/10/2026**, **13/10/2026** e **16/10/2026**. Resultados anteriores permanecem identificados pela data e pelo estado do código em que foram obtidos. O inventário completo das alterações está em [Alterações](ALTERACOES.md).
+
+## Revisão complementar — 16/10/2026
+
+- **Linha de base:** antes das alterações, `npm.cmd run check` passou. Vitest: 242 testes em 55 arquivos; cobertura de 94,77% statements, 90,20% branches, 95,36% functions e 96,82% lines. O E2E inicial teve 29 aprovados e 2 ignorados por dependerem da API real.
+- **Resultado final:** `npm.cmd run check:full` passou com lint, Prettier, typecheck, cobertura, build de produção, 4 verificações do bundle e E2E.
+- **Vitest/cobertura:** 254 testes em 55 arquivos passaram; cobertura de 95,23% statements, 90,84% branches, 96,11% functions e 97,13% lines.
+- **E2E:** 29 passaram, 0 falharam e 2 testes de API real foram ignorados. axe-core não encontrou violações nos fluxos cobertos; viewport móvel, tema escuro e ampliação de 200% também passaram.
+- A primeira execução E2E após incluir o anúncio acessível do horário encontrou dois seletores genéricos ambíguos/obsoletos; os testes passaram a distinguir o horário da consulta da contagem e a execução completa seguinte passou.
+- Testes focados de API cobrem 400, 401, 403, 404 e 500, além de 422/503, resposta inválida, timeout e cancelamento. Os testes de Colaboradores cobrem resposta parcial, falha, cancelamento, resposta antiga, ordenação, duplicidade visual de nomes e envelhecimento da leitura sem nova requisição.
+- `backend/.env` não existe e `RUN_REAL_API` não está habilitado. Nenhuma chamada real foi tentada; os dois E2E reais permaneceram ignorados e nenhum teste escreveu dados no Backend.
+- `git diff --check` passou; `git diff --name-only` confirmou que todas as 21 alterações versionadas estão em `FrontEnd/`.
+
+## Integração do Agent em Colaboradores — 16/10/2026
+
+- `npm.cmd run check:full` passou: ESLint, Prettier, typecheck, cobertura Vitest, build de produção, 4 verificações do bundle e Playwright E2E.
+- Vitest: **242 testes em 55 arquivos passaram**. Cobertura: **94,77% statements, 90,20% branches, 95,36% functions e 96,82% lines**.
+- E2E: **29 passaram, 0 falharam e 2 foram ignorados** por dependerem de API real. O novo cenário de Colaboradores combina pesquisa, estado e aplicativo, verifica tempo de leitura, contagem, limpeza, atualização manual e ausência do hostname na interface.
+- axe-core não detectou violações no fluxo de Colaboradores. A primeira tentativa E2E encontrou um seletor ambíguo preexistente no cenário de acessibilidade do Dashboard durante o carregamento; o teste foi ajustado para aguardar o texto específico da lista e a execução final passou.
+- `RUN_REAL_API` não estava configurado, portanto os contratos reais do Backend não foram exercitados. O Agent desktop também não foi executado; sua análise foi somente de código e os achados estão em [Pendências](PENDENCIAS.md).
+- `git diff --check` e auditoria do escopo final foram executados após a validação.
+
+## Filtro realtime e demonstração de Tasks — 16/10/2026
+
+- **Linha de base antes das alterações:** `npm.cmd run check` passou com lint, formatação, typecheck, build e bundle; Vitest: **216 testes em 51 arquivos**, cobertura de 94,68% statements, 91,74% branches, 95,95% functions e 96,82% lines. E2E: **27 passaram e 2 foram ignorados** por exigirem API real.
+- **Resultado final:** `npm.cmd run check:full` passou. Incluiu ESLint, `format:check`, typecheck, cobertura, build, 4 testes do verificador de bundle e E2E.
+- **Vitest/cobertura:** **226 testes em 53 arquivos passaram**; 94,85% statements, 91,20% branches, 95,58% functions e 96,86% lines.
+- **E2E:** **28 passaram, 0 falharam e 2 foram ignorados**. O cenário novo combina os filtros de usuário e aplicativo, confirma que o filtro de aplicativo não muda o resumo e limpa a seleção. axe-core não detectou violações no Dashboard coberto.
+- A seleção/consulta de Tasks foi verificada nos testes de componente e função no modo de desenvolvimento simulado; a suíte E2E de produção confirma que a tela continua sem criação quando os mocks não estão ativos.
+- Os dois testes de API real foram ignorados porque `RUN_REAL_API` e um ambiente Backend autorizado não estavam configurados. A interface desktop do Agent não foi executada; a análise foi somente de código, conforme o escopo.
+- `npm.cmd audit --json --cache node_modules/.cache/npm-audit` não obteve resultado: a requisição para `https://registry.npmjs.org/-/npm/v1/security/advisories/bulk` falhou por restrição de rede. A auditoria de dependências disponível continua sendo o snapshot de 13/10 registrado em [Pendências](PENDENCIAS.md), sem verificação upstream nesta execução.
+- O verificador do build confirmou que handlers, worker e rotas mock não foram incluídos em `dist/`. Não foram adicionadas dependências.
 
 ## Revisão de robustez dos mocks — 13/10/2026
 

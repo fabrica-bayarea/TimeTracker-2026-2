@@ -52,6 +52,146 @@ describe('CollaboratorsPage', () => {
     expect(anaRow).not.toHaveTextContent('Indisponível');
   });
 
+  it('combina pesquisa, estado e aplicativo, mostra contagem e limpa os filtros', async () => {
+    api.users.mockResolvedValue(users);
+    api.realtime.mockResolvedValue([
+      {
+        username: 'ana',
+        status: 'online',
+        process_name: 'Editor',
+        seconds_since_last_activity: 20,
+      },
+      {
+        username: 'bia',
+        status: 'offline',
+        process_name: 'Chrome',
+        seconds_since_last_activity: 901,
+      },
+    ]);
+    render(<CollaboratorsPage />);
+
+    const table = await screen.findByRole('table', { name: 'Usuários cadastrados na API' });
+    expect(screen.getByText(/2 de 2 colaboradores/)).toBeInTheDocument();
+    expect(table).toHaveTextContent('20s atrás');
+    expect(table).toHaveTextContent('15min atrás');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Pesquisar colaborador' }), {
+      target: { value: 'BIA' },
+    });
+    fireEvent.change(screen.getByLabelText('Estado informado pela API'), {
+      target: { value: 'offline' },
+    });
+    fireEvent.change(screen.getByLabelText('Aplicativo na última leitura'), {
+      target: { value: 'Chrome' },
+    });
+    fireEvent.change(screen.getByLabelText('Ordenar por'), { target: { value: 'oldest' } });
+
+    expect(screen.getByText(/1 de 2 colaboradores/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toHaveTextContent('bia');
+    expect(screen.getByRole('table')).not.toHaveTextContent('ana');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+    expect(screen.getByText(/2 de 2 colaboradores/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toHaveTextContent('ana');
+    expect(screen.getByRole('table')).toHaveTextContent('bia');
+    expect(screen.getByLabelText('Ordenar por')).toHaveValue('name');
+  });
+
+  it('permite restaurar a ordenação padrão mesmo sem critérios de filtro', async () => {
+    api.users.mockResolvedValue(users);
+    api.realtime.mockResolvedValue(realtime);
+    render(<CollaboratorsPage />);
+    await screen.findByRole('table', { name: 'Usuários cadastrados na API' });
+
+    const clearButton = screen.getByRole('button', { name: 'Limpar filtros' });
+    expect(clearButton).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Ordenar por'), { target: { value: 'recent' } });
+    expect(clearButton).toBeEnabled();
+    fireEvent.click(clearButton);
+    expect(screen.getByLabelText('Ordenar por')).toHaveValue('name');
+    expect(clearButton).toBeDisabled();
+  });
+
+  it('separa a recepção da consulta da idade da última leitura e envelhece sem novo pedido', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-16T12:00:00Z'));
+    try {
+      api.users.mockResolvedValue(users);
+      api.realtime.mockResolvedValue([
+        {
+          username: 'ana',
+          status: 'online',
+          process_name: 'Editor',
+          seconds_since_last_activity: 20,
+        },
+      ]);
+      render(<CollaboratorsPage />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByRole('table')).toHaveTextContent('20s atrás');
+      expect(screen.getByRole('status', { name: 'Atualização da consulta' })).toHaveTextContent(
+        'Última atualização da consulta: 16/10/2026, 09:00',
+      );
+
+      await act(async () => vi.advanceTimersByTime(60_000));
+      expect(screen.getByRole('table')).toHaveTextContent('1min atrás');
+      expect(api.realtime).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('identifica resposta parcial e não inventa horário de atualização em uma falha total', async () => {
+    api.users.mockResolvedValue(users);
+    api.realtime.mockRejectedValue(new Error('atividade indisponível'));
+    render(<CollaboratorsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Atualização da consulta' })).toHaveTextContent(
+        'Resposta parcial da consulta recebida',
+      ),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Atividade: atividade indisponível');
+
+    api.users.mockRejectedValue(new Error('API indisponível'));
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar' }));
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Atualização da consulta' })).toHaveTextContent(
+        'Falha na atualização atual. Última resposta válida recebida em',
+      ),
+    );
+  });
+
+  it('permite atualização manual sem criar chamadas duplicadas', async () => {
+    api.users.mockResolvedValue(users);
+    api.realtime.mockResolvedValue(realtime);
+    render(<CollaboratorsPage />);
+    await screen.findByRole('table', { name: 'Usuários cadastrados na API' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar' }));
+    await waitFor(() => expect(api.users).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.realtime).toHaveBeenCalledTimes(2));
+    expect(api.users.mock.calls[0][0].aborted).toBe(true);
+    expect(api.users.mock.calls[1][0].aborted).toBe(false);
+  });
+
+  it('filtra por indisponibilidade sem apresentar falha de realtime como offline', async () => {
+    api.users.mockResolvedValue(users);
+    api.realtime.mockRejectedValue(new Error('rede indisponível'));
+    render(<CollaboratorsPage />);
+
+    await screen.findByRole('table', { name: 'Usuários cadastrados na API' });
+    fireEvent.change(screen.getByLabelText('Estado informado pela API'), {
+      target: { value: 'unavailable' },
+    });
+    expect(screen.getByText(/2 de 2 colaboradores/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toHaveTextContent('Indisponível');
+    expect(screen.getByRole('table')).not.toHaveTextContent('Offline (API)');
+  });
+
   it('mantém usuários visíveis quando a atividade falha, sem sugerir estado offline', async () => {
     api.users.mockResolvedValue(users);
     api.realtime.mockRejectedValue(new Error('rede indisponível'));

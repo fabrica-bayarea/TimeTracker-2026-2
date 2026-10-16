@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
 import { formatLastRead, LastActivityTable } from './LastActivityTable';
 
 const people = [
@@ -36,4 +36,48 @@ it('distingue carregamento, lista vazia e fonte indisponível', () => {
   expect(screen.getByText('Nenhum usuário encontrado.')).toBeInTheDocument();
   rerender(<LastActivityTable people={[]} loading={false} available={false} />);
   expect(screen.getByText('Dados de atividade indisponíveis.')).toBeInTheDocument();
+});
+
+it('apresenta o escopo do filtro, contagem e limpeza acessíveis', () => {
+  const onProcessChange = vi.fn();
+  render(
+    <LastActivityTable
+      people={[people[0]]}
+      totalPeople={2}
+      loading={false}
+      available
+      processOptions={['Editor', 'Chrome']}
+      selectedProcess="Editor"
+      onProcessChange={onProcessChange}
+    />,
+  );
+
+  expect(screen.getByLabelText('Aplicativo na última atividade')).toHaveValue('Editor');
+  expect(
+    screen.getByText(
+      'O filtro afeta somente esta lista; não altera os indicadores nem o resumo diário.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('1 de 2 usuários nesta lista');
+  fireEvent.change(screen.getByLabelText('Aplicativo na última atividade'), {
+    target: { value: 'Chrome' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Limpar aplicativo' }));
+  expect(onProcessChange).toHaveBeenNthCalledWith(1, 'Chrome');
+  expect(onProcessChange).toHaveBeenNthCalledWith(2, '');
+});
+
+it('indica quando os filtros combinados não encontram atividade', () => {
+  render(
+    <LastActivityTable
+      people={[]}
+      loading={false}
+      available
+      processOptions={['Editor']}
+      selectedProcess="Editor"
+    />,
+  );
+
+  expect(screen.getByText('Nenhum usuário corresponde aos filtros aplicados.')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('0 de 0 usuários nesta lista');
 });

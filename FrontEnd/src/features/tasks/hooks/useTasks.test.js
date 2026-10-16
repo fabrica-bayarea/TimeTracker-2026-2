@@ -52,6 +52,33 @@ describe('useTasks', () => {
     expect(devApi.createTask).not.toHaveBeenCalled();
   });
 
+  it('ignora um segundo envio enquanto a criação anterior está em andamento', async () => {
+    let finish;
+    devApi.createTask.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useTasks(devApi));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let first;
+    let second;
+    await act(async () => {
+      first = result.current.createTask('Task nova');
+      second = result.current.createTask('Task duplicada');
+      await expect(second).resolves.toBe(false);
+    });
+    expect(devApi.createTask).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finish(createdTask);
+      await expect(first).resolves.toBe(true);
+    });
+    expect(result.current.tasks).toEqual([createdTask]);
+  });
+
   it('aborts an older load and ignores its delayed response', async () => {
     let finishFirst;
     let firstSignal;
