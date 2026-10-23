@@ -152,7 +152,7 @@ test('filtra aplicativos somente na última atividade e combina com usuário', a
 
   await page.getByRole('combobox', { name: 'Usuário' }).selectOption('ana');
   await expect(page.getByText('Nenhum usuário corresponde aos filtros aplicados.')).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('0 de 1 usuários nesta lista');
+  await expect(page.getByText(/Filtro ativo: Chrome; 0 de 1 usuários nesta lista/)).toBeVisible();
   await page.getByRole('button', { name: 'Limpar aplicativo' }).click();
   await expect(activity).toContainText('Ana Silva');
 });

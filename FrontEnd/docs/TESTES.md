@@ -1,6 +1,41 @@
 # Testes e validação do frontend
 
-Este guia distingue verificação automatizada, build e verificações manuais ainda pendentes. Há validações registradas em **05/10/2026**, **07/10/2026**, **09/10/2026**, **13/10/2026** e **16/10/2026**. Resultados anteriores permanecem identificados pela data e pelo estado do código em que foram obtidos. O inventário completo das alterações está em [Alterações](ALTERACOES.md).
+Este guia distingue verificação automatizada, build e verificações manuais ainda pendentes. Há validações registradas em **05/10/2026**, **07/10/2026**, **09/10/2026**, **13/10/2026**, **16/10/2026** e **22/10/2026**. Resultados anteriores permanecem identificados pela data e pelo estado do código em que foram obtidos. O inventário completo das alterações está em [Alterações](ALTERACOES.md).
+
+## US-06.2 — Código de associação no Dashboard — 22/10/2026
+
+- Base local: branch `main`, HEAD `d49e71febbc69482b5682af1f26832ea136f33c6`; árvore limpa antes da implementação. Todas as alterações desta rodada ficaram em `FrontEnd/`.
+- Backend consultado somente para leitura: `GET /auth/me` responde o `ManagerOut` com `id`, `email` e `created_at`; não inclui `association_code`. Nenhum endpoint/modelo/schema de consulta do código foi encontrado. As issues #105, #113 e #114 retornaram `Cache miss`; a página do repositório abriu, mas o código local foi a fonte da implementação.
+- O card foi integrado ao Dashboard autenticado; sem contrato, informa a pendência e não exibe código. Os testes simulam somente o adapter de UI, sem criar endpoint ou dado demonstrativo de produção.
+- `npm.cmd run check`: passou (ESLint, Prettier, typecheck, build e verificação do bundle). Cobertura Vitest: **319 testes em 59 arquivos passaram**; 93,28% statements, 89,66% branches, 94,77% functions e 95,50% lines. Teste do bundle: **4 passaram**.
+- `npm.cmd run test:e2e`: **30 passaram, 0 falharam e 2 testes de API real foram ignorados** porque dependem de serviço/credenciais. As verificações automatizadas de acessibilidade passaram. Um seletor E2E do status do filtro foi delimitado ao texto esperado porque o card acrescentou uma mensagem acessível ao Dashboard.
+- Não houve chamada a API real nem homologação integrada. A cópia só fica habilitada quando um serviço futuro fornecer uma string válida de seis dígitos; consulta autenticada permanece pendente do contrato Backend.
+
+### Revalidação do commit da US-06.2 — 22/10/2026
+
+- Checkout verificado: branch `main`, HEAD `38c53581351d8c2038350cb1ed63eab44080f9ca` (`origin/main`); `git status --short` estava vazio antes das verificações.
+- Contrato revalidado no Backend local: `GET /auth/me` exige JWT e retorna `ManagerOut` com `id`, `email` e `created_at`; não inclui `association_code`. Os routers, schemas, modelos, CRUD e testes de autenticação consultados não declaram rota de consulta do código.
+- `npm.cmd run check`: passou (lint, format:check, typecheck, cobertura, build e test:bundle). Vitest: **319 testes em 59 arquivos passaram**; cobertura de 93,34% statements, 89,66% branches, 94,77% functions e 95,50% lines. Bundle: **4 verificações passaram**.
+- `npm.cmd run test:e2e`: **30 passaram, 0 falharam e 2 foram ignorados** por dependerem de API real/credenciais; verificações E2E de acessibilidade e layouts móveis passaram.
+- Os testes de código de associação continuam usando adapter simulado no Frontend; não houve chamada à API real. As issues #105, #113 e #114 não puderam ser consultadas nesta sessão (`Cache miss`).
+- A orientação para compartilhar o código aparece somente quando a resposta contém uma string válida de seis dígitos; testes cobrem os estados válido, inválido e pendente.
+- Resultado: frontend visual implementado e testado; homologação integrada depende do contrato de consulta autenticada do Backend.
+
+## Continuação da US-16.1 — 22/10/2026
+
+- Base local: branch `main`, HEAD `b9d78e515d6e65fbf5076309ecee1a89e8bf9cf0`; a árvore estava limpa antes desta rodada. A implementação e a documentação desta rodada estão limitadas a `FrontEnd/`.
+- A revisão de leitura confirmou que `backend/app/routers/dashboard.py` não declara `/dashboard/tasks-summary`; `backend/app/schemas.py` não define resposta de agregação por Task e `ActivityLogCreate` não contém `task_id`. A proposta em [Pendências — agregação de horas por Task](PENDENCIAS.md#proposta-task-hours) continua sem implementação no contrato atual.
+- O `TaskSummaryCard` agora aceita e apresenta um resumo recebido, distingue origem da API e demonstração, exibe colaboradores/atividade sem Task/tempo zero, e separa erro, carregamento e resposta vazia. O Dashboard de produção ainda não fornece esse resumo: o aviso de integração pendente continua visível quando não há dados.
+- A resolução de `VITE_API_URL` agora usa `localhost:8000` somente em desenvolvimento; sem valor em produção, usa a mesma origem. Nenhuma rota ou formato de agregação foi adicionado ao cliente.
+- `npm.cmd run test -- src/shared/api/api.test.js src/features/dashboard/components/TaskSummaryCard.test.jsx`: **2 arquivos e 42 testes passaram**.
+- `npm.cmd run lint`, `npm.cmd run format:check` e `npm.cmd run typecheck`: passaram.
+- `npm.cmd run test:coverage`: **301 testes em 58 arquivos passaram**. Cobertura V8: **93,32% statements, 89,63% branches, 95,07% functions e 95,50% lines**; os limites configurados passaram.
+- `npm.cmd run build`: passou com Vite 6.4.4; o verificador confirmou que handlers, worker e rotas dos mocks não entraram no bundle de produção.
+- O build sem `VITE_API_URL` foi inspecionado: `http://localhost:8000` não aparece nos arquivos JavaScript de `dist/`; o fallback local fica restrito ao desenvolvimento.
+- `npm.cmd run test:bundle`: **4 verificações passaram** para exclusão de mocks e rotas demonstrativas no bundle.
+- `npm.cmd run test:e2e`: **32 cenários, 30 passaram, 0 falharam e 2 testes de API real foram ignorados** porque exigem serviço/credenciais configurados. As verificações de acessibilidade automatizadas passaram.
+- Não houve chamada à API real nem execução de testes de Backend/Agent. Autorização/isolamento, política para Tasks excluídas e conferência de totais no servidor permanecem sem homologação.
+- As páginas GitHub das issues #132 e #140 não puderam ser carregadas nesta sessão (erro `Cache miss`); a página do repositório abriu. Status, comentários e alterações externas das issues não foram confirmados.
 
 ## Revalidação documental e completa — 21/10/2026
 
@@ -206,13 +241,13 @@ Para executar os testes com FastAPI real, inicie a API e o banco de dados separa
 
 ## Problemas comuns
 
-| Sintoma                                               | Verificação e ação                                                                                                                                                                                                |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API não responde ou telas mostram dados indisponíveis | Confira `VITE_API_URL` em `.env` (padrão `http://localhost:8000`), inicie FastAPI e banco e reinicie o Vite após mudar `.env`. Confira a chamada com falha na aba Rede do navegador.                              |
-| Erro de CORS no navegador                             | Confira se o backend permite a origem exata do frontend, incluindo protocolo e porta (`http://localhost:5173` no desenvolvimento; `http://127.0.0.1:5173` no preview dos E2E). A configuração é feita no backend. |
-| Playwright não encontra o navegador                   | Execute `npx playwright install chromium`. Se usar Chrome já instalado, defina `$env:PLAYWRIGHT_CHANNEL = 'chrome'` antes do comando de teste.                                                                    |
-| `test:e2e:real` aparece como ignorado                 | Inicie FastAPI e banco, configure `VITE_API_URL`, defina `$env:RUN_REAL_API = '1'` e execute `npm run test:e2e:real` novamente. Sem essa variável, o teste real é ignorado de propósito.                          |
-| Preview E2E não inicia                                | Libere a porta `5173`: o executor usa `127.0.0.1:5173` com `--strictPort`.                                                                                                                                        |
+| Sintoma                                               | Verificação e ação                                                                                                                                                                                                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API não responde ou telas mostram dados indisponíveis | Confira `VITE_API_URL` em `.env` (vazio usa `http://localhost:8000` em desenvolvimento e a mesma origem no build de produção), inicie FastAPI e banco e reinicie o Vite após mudar `.env`. Confira a chamada com falha na aba Rede do navegador. |
+| Erro de CORS no navegador                             | Confira se o backend permite a origem exata do frontend, incluindo protocolo e porta (`http://localhost:5173` no desenvolvimento; `http://127.0.0.1:5173` no preview dos E2E). A configuração é feita no backend.                                |
+| Playwright não encontra o navegador                   | Execute `npx playwright install chromium`. Se usar Chrome já instalado, defina `$env:PLAYWRIGHT_CHANNEL = 'chrome'` antes do comando de teste.                                                                                                   |
+| `test:e2e:real` aparece como ignorado                 | Inicie FastAPI e banco, configure `VITE_API_URL`, defina `$env:RUN_REAL_API = '1'` e execute `npm run test:e2e:real` novamente. Sem essa variável, o teste real é ignorado de propósito.                                                         |
+| Preview E2E não inicia                                | Libere a porta `5173`: o executor usa `127.0.0.1:5173` com `--strictPort`.                                                                                                                                                                       |
 
 Os E2E regulares interceptam as respostas HTTP; para conferir API e CORS reais, use o teste opt-in e os roteiros manuais abaixo.
 

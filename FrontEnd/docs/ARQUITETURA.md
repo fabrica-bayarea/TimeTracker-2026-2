@@ -34,7 +34,7 @@ As ramificações simuladas de autenticação, Tasks e jornada também verificam
 | `src/features/dashboard/hooks/useAutoRefresh.js`                                     | Atualização periódica apenas com a aba visível e atualização ao retornar.                                                                                                 |
 | `src/features/dashboard/lib/summary.js`                                              | Soma de duração e consolidação de categorias do painel.                                                                                                                   |
 | `src/features/dashboard/pages/DashboardPage.jsx`                                     | Composição de filtros, indicadores, atividade e categorias.                                                                                                               |
-| `src/features/dashboard/components/AssociationCodeCard.jsx`                          | Apresentação isolada do código de associação, cópia e estados da interface.                                                                                               |
+| `src/features/dashboard/components/AssociationCodeCard.jsx`                          | Card acessível no Dashboard autenticado; estado do código isolado e consulta real pendente do Backend.                                                                    |
 | `src/features/collaborators/hooks/useCollaboratorsData.js` e `components/`           | Consultas, combinação de usuários/realtime e visualização responsiva.                                                                                                     |
 | `src/features/settings/hooks/useSettings.js` e `components/SettingsForm.jsx`         | Leitura, edição, validação, gravação e guarda de alterações não salvas.                                                                                                   |
 | `src/features/reports/`                                                              | Página, consulta de usuários e exportação organizadas por responsabilidade.                                                                                               |
@@ -44,7 +44,7 @@ As ramificações simuladas de autenticação, Tasks e jornada também verificam
 
 ## Fluxo de dados do painel
 
-`AssociationCodeCard` não faz parte de `useDashboardData`: sua identidade é independente da data e do usuário selecionados. O card permanece fora do Dashboard porque `ManagerOut` não tem `association_code` e o backend não oferece rota/schema de consulta. O frontend integra cadastro, login JWT e `GET /auth/me`; esta autenticação não preenche nem substitui o contrato do código de associação.
+`AssociationCodeCard` não faz parte de `useDashboardData`: sua identidade é independente da data e do usuário selecionados. `App` entrega a identidade validada do gestor ao Dashboard; somente então o card é montado. `useAssociationCode` mantém o estado em memória, cancela a consulta e descarta respostas antigas em logout/troca de gestor. Neste checkout, o cliente de produção não tem método de consulta, então o card anuncia a pendência sem código. `GET /auth/me` retorna `ManagerOut` sem `association_code`; a sessão não substitui o contrato ausente. O adapter usado por testes é simulado e não define rota HTTP.
 
 Fluxo esperado, ainda não comprovado ponta a ponta:
 

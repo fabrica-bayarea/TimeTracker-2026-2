@@ -1,5 +1,13 @@
 # Alterações do frontend
 
+## 22/10/2026 — auditoria e validação da US-16.1
+
+- **Contrato:** a leitura do backend local confirmou que `/dashboard/tasks-summary` não existe em `backend/app/routers/dashboard.py`; o schema de atividade também não recebe `task_id`. A forma de resposta e os parâmetros de agregação permanecem proposta, descrita em [Pendências — agregação de horas por Task](PENDENCIAS.md#proposta-task-hours). Nenhuma chamada de produção foi criada com esse contrato candidato.
+- **Frontend preservado:** a prévia por Task permanece identificada como demonstração e separada do Dashboard real. Filtros, barras acessíveis, atividade geral sem Task, estados assíncronos, cancelamento e descarte de respostas antigas continuam cobertos. O filtro de Task não altera indicadores sem vínculo confiável.
+- **Regressão adicionada:** teste do cartão confirma que uma Task com duração de zero segundos permanece válida e expõe barra acessível em 0%, sem confundir valor zero com ausência de dados.
+- **Validação:** teste focado 4/4; lint, format check, typecheck, build e teste E2E passaram; cobertura passou com 297 testes em 58 arquivos. Evidências completas e os dois testes de API real ignorados estão em [Testes](TESTES.md).
+- **Limites:** não foi possível integrar dados reais sem endpoint, schema, vínculo `task_id`, regra de agregação e autorização/escopo fornecidos pelo Backend. Nenhuma API real foi chamada; não houve alteração fora de `FrontEnd/`, nem commit, push, PR ou mudança de issue.
+
 ## 21/10/2026 — formatação e revalidação dos contratos
 
 - **Estado inicial:** branch `main`, HEAD `fc3132ab5133b2ad9ea12da1e8ce1bbb987822eb`, igual a `origin/main`; árvore de trabalho limpa. A primeira execução de `npm.cmd run format:check` apontou somente `docs/ARQUITETURA.md` e `docs/README.md`.

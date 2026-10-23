@@ -11,7 +11,10 @@ export function TaskSummaryCard({
   error = null,
   onRetry,
 }) {
-  if (!demo) {
+  const entries = Array.isArray(summary?.tasks) ? summary.tasks : [];
+  const integrationPending = !demo && !summary && !loading && !error;
+
+  if (integrationPending) {
     return (
       <section className="card" aria-labelledby="task-summary-title">
         <h2 id="task-summary-title" className="text-lg font-bold">
@@ -27,7 +30,6 @@ export function TaskSummaryCard({
     );
   }
 
-  const entries = summary?.tasks || [];
   const validDurations = entries
     .map((entry) => entry.total_seconds)
     .filter((value) => Number.isSafeInteger(value) && value >= 0);
@@ -41,26 +43,42 @@ export function TaskSummaryCard({
             Tempo por Task
           </h2>
           <p className="mt-1 text-xs muted">
-            Resumo simulado · {date} · não representa atividade real
+            {demo ? 'Resumo simulado' : 'Resumo da API'}
+            {date ? ` · ${date}` : ''}
+            {demo ? ' · não representa atividade real' : ''}
           </p>
         </div>
         {summary && <p className="text-xs muted">Fuso: {summary.timezone}</p>}
       </div>
       {error && (
         <ErrorNotice className="mt-3" onRetry={onRetry}>
-          Fonte demonstrativa de horas por Task indisponível. {error}
+          {demo
+            ? `Fonte demonstrativa de horas por Task indisponível. ${error}`
+            : `Não foi possível carregar o resumo por Task. ${error}`}
         </ErrorNotice>
       )}
-      {loading ? (
+      {loading && summary && (
+        <p role="status" className="mt-3 text-xs muted">
+          Atualizando resumo por Task…
+        </p>
+      )}
+      {loading && !summary ? (
         <LoadingSkeleton label="Carregando resumo por Task…" />
-      ) : entries.length === 0 ? (
+      ) : !loading && !error && entries.length === 0 ? (
         <EmptyState className="mt-3">
-          {selectedTaskId
-            ? 'Não há dados simulados para a Task selecionada.'
-            : 'Não há dados simulados de atividade por Task para esta data.'}
+          {demo
+            ? selectedTaskId
+              ? 'Não há dados simulados para a Task selecionada.'
+              : 'Não há dados simulados de atividade por Task para esta data.'
+            : selectedTaskId
+              ? 'A API não retornou dados para a Task selecionada.'
+              : 'A API não retornou atividades por Task para esta data.'}
         </EmptyState>
-      ) : (
-        <ul className="mt-4 space-y-4" aria-label="Horas simuladas por Task">
+      ) : entries.length > 0 ? (
+        <ul
+          className="mt-4 space-y-4"
+          aria-label={demo ? 'Horas simuladas por Task' : 'Horas por Task'}
+        >
           {entries.map((entry) => {
             const validDuration =
               Number.isSafeInteger(entry.total_seconds) && entry.total_seconds >= 0;
@@ -98,7 +116,7 @@ export function TaskSummaryCard({
             );
           })}
         </ul>
-      )}
+      ) : null}
       <p className="mt-4 text-xs muted">
         A ordenação e o total consolidado permanecem sob definição. Nenhum ranking é calculado.
       </p>

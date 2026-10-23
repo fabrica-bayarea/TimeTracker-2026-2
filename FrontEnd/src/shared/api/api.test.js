@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from './api';
+import { api, resolveApiBaseUrl } from './api';
 import { MANAGER_ACCESS_TOKEN_KEY } from '../auth/sessionStorage';
 
 const ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJtYW5hZ2VyIn0.${'A'.repeat(43)}`;
@@ -15,6 +15,20 @@ afterEach(() => {
 });
 
 describe('cliente da API', () => {
+  it('usa localhost como padrão apenas no desenvolvimento', () => {
+    expect(resolveApiBaseUrl(undefined, true, 'http://localhost:8000')).toBe(
+      'http://localhost:8000',
+    );
+    expect(resolveApiBaseUrl(undefined, false)).toBe('');
+  });
+
+  it('preserva a origem configurada e remove barras finais', () => {
+    expect(resolveApiBaseUrl(' https://api.example.com/// ', false)).toBe(
+      'https://api.example.com',
+    );
+    expect(resolveApiBaseUrl('/api/', false)).toBe('/api');
+  });
+
   it('registers a manager using the ManagerOut contract', async () => {
     const manager = {
       id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',

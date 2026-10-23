@@ -21,11 +21,37 @@ const fullData = {
 beforeEach(() => vi.clearAllMocks());
 
 describe('DashboardPage', () => {
-  it('não exibe o card de associação indisponível na apresentação do MVP', () => {
+  it('não expõe o card de associação sem uma sessão autenticada', () => {
     useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
     render(<DashboardPage />);
 
     expect(screen.queryByRole('heading', { name: 'Código de associação' })).not.toBeInTheDocument();
+  });
+
+  it('exibe o estado pendente do código para o gestor autenticado sem afetar os indicadores', () => {
+    useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
+    render(<DashboardPage manager={{ id: 'manager-1' }} />);
+
+    expect(screen.getByRole('heading', { name: 'Código de associação' })).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole('heading', { name: 'Código de associação' }).closest('section'),
+      ).getByText(/Backend ainda não disponibiliza/),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tempo registrado').closest('article')).toHaveTextContent('1h 00min');
+    expect(screen.getByRole('button', { name: 'Copiar código de associação' })).toBeDisabled();
+  });
+
+  it('renderiza no Dashboard o código retornado por um adapter simulado', async () => {
+    const associationClient = {
+      getAssociationCode: vi.fn().mockResolvedValue('001234'),
+    };
+    useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
+    render(<DashboardPage manager={{ id: 'manager-1' }} associationClient={associationClient} />);
+
+    expect(await screen.findByText('001234')).toBeInTheDocument();
+    expect(associationClient.getAssociationCode).toHaveBeenCalledOnce();
+    expect(associationClient.getAssociationCode.mock.calls[0][0]).toBeInstanceOf(AbortSignal);
   });
 
   it('preserva o filtro visível quando a lista de usuários fica indisponível', () => {

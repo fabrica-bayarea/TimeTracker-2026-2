@@ -1,6 +1,6 @@
 # Pendências do frontend e dependências externas
 
-Revisão: **21/10/2026**. `backend/`, `agent/` e `requisitos/` foram consultados somente para leitura. Os IDs em **Problema/requisito** apontam para [RN/RF](../../requisitos/requisitos/rn_rf.md), [RNF](../../requisitos/requisitos/rnf.md), [critérios de aceite](../../requisitos/requisitos/ca.md) ou [RBAC](../../requisitos/rbac.md). Situação e prioridade refletem o código e os contratos observados neste checkout.
+Revisão: **22/10/2026**. `backend/`, `agent/` e `requisitos/` foram consultados somente para leitura. Os IDs em **Problema/requisito** apontam para [RN/RF](../../requisitos/requisitos/rn_rf.md), [RNF](../../requisitos/requisitos/rnf.md), [critérios de aceite](../../requisitos/requisitos/ca.md) ou [RBAC](../../requisitos/rbac.md). Situação e prioridade refletem o código e os contratos observados neste checkout.
 
 As PRs #122 (Agent, merge `e43673b4dca212eaa991308d14c9dc25b6c64061`) e #123 (autenticação do backend, merge `0fc4e7b7333ceb4fdd120f7f1f753f9836163e30`) já foram incorporadas à `main` da organização. A issue #138 de 21/10 e esta revisão integram a sessão do gestor no frontend. A apresentação aprovada em 13/10 permanece como registro histórico; ela não elimina o novo fluxo. Associação no backend continua ausente.
 
@@ -53,11 +53,13 @@ O resultado atual do `npm audit` não listou Vite, embora advisories oficiais do
 
 Os bloqueios funcionais impedem concluir o recorte anunciado como utilizável somente com o frontend atual. A apresentação de status realtime e o resumo por categoria continuam sendo fontes distintas; nenhuma delas é convertida em jornada ou Task.
 
-### Entregas frontend desta revisão — 21/10/2026
+### Entregas frontend desta revisão — 22/10/2026
 
 - O filtro de aplicativo deriva opções dos `process_name` recebidos no realtime e filtra somente a tabela atual de última atividade. Pode ser combinado com o usuário selecionado; não altera os indicadores ou o resumo diário e não responde a perguntas históricas de uso.
 - A demonstração de Tasks em desenvolvimento oferece lista, criação, edição e exclusão em memória, título/descrição, seleção múltipla de colaboradores, busca e ordenação. Produção apresenta a prévia desabilitada enquanto o CRUD backend não existe.
-- O Dashboard tem filtro e card de resumo por Task isolados dos indicadores gerais. O mock de `/dashboard/tasks-summary` responde vazio, sem fabricar métricas. A autenticação demonstrativa também é local ao MSW e não altera as chamadas de produção.
+- O Dashboard tem filtro e card de resumo por Task isolados dos indicadores gerais. O mock de `/dashboard/tasks-summary` responde vazio, sem fabricar métricas. O card agora consegue apresentar um resumo recebido e distingue origem da API, demonstração, erro, carregamento e ausência de registros; a página de produção ainda não fornece esse resumo e mantém o aviso de integração pendente.
+- A resolução de `VITE_API_URL` usa `http://localhost:8000` somente durante o desenvolvimento e usa a mesma origem em produção quando não configurada. Uma origem separada continua sendo fornecida no build e depende de CORS/HTTPS no ambiente publicado.
+- A leitura do Backend local confirmou que `/dashboard/tasks-summary`, `TaskId` em `ActivityLog` e a resposta de agregação por Task continuam ausentes. A integração de produção segue bloqueada; a proposta candidata de contrato não é uma rota implementada.
 
 <a id="resumo-das-pendencias"></a>
 
@@ -138,9 +140,9 @@ As seções abaixo trazem requisitos, motivo e trabalho necessário para cada ID
 - **Problema/requisito:** política de origem ampla e transmissão segura ainda dependente da implantação; [RNF-03](../../requisitos/requisitos/rnf.md#rnf-03--comunicação-segura)/[CA-09](../../requisitos/requisitos/ca.md#ca-09--privacidade-e-segurança).
 - **Frontend afetado:** `src/shared/api/api.js` e todas as requisições.
 - **Backend relacionado:** `app/main.py`, configuração de serviço/reverse proxy externa.
-- **Atual/impacto:** `allow_origins=["*"]` com `allow_credentials=True`; origem padrão de desenvolvimento HTTP. O ambiente real não foi validado.
+- **Atual/impacto:** `allow_origins=["*"]` com `allow_credentials=True`; o cliente usa `localhost:8000` somente no desenvolvimento e a mesma origem no build de produção sem variável configurada. O ambiente real não foi validado.
 - **Alteração necessária:** definir origens, credenciais e HTTPS por ambiente; fornecer a origem correta para `VITE_API_URL`.
-- **Workaround frontend:** configurar a URL já é possível; isso não cria TLS nem corrige CORS no servidor.
+- **Workaround frontend:** `VITE_API_URL` pode ser configurada no build quando a API tem origem separada; a mesma origem pode ser usada por proxy reverso. Isso não cria TLS nem corrige CORS no servidor.
 - **Motivo do bloqueio:** infraestrutura e política de resposta HTTP estão fora de `FrontEnd`.
 
 ### B-03 — Seed incompatível com chave UUID — Alta
@@ -274,10 +276,10 @@ As descrições históricas de [Sprint 1](../../requisitos/sprints/sprint1.md), 
 - **Status:** cliente de associação do Agent integrado; associação do backend **BLOQUEADA**.
 - **Problema/requisito:** [RF-03](../../requisitos/requisitos/rn_rf.md#rf-03--disponibilizar-código-de-associação)/[RF-04](../../requisitos/requisitos/rn_rf.md#rf-04--associar-colaborador)/[RF-05](../../requisitos/requisitos/rn_rf.md#rf-05--gerenciar-colaboradores-associados), [CA-01](../../requisitos/requisitos/ca.md#ca-01--identificação-acesso-e-associação)/[CA-07](../../requisitos/requisitos/ca.md#ca-07--consulta-relatórios-e-exportação) e [associação no RBAC](../../requisitos/rbac.md#6-associação).
 - **Frontend afetado:** painel, colaboradores, relatórios e futura exibição do código do gestor.
-- **A. Implementado no frontend:** `AssociationCodeCard` apresenta um código string de seis dígitos, preserva zeros à esquerda, oferece cópia com feedback e estados de carregamento, erro e indisponibilidade. Os testes verificam os estados visuais e acessíveis. O card permanece oculto até existir contrato real de consulta do código.
+- **A. Implementado no frontend para a US-06.2:** `AssociationCodeCard` aparece no Dashboard somente para a identidade validada do gestor. O componente aceita apenas string de seis algarismos, preserva zeros à esquerda, oferece cópia com feedback acessível, falha de Clipboard API, carregamento, erro, nova tentativa e estado de contrato pendente. A resposta atrasada é descartada após logout/troca de sessão. Nenhum código demonstrativo é apresentado.
 - **B. Implementado e integrado pela PR #122:** o Agent recebe código numérico de seis dígitos como string, envia `POST /associate/` com `code`, `username` e `hostname`, aceita token na resposta como `token` ou `access_token`, persiste o token protegido por DPAPI, reutiliza Bearer nas chamadas posteriores e não inicia monitoramento antes da associação. Commit de implementação `ed48ad7cfff9e724406ef9ffffeb6c0f132caf32`; merge `e43673b4dca212eaa991308d14c9dc25b6c64061`.
-- **C. Pendente no backend após inspeção de routers, `models.py`, `schemas.py` e `crud.py`:** geração e consulta autenticada do código (issue #113), `POST /associate/`, persistência do vínculo, validação/validade do código e isolamento de colaboradores por gestor. Não há `association_code` em `ManagerOut`; `GET /auth/me` não retorna esse campo e não substitui endpoint de código.
-- **D. Pendente no frontend:** o frontend já possui sessão do gestor. Após o backend definir rota e schema autenticados de consulta do código, integrar a resposta e considerar exibi-lo (issue #114). A API não inventa rota e o card continua oculto.
+- **C. Pendente no backend após inspeção de `routers/`, `models.py`, `schemas.py` e `crud.py`:** geração e consulta autenticada do código (issue #113), `POST /associate/`, persistência do vínculo, validação/validade do código e isolamento de colaboradores por gestor. Não há `association_code` em `ManagerOut`; `GET /auth/me` não retorna esse campo e não substitui uma consulta do código.
+- **D. Integração de produção pendente:** falta o contrato confirmado de leitura autenticada do código. O Backend precisa decidir entre incluir `association_code` como string de seis dígitos em `GET /auth/me` ou declarar uma rota autenticada específica, com resposta e erros definidos. A autorização deve derivar o gestor do JWT, sem aceitar `manager_id` enviado pelo navegador. Se `/auth/me` for escolhido, o schema do Backend e o validador estrito do Frontend precisam ser atualizados em conjunto. O adapter opcional de `useAssociationCode` usado em testes recebe uma string; ele é uma seam interna de teste e não define endpoint nem contrato HTTP. O cliente de produção não consulta nem gera código.
 - **Segurança e impacto:** o token protegido localmente do Agent e o JWT do gestor são credenciais distintas. As rotas de usuários, realtime, painel, exportação e configuração continuam globais e sem dependência `get_current_manager`; a autenticação nova não prova autorização nem isolamento. Filtros locais não protegem dados. Estados realtime não são prova de associação ou conexão ativa.
 - **Motivo do bloqueio:** a PR #122 implementa o lado cliente Agent, mas o backend deste checkout ainda não tem código, endpoints ou persistência de associação. Também falta autorização e isolamento por gestor.
 - **Propostas detalhadas:** [consulta do código](#proposta-association-code) e [associação do Agent](#proposta-agent-association).
@@ -690,7 +692,7 @@ Endpoint e schemas são candidatos, não implementados. O JWT de Agent deve ter 
 - Consulta: 401 sem JWT; 404 ou 409 se não houver código ativo, conforme decisão de produto; 5xx em falha do serviço.
 - Associação: 422 para payload malformado; 404 ou 410 para código inválido/expirado; 409 para vínculo existente ou conflito; 429 para excesso de tentativas; 5xx em falha. O Agent mapeia vários desses status como código inválido, mas a tolerância do cliente não define o contrato do servidor.
 - Associação válida deve persistir o vínculo e emitir credencial de Agent. Código inválido não cria usuário, vínculo ou sessão.
-- O card visual permanece oculto e sem chamada de API até existir contrato real de código. A sessão do gestor já está integrada no frontend; depois que o backend definir a rota e o escopo de autorização, será possível consultar o código e tratar indisponibilidade, erro e cópia. O frontend nunca reutiliza o token do Agent.
+- O card visual já está no Dashboard autenticado e permanece sem chamada de API enquanto não existir contrato real de código. A sessão do gestor está integrada no frontend; depois que o backend definir a rota/campo e o escopo de autorização, será possível ligar o cliente HTTP oficial ao estado visual. O frontend nunca reutiliza o token do Agent.
 - Backend precisa de campo/entidade, geração segura, endpoint autenticado, associação, vínculo persistente e credenciais distintas por tipo de cliente. O Agent já envia o payload e protege o token com DPAPI; schema final precisa ser alinhado. A liderança define geração sob demanda/no cadastro, expiração, rotação, revogação, reutilização/uso único, tentativas, troca de gestor e identidade duradoura do Agent.
 
 ### B-01 — Autorização e isolamento por gestor

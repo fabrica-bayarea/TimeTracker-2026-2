@@ -2,7 +2,7 @@
 
 Frontend do **TimeTrack**, responsável pela interface web do dashboard. A aplicação consulta os dados disponíveis na API FastAPI e utiliza navegação por hash, sem React Router. Atualmente, não possui manifest nem service worker e não é instalável como PWA.
 
-> **Escopo do MVP 13/10:** a aplicação abre sem login. O link de cadastro e o card de associação ficam ocultos na apresentação. O backend já implementa cadastro, login JWT e `GET /auth/me`, e a PR #122 do Agent está integrada; a interface ainda não integra sessão autenticada. Geração/consulta do código, `POST /associate/` no backend, persistência e isolamento da associação não foram encontrados neste checkout. Nenhuma integração ou código é simulado no navegador. A consulta de entrada/último registro e a criação persistente de Tasks também aguardam contratos reais. Consulte [Pendências](docs/PENDENCIAS.md).
+> **Estado em 22/10:** cadastro, login JWT, validação de sessão e proteção do Dashboard estão integrados. O card de associação aparece somente para o gestor autenticado e informa que a consulta está pendente; não apresenta código fictício. Este checkout do Backend não declara `association_code` em `GET /auth/me` nem rota de consulta autenticada. O Frontend não gera código e não chama uma rota presumida; a integração de produção aguarda contrato do Backend. `POST /associate/`, persistência e isolamento da associação também não foram encontrados. A consulta de entrada/último registro e a criação persistente de Tasks aguardam contratos reais. Consulte [Pendências](docs/PENDENCIAS.md).
 
 O realtime apresenta os estados `online`, `ausente` e `offline` recebidos da API; usuários sem entrada realtime são identificados como “Sem dados”. Consulte [Arquitetura](docs/ARQUITETURA.md) e [Funcionalidades](docs/FUNCIONALIDADES.md) para a semântica e os limites desses estados.
 
@@ -103,7 +103,7 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-`VITE_API_URL` define a origem da API; o padrão é `http://localhost:8000`. O backend precisa estar em execução e permitir a origem do frontend em CORS.
+`VITE_API_URL` define a origem da API. Se estiver vazia, o desenvolvimento usa `http://localhost:8000` e o build de produção usa a mesma origem do Frontend, adequada a um proxy reverso. Quando a API estiver em outra origem, configure a URL no ambiente de build; em páginas HTTPS, essa origem também deve usar HTTPS. A API precisa permitir a origem do Frontend em CORS quando forem origens distintas.
 
 ## Validar
 

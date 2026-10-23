@@ -41,7 +41,13 @@ function AppContent({ mocksEnabled, devApi }) {
   const content = Page ? (
     <PageErrorBoundary key={route}>
       <Suspense fallback={<p role="status">Carregando interface…</p>}>
-        <Page dark={dark} toggleTheme={toggleTheme} mode={route} devApi={devApi} />
+        <Page
+          dark={dark}
+          toggleTheme={toggleTheme}
+          mode={route}
+          devApi={devApi}
+          manager={config?.protected ? session.manager : null}
+        />
       </Suspense>
     </PageErrorBoundary>
   ) : (

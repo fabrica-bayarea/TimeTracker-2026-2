@@ -17,14 +17,23 @@ import {
 } from '../../../shared/lib/processFilter';
 import { useTaskAnalytics } from '../hooks/useTaskAnalytics';
 import { TaskSummaryCard } from '../components/TaskSummaryCard';
+import { AssociationCodeCard } from '../components/AssociationCodeCard';
+import { useAssociationCode } from '../hooks/useAssociationCode';
 
-export function DashboardPage({ dark, toggleTheme, devApi = null }) {
+export function DashboardPage({
+  dark,
+  toggleTheme,
+  devApi = null,
+  manager = null,
+  associationClient,
+}) {
   const [date, setDate] = useState(todayIso());
   const [username, setUsername] = useState('');
   const [selectedProcess, setSelectedProcess] = useState('');
   const [taskId, setTaskId] = useState('');
   const { data, loading, refreshing, error, updatedAt, refresh } = useDashboardData(date, username);
   const taskAnalytics = useTaskAnalytics(devApi, date, username, taskId);
+  const associationCode = useAssociationCode(manager?.id, associationClient);
   useEffect(() => {
     if (
       taskAnalytics.tasksAvailable &&
@@ -66,6 +75,16 @@ export function DashboardPage({ dark, toggleTheme, devApi = null }) {
         }
       />
       <DashboardStatusNotice />
+      {manager?.id && (
+        <AssociationCodeCard
+          key={manager.id}
+          code={associationCode.code}
+          loading={associationCode.loading}
+          pending={associationCode.pending}
+          error={associationCode.error}
+          onRetry={associationCode.retry}
+        />
+      )}
       <DashboardFilters
         date={date}
         onDateChange={setDate}

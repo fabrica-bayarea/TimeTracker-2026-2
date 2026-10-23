@@ -10,7 +10,18 @@ import {
   validUsers,
 } from './validators';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+/** @param {string | undefined} configuredUrl @param {boolean} isDevelopment @param {string} developmentUrl */
+export function resolveApiBaseUrl(configuredUrl, isDevelopment, developmentUrl = '') {
+  const configured = configuredUrl?.trim();
+  if (configured) return configured.replace(/\/+$/, '');
+  return isDevelopment ? developmentUrl : '';
+}
+
+const API_BASE_URL = resolveApiBaseUrl(
+  import.meta.env.VITE_API_URL,
+  import.meta.env.DEV,
+  import.meta.env.DEV ? 'http://localhost:8000' : '',
+);
 const TIMEOUT = 15000;
 
 /**

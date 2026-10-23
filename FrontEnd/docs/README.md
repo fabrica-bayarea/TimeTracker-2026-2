@@ -10,7 +10,7 @@ Use este índice para localizar informações sobre o estado atual, a arquitetur
 - [Matriz de issues](MATRIZ_ISSUES_FRONTEND.md): inventário oficial e classificação técnica das 38 issues consultadas.
 - [Relatório da execução](RELATORIO_EXECUCAO_FRONTEND.md): mudanças, resultados reais dos testes, limites e próximos passos.
 
-O frontend integra cadastro/login JWT, restauração em `sessionStorage`, logout e guarda de páginas após validar `/auth/me`. As rotas de dados do backend ainda não exigem JWT nem isolam equipes; consulte B-01 e [Pendências](PENDENCIAS.md). Tasks têm uma interface completa de demonstração local, com mocks voláteis; produção mantém a prévia desabilitada até a implementação do CRUD e da agregação no backend. A PR #128 do frontend permanece aberta nesta auditoria; as mudanças locais ainda não estão no `upstream/main`. A PR #122 do Agent foi integrada, mas o backend deste checkout ainda não apresenta geração/consulta de código, `POST /associate/` ou persistência do vínculo. O card visual permanece oculto.
+O frontend integra cadastro/login JWT, restauração em `sessionStorage`, logout e guarda de páginas após validar `/auth/me`. As rotas de dados do backend ainda não exigem JWT nem isolam equipes; consulte B-01 e [Pendências](PENDENCIAS.md). Tasks têm uma interface completa de demonstração local, com mocks voláteis; produção mantém a prévia desabilitada até a implementação do CRUD e da agregação no backend. A PR #122 do Agent foi integrada, mas o backend deste checkout ainda não apresenta geração/consulta de código, `POST /associate/` ou persistência do vínculo. O card agora aparece no Dashboard autenticado e comunica a dependência; consulta e cópia permanecem desabilitadas até existir contrato real.
 
 ## Arquitetura e contratos
 
