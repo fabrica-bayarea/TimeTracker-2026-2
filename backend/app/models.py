@@ -10,6 +10,8 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     Index,
+    Table,
+    Text,
     Uuid,
     func,
 )
@@ -36,9 +38,15 @@ class User(Base):
     username = Column(String(150), unique=True, nullable=False, index=True)
     full_name = Column(String(255), nullable=True)
     department = Column(String(150), nullable=True)
+    # Gestor responsável pelo colaborador (equipe). Nulo até a associação
+    manager_id = Column(Uuid(as_uuid=True), ForeignKey("managers.id"),
+                        nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    manager = relationship("Manager")
     activity_logs = relationship("ActivityLog", back_populates="user")
+    tasks = relationship("Task", secondary="task_assignments",
+                         back_populates="collaborators")
 
 
 class Manager(Base):
@@ -57,6 +65,42 @@ class Manager(Base):
                         nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(),
                         onupdate=func.now(), nullable=False)
+
+
+class Task(Base):
+    """
+    Task criada por um gestor e atribuída a colaboradores da sua equipe
+    """
+
+    __tablename__ = "tasks"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid7)
+    manager_id = Column(Uuid(as_uuid=True), ForeignKey("managers.id"),
+                        nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(),
+                        nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(),
+                        onupdate=func.now(), nullable=False)
+
+    manager = relationship("Manager")
+    collaborators = relationship("User", secondary="task_assignments",
+                                 back_populates="tasks",
+                                 order_by="User.username")
+
+
+# Associação N:N entre tasks e colaboradores
+# Apagar a task (ou o usuário) remove os vínculos, nunca o outro lado
+task_assignments = Table(
+    "task_assignments",
+    Base.metadata,
+    Column("task_id", Uuid(as_uuid=True),
+           ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Uuid(as_uuid=True),
+           ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Index("ix_task_assignments_user_id", "user_id"),
+)
 
 
 class Category(Base):

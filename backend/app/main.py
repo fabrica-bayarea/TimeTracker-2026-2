@@ -7,12 +7,22 @@ from fastapi.responses import JSONResponse
 
 from .database import Base, engine
 from . import models # registra modelos antes do create_all.
-from .routers import activities, auth, dashboard, categories, config, users
+from .routers import (
+    activities,
+    auth,
+    dashboard,
+    categories,
+    config,
+    tasks,
+    users,
+)
+from .schema_upgrades import apply_schema_upgrades
 
 _ = models
 
 # Possibilidade: Alembic para migrações versionadas para prod
 Base.metadata.create_all(bind=engine)
+apply_schema_upgrades(engine)
 
 app = FastAPI(
     title="Time Tracker API",
@@ -68,6 +78,7 @@ app.include_router(activities.router)
 app.include_router(dashboard.router)
 app.include_router(categories.router)
 app.include_router(config.router)
+app.include_router(tasks.router)
 app.include_router(users.router)
 
 

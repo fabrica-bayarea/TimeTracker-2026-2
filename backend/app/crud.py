@@ -3,8 +3,7 @@ from datetime import datetime, date, timedelta, timezone
 
 from sqlalchemy import func, and_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from dotenv import load_dotenv
+from sqlalchemy.orm import Session, selectinload
 
 from . import models, schemas, security
 from .utils import MAX_IDLE_SECONDS
@@ -42,7 +41,7 @@ def list_users(db: Session) -> list[models.User]:
 
 # Managers (autenticação do gestor)
 class EmailAlreadyRegisteredError(Exception):
-    """Já existe um gestor com este e-mail."""
+    """Já existe um gestor com este e-mail"""
 
 
 def get_manager_by_email(db: Session, email: str) -> models.Manager | None:
@@ -86,7 +85,7 @@ def authenticate_manager(
 ) -> models.Manager | None:
     """
     Retorna o gestor se e-mail e senha conferem, senão None. Não diferencia
-    "e-mail inexistente" de "senha incorreta" (nem no tempo de resposta).
+    "e-mail inexistente" de "senha incorreta" (nem no tempo de resposta)
     """
     manager = get_manager_by_email(db, email)
 
@@ -98,6 +97,136 @@ def authenticate_manager(
         return None
 
     return manager
+
+
+# Tasks
+class InvalidCollaboratorsError(Exception):
+    """
+    Algum colaborador não existe ou não pertence à equipe do gestor
+    """
+
+    def __init__(self, invalid_ids: list[uuid.UUID]):
+        super().__init__(invalid_ids)
+
+        self.invalid_ids = invalid_ids
+
+
+def _get_team_collaborators(
+        db: Session,
+        manager_id: uuid.UUID,
+        collaborator_ids: list[uuid.UUID]
+) -> list[models.User]:
+    """
+    Resolve os ids em colaboradores da equipe do gestor
+    (`user.manager_id == manager_id`)
+
+    Ids repetidos são ignorados
+    """
+    ids = tuple(dict.fromkeys(collaborator_ids))
+
+    if not ids:
+        return []
+
+    users = (
+        db.query(models.User)
+          .filter(
+              models.User.id.in_(ids),
+              models.User.manager_id == manager_id,
+          )
+          .all()
+    )
+
+    found = {user.id for user in users}
+    invalid = [user_id for user_id in ids if user_id not in found]
+
+    if invalid:
+        raise InvalidCollaboratorsError(invalid)
+
+    return users
+
+
+def list_tasks(db: Session, manager_id: uuid.UUID) -> list[models.Task]:
+    return (
+        db.query(models.Task)
+          .options(selectinload(models.Task.collaborators))
+          .filter(models.Task.manager_id == manager_id)
+          .order_by(models.Task.created_at.desc(), models.Task.id.desc())
+          .all()
+    )
+
+
+def get_task(
+        db: Session,
+        manager_id: uuid.UUID,
+        task_id: uuid.UUID
+) -> models.Task | None:
+    """
+    Só devolve a task se ela pertencer ao gestor; task de outro gestor
+    é tratada como inexistente
+    """
+    return (
+        db.query(models.Task)
+          .options(selectinload(models.Task.collaborators))
+          .filter(
+              models.Task.id == task_id,
+              models.Task.manager_id == manager_id,
+          )
+          .first()
+    )
+
+
+def create_task(
+        db: Session,
+        manager_id: uuid.UUID,
+        task: schemas.TaskCreate
+) -> models.Task:
+    collaborators = _get_team_collaborators(
+        db, manager_id, task.collaborator_ids
+    )
+
+    db_task = models.Task(
+        manager_id=manager_id,
+        title=task.title,
+        description=task.description,
+        collaborators=collaborators,
+    )
+
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+
+    return db_task
+
+
+def update_task(
+        db: Session,
+        db_task: models.Task,
+        task_update: schemas.TaskUpdate
+) -> models.Task:
+    changes = task_update.model_dump(exclude_unset=True)
+
+    # Valida a equipe antes de alterar qualquer campo
+    if "collaborator_ids" in changes:
+        db_task.collaborators = _get_team_collaborators(
+            db, db_task.manager_id, changes.pop("collaborator_ids")
+        )
+
+    for field, value in changes.items():
+        setattr(db_task, field, value)
+
+    if task_update.model_fields_set:
+        # Trocar só os colaboradores não altera a linha da task
+        db_task.updated_at = func.now()
+
+    db.commit()
+    db.refresh(db_task)
+
+    return db_task
+
+
+def delete_task(db: Session, db_task: models.Task) -> None:
+    db.delete(db_task)
+    db.commit()
 
 
 # Categories

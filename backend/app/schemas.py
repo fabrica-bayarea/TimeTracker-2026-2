@@ -89,6 +89,109 @@ class Token(BaseModel):
     expires_in: int = Field(description="Validade do token, em segundos.")
 
 
+# Tasks
+TASK_TITLE_MAX = 200
+TASK_DESCRIPTION_MAX = 5000
+TASK_COLLABORATORS_MAX = 500
+
+
+def _clean_title(value: str) -> str:
+    title = value.strip()
+
+    if not title:
+        raise ValueError("O título não pode ser vazio.")
+
+    return title
+
+
+def _clean_description(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    return value.strip() or None
+
+
+class TaskCreate(BaseModel):
+    title: str = Field(max_length=TASK_TITLE_MAX)
+    description: str | None = Field(default=None,
+                                    max_length=TASK_DESCRIPTION_MAX)
+    collaborator_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=TASK_COLLABORATORS_MAX,
+        description="Colaboradores da equipe do gestor atribuídos à task.",
+    )
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, value: str) -> str:
+        return _clean_title(value)
+
+    @field_validator("description")
+    @classmethod
+    def description_blank_is_none(cls, value: str | None) -> str | None:
+        return _clean_description(value)
+
+
+class TaskUpdate(BaseModel):
+    """
+    Atualização parcial: só os campos enviados são alterados
+
+    `collaborator_ids` substitui a lista inteira (`[]` remove todos)
+    """
+
+    title: str | None = Field(default=None, max_length=TASK_TITLE_MAX)
+    description: str | None = Field(default=None,
+                                    max_length=TASK_DESCRIPTION_MAX)
+    collaborator_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        max_length=TASK_COLLABORATORS_MAX,
+    )
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("O título não pode ser nulo.")
+
+        return _clean_title(value)
+
+    @field_validator("description")
+    @classmethod
+    def description_blank_is_none(cls, value: str | None) -> str | None:
+        return _clean_description(value)
+
+    @field_validator("collaborator_ids")
+    @classmethod
+    def collaborators_not_null(
+        cls,
+        value: list[uuid.UUID] | None
+    ) -> list[uuid.UUID]:
+        if value is None:
+            raise ValueError(
+                "A lista de colaboradores não pode ser nula; "
+                "use [] para remover todos."
+            )
+
+        return value
+
+
+class TaskCollaboratorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    username: str
+    full_name: str | None = None
+
+
+class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    description: str | None
+    collaborators: list[TaskCollaboratorOut]
+    created_at: datetime
+    updated_at: datetime
+
+
 # Categories
 class CategoryBase(BaseModel):
     name: str
