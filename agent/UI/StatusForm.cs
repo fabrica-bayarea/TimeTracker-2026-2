@@ -1,3 +1,4 @@
+using TimeTracker.Agent.Dtos;
 using TimeTracker.Agent.Services;
 using TimeTracker.Agent.Models;
 
@@ -14,6 +15,7 @@ public class StatusForm : Form
     private readonly Label _queueLabel;
     private readonly Label _onlineLabel;
     private readonly Label _associationLabel;
+    private readonly Label _taskLabel;
     private readonly System.Windows.Forms.Timer _refreshTimer;
 
     public StatusForm(AgentOrchestrator orchestrator)
@@ -25,7 +27,7 @@ public class StatusForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new(420, 260);
+        ClientSize = new(420, 295);
 
         Label titleLabel = new()
         {
@@ -73,10 +75,19 @@ public class StatusForm : Form
             Font = new(Font, FontStyle.Bold)
         };
 
+        _taskLabel = new()
+        {
+            AutoSize = false,
+            AutoEllipsis = true,
+            Size = new(290, 20),
+            Location = new(15, 245),
+            Font = new(Font, FontStyle.Bold)
+        };
+
         Button closeButton = new()
         {
             Text = "Fechar",
-            Location = new(315, 225),
+            Location = new(315, 255),
             Size = new(90, 28),
             DialogResult = DialogResult.OK
         };
@@ -89,6 +100,7 @@ public class StatusForm : Form
         Controls.Add(_queueLabel);
         Controls.Add(_onlineLabel);
         Controls.Add(_associationLabel);
+        Controls.Add(_taskLabel);
         Controls.Add(closeButton);
 
         _refreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
@@ -148,6 +160,17 @@ public class StatusForm : Form
         );
         _associationLabel.ForeColor = (
             associated ? Color.DarkGreen : Color.DarkRed
+        );
+
+        TaskDto? activeTask = _orchestrator.ActiveTask;
+
+        _taskLabel.Text = (
+            activeTask is null ?
+                "Task: Aguardando task"
+                : $"Task ativa: {activeTask.Title}"
+        );
+        _taskLabel.ForeColor = (
+            activeTask is null ? Color.DimGray : Color.DarkGreen
         );
 
         if (_orchestrator.Capture.IsPaused)

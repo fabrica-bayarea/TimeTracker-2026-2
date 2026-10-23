@@ -1,3 +1,5 @@
+using TimeTracker.Agent.Config;
+using TimeTracker.Agent.Dtos;
 using TimeTracker.Agent.Services;
 
 namespace TimeTracker.Agent.UI;
@@ -9,6 +11,10 @@ public class TrayApplicationContext : ApplicationContext
     private readonly NotifyIcon _trayIcon;
     private readonly ToolStripMenuItem _pauseResumeItem;
     private readonly ToolStripMenuItem _associateItem;
+    private readonly ToolStripMenuItem _tasksItem;
+    private readonly System.Windows.Forms.Timer _tasksTimer;
+
+    private const int MaxTaskMenuTextLength = 60;
 
     private static readonly string NoticeAckPath = Path.Combine(
         Environment.GetFolderPath(
@@ -21,6 +27,8 @@ public class TrayApplicationContext : ApplicationContext
     {
         _orchestrator = orchestrator;
         _orchestrator.OnlineStatusChanged += OnOnlineStatusChanged;
+        _orchestrator.ActiveTaskChanged += _ => RebuildTasksMenu();
+        _orchestrator.ActiveTaskUnassigned += OnActiveTaskUnassigned;
 
         ContextMenuStrip menu = new();
         ToolStripMenuItem statusItem = new(
@@ -32,11 +40,13 @@ public class TrayApplicationContext : ApplicationContext
         _associateItem = new ToolStripMenuItem(
             "Associar ao gestor...", null, (_, _) => ShowAssociation()
         );
+        _tasksItem = new ToolStripMenuItem("Tasks") { Visible = false };
         ToolStripMenuItem exitItem = new(
             "Sair", null, (_, _) => ExitApplication()
         );
 
         menu.Items.Add(statusItem);
+        menu.Items.Add(_tasksItem);
         menu.Items.Add(_associateItem);
         menu.Items.Add(_pauseResumeItem);
         menu.Items.Add(new ToolStripSeparator());
@@ -50,6 +60,19 @@ public class TrayApplicationContext : ApplicationContext
             Visible = true
         };
         _trayIcon.DoubleClick += (_, _) => ShowStatus();
+
+        // Atualiza a lista sempre que o menu é aberto e periodicamente
+        menu.Opening += async (_, _) => await RefreshTasksAsync();
+
+        _tasksTimer = new System.Windows.Forms.Timer
+        {
+            Interval = Math.Max(
+                5000, AppConfig.Instance.Agent.TasksPollingIntervalMs
+            )
+        };
+        _tasksTimer.Tick += async (_, _) => await RefreshTasksAsync();
+
+        RebuildTasksMenu();
 
         ShowFirstRunNoticeIfNeeded();
 
@@ -84,15 +107,159 @@ public class TrayApplicationContext : ApplicationContext
         bool associated = _orchestrator.IsAssociated;
         _associateItem.Visible = !associated;
         _pauseResumeItem.Visible = associated;
+        _tasksItem.Visible = associated;
 
         if (!associated) return;
 
         _orchestrator.Start(); // idempotente
+        _tasksTimer.Start();   // idempotente
+        _ = RefreshTasksAsync();
         _trayIcon.ShowBalloonTip(
             3000, "Time Tracker",
             "Agente associado e monitorando.",
             ToolTipIcon.Info
         );
+    }
+
+    // ---- Tasks ----
+
+    private async Task RefreshTasksAsync()
+    {
+        if (!_orchestrator.IsAssociated) return;
+
+        // não lança: falhas ficam em _orchestrator.TasksLoadError
+        await _orchestrator.RefreshTasksAsync();
+
+        RebuildTasksMenu();
+    }
+
+    // Reconstrói o submenu "Tasks" a partir do estado do orquestrador
+    private void RebuildTasksMenu()
+    {
+        _tasksItem.DropDownItems.Clear();
+
+        TaskDto? active = _orchestrator.ActiveTask;
+
+        foreach (TaskDto task in _orchestrator.AvailableTasks)
+        {
+            TaskDto captured = task;
+            ToolStripMenuItem item = new(
+                TaskMenuText(task.Title), null,
+                (_, _) => OnTaskClicked(captured)
+            )
+            {
+                Checked = active is not null && active.Id == task.Id,
+                ToolTipText = (
+                    string.IsNullOrWhiteSpace(task.Description) ?
+                        task.Title
+                        : $"{task.Title}\n{task.Description}"
+                )
+            };
+
+            _tasksItem.DropDownItems.Add(item);
+        }
+
+        if (_orchestrator.AvailableTasks.Count == 0)
+        {
+            string placeholder = (
+                _orchestrator.TasksLoadError
+                ?? (
+                    _orchestrator.TasksLoaded ?
+                        "Nenhuma task atribuída"
+                        : "Carregando tasks..."
+                )
+            );
+
+            _tasksItem.DropDownItems.Add(
+                new ToolStripMenuItem(placeholder) { Enabled = false }
+            );
+        }
+        else if (_orchestrator.TasksLoadError is { } error)
+        {
+            // mantém a última lista conhecida, avisando que pode estar velha
+            _tasksItem.DropDownItems.Add(new ToolStripSeparator());
+            _tasksItem.DropDownItems.Add(
+                new ToolStripMenuItem(
+                    $"{error} (lista pode estar desatualizada)"
+                )
+                {
+                    Enabled = false
+                }
+            );
+        }
+
+        _tasksItem.DropDownItems.Add(new ToolStripSeparator());
+        _tasksItem.DropDownItems.Add(
+            new ToolStripMenuItem(
+                "Encerrar task atual", null, (_, _) => OnEndTaskClicked()
+            )
+            {
+                Enabled = active is not null
+            }
+        );
+    }
+
+    private void OnTaskClicked(TaskDto task)
+    {
+        TaskDto? previous = _orchestrator.ActiveTask;
+
+        if (previous is not null && previous.Id == task.Id) return;
+
+        if (!_orchestrator.SelectTask(task))
+        {
+            _trayIcon.ShowBalloonTip(
+                3000, "Time Tracker",
+                "Esta task não está mais disponível para você.",
+                ToolTipIcon.Warning
+            );
+            _ = RefreshTasksAsync();
+
+            return;
+        }
+
+        _trayIcon.ShowBalloonTip(
+            3000, "Time Tracker",
+            previous is null ?
+                $"Task iniciada: {task.Title}"
+                : $"Task alterada para: {task.Title}",
+            ToolTipIcon.Info
+        );
+    }
+
+    private void OnEndTaskClicked()
+    {
+        TaskDto? ended = _orchestrator.ActiveTask;
+
+        if (ended is null) return;
+
+        _orchestrator.EndTask();
+
+        _trayIcon.ShowBalloonTip(
+            3000, "Time Tracker",
+            $"Task encerrada: {ended.Title}. Aguardando task.",
+            ToolTipIcon.Info
+        );
+    }
+
+    private void OnActiveTaskUnassigned(TaskDto task)
+    {
+        _trayIcon.ShowBalloonTip(
+            5000, "Time Tracker",
+            $"A task \"{task.Title}\" não está mais atribuída a você. " +
+            "Aguardando task.",
+            ToolTipIcon.Warning
+        );
+    }
+
+    // Uma linha, truncada e com "&" escapado (senão vira atalho de teclado)
+    private static string TaskMenuText(string title)
+    {
+        string text = title.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+        if (text.Length > MaxTaskMenuTextLength)
+            text = text[..(MaxTaskMenuTextLength - 1)] + "…";
+
+        return text.Replace("&", "&&");
     }
 
     private static void ShowFirstRunNoticeIfNeeded()
@@ -167,6 +334,9 @@ public class TrayApplicationContext : ApplicationContext
 
     private void ExitApplication()
     {
+        _tasksTimer.Stop();
+        _tasksTimer.Dispose();
+
         _orchestrator.Dispose();
 
         _trayIcon.Visible = false;

@@ -34,3 +34,12 @@ public class AssociateResponseDto
     public string? Token { get; set; }
     public string? AccessToken { get; set; } // tolerância a "access_token"
 }
+
+// GET /tasks/my-tasks — subconjunto de schemas.TaskResponse
+// Campos extras devolvidos pela API (collaborators, created_at...) são ignorados
+public class TaskDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = "";
+    public string? Description { get; set; }
+}

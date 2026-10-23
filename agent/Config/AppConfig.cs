@@ -7,6 +7,7 @@ public class ApiEndpointsConfig
     public string SendActivity { get; set; } = "activities/";
     public string GetSettings { get; set; } = "config/";
     public string Associate { get; set; } = "associate/";
+    public string MyTasks { get; set; } = "tasks/my-tasks";
 }
 
 public class ApiConfig
@@ -25,6 +26,8 @@ public class AgentDefaultsConfig
     public int FallbackIdleTimeoutSeconds { get; set; } = 300;
     // Intervalo de repolling de GET /config/
     public int SettingsPollingIntervalMs { get; set; } = 60000;
+    // Intervalo de repolling de GET /tasks/my-tasks (além de toda abertura do menu)
+    public int TasksPollingIntervalMs { get; set; } = 60000;
 }
 
 public class QueueConfig

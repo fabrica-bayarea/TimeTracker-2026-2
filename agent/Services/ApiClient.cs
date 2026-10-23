@@ -21,6 +21,10 @@ public interface IApiClient
         string code, string username,
         string hostname, CancellationToken ct = default
     );
+    // Lança HttpRequestException em falha HTTP (StatusCode preenchido)
+    Task<IReadOnlyList<TaskDto>> GetMyTasksAsync(
+        CancellationToken ct = default
+    );
     void SetAuthToken(string? token);
 }
 
@@ -90,6 +94,25 @@ public class HttpApiClient : IApiClient
         );
 
         response.EnsureSuccessStatusCode(); // 201 Created se OK
+    }
+
+    // Tasks atribuídas ao colaborador autenticado (Bearer do agente)
+    public async Task<IReadOnlyList<TaskDto>> GetMyTasksAsync(
+        CancellationToken ct = default
+    )
+    {
+        HttpResponseMessage response;
+        response = await _http.GetAsync(_config.Endpoints.MyTasks, ct);
+
+        response.EnsureSuccessStatusCode();
+
+        List<TaskDto>? tasks = await (
+            response
+            .Content
+            .ReadFromJsonAsync<List<TaskDto>>(JsonOptions, ct)
+        );
+
+        return tasks ?? [];
     }
 
     public void SetAuthToken(string? token)

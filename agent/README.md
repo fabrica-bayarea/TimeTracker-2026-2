@@ -93,6 +93,16 @@ snake_case esperado pelo Pydantic — não há atributos manuais para manter.
 
 ---
 
+### Tasks na bandeja (US-14.1)
+
+O submenu **Tasks** da bandeja lista `GET /tasks/my-tasks` (atualizado a cada
+abertura do menu e a cada `Agent.TasksPollingIntervalMs`). Clicar em uma task
+a define como ativa (✓); clicar em outra troca; "Encerrar task atual" volta
+ao estado "Aguardando task". O estado fica só em memória e é exibido no
+`StatusForm`.
+
+---
+
 ## 4. Configuração (`appsettings.json`)
 
 ```json
