@@ -1,13 +1,13 @@
-import { requestValidated } from '../shared/api/api';
+import { requestNoContent, requestValidated } from '../shared/api/api';
 import {
   validAgentStatuses,
   validAttendance,
   validTask,
-  validTaskDescription,
+  validTaskCreatePayload,
   validTaskHours,
   validTaskSummary,
-  validTaskTitle,
   validTasks,
+  validTaskUpdatePayload,
   validUsers,
 } from '../shared/api/validators';
 import { isIsoDate } from '../shared/lib/date';
@@ -26,18 +26,6 @@ function jsonOptions(method, body, signal) {
   };
 }
 
-function taskBodyIsValid(task) {
-  return Boolean(
-    task &&
-    validTaskTitle(task.title) &&
-    validTaskDescription(task.description) &&
-    Array.isArray(task.collaborator_ids) &&
-    task.collaborator_ids.length > 0 &&
-    new Set(task.collaborator_ids).size === task.collaborator_ids.length &&
-    task.collaborator_ids.every((id) => UUID_PATTERN.test(id)),
-  );
-}
-
 function taskQuery(date, username) {
   if (!isIsoDate(date)) throw new Error('Selecione uma data válida');
   const query = new URLSearchParams({ date });
@@ -48,20 +36,22 @@ function taskQuery(date, username) {
 export const devApi = {
   tasks: (signal) => request('/tasks/', validTasks, { signal, authenticated: true }),
   collaborators: (signal) => request('/users/', validUsers, { signal, authenticated: true }),
+  getTask(taskId, signal) {
+    if (!UUID_PATTERN.test(taskId)) throw new Error('ID de Task inválido');
+    return request(`/tasks/${taskId}`, validTask, { signal, authenticated: true });
+  },
   createTask(task, signal) {
-    if (!taskBodyIsValid(task))
-      throw new Error('Informe título, descrição e colaboradores válidos.');
+    if (!validTaskCreatePayload(task)) throw new Error('Informe dados válidos para a Task.');
     return request('/tasks/', validTask, jsonOptions('POST', task, signal));
   },
   updateTask(taskId, task, signal) {
     if (!UUID_PATTERN.test(taskId)) throw new Error('ID de Task inválido');
-    if (!taskBodyIsValid(task))
-      throw new Error('Informe título, descrição e colaboradores válidos.');
+    if (!validTaskUpdatePayload(task)) throw new Error('Informe dados válidos para a Task.');
     return request(`/tasks/${taskId}`, validTask, jsonOptions('PUT', task, signal));
   },
   deleteTask(taskId, signal) {
     if (!UUID_PATTERN.test(taskId)) throw new Error('ID de Task inválido');
-    return request(`/tasks/${taskId}`, validTask, {
+    return requestNoContent(`/tasks/${taskId}`, {
       method: 'DELETE',
       signal,
       authenticated: true,

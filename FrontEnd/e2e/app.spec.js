@@ -12,9 +12,11 @@ const manager = {
   id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',
   email: 'gestor@empresa.com',
   created_at: '2026-10-21T12:00:00Z',
+  association_code: '001234',
 };
 
 async function mockApi(page) {
+  const tasks = [];
   await page.route('http://localhost:8000/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/auth/me') return route.fulfill({ json: manager });
@@ -23,7 +25,28 @@ async function mockApi(page) {
         json: { access_token: managerToken, token_type: 'bearer', expires_in: 3600 },
       });
     }
-    if (url.pathname === '/auth/register') return route.fulfill({ status: 201, json: manager });
+    if (url.pathname === '/auth/register') {
+      return route.fulfill({
+        status: 201,
+        json: { id: manager.id, email: manager.email, created_at: manager.created_at },
+      });
+    }
+    if (url.pathname === '/tasks/') {
+      if (route.request().method() === 'GET') return route.fulfill({ json: tasks });
+      if (route.request().method() === 'POST') {
+        const payload = JSON.parse(route.request().postData() || '{}');
+        const created = {
+          id: 'fc0e3df5-c23b-49ec-9a40-081a451620b3',
+          title: payload.title,
+          description: payload.description,
+          collaborators: [],
+          created_at: '2026-10-30T12:00:00Z',
+          updated_at: '2026-10-30T12:00:00Z',
+        };
+        tasks.push(created);
+        return route.fulfill({ status: 201, json: created });
+      }
+    }
     if (url.pathname === '/users/') return route.fulfill({ json: users });
     if (url.pathname === '/activities/realtime') return route.fulfill({ json: realtime });
     if (url.pathname === '/dashboard/summary') {
@@ -326,24 +349,44 @@ test('menu móvel oculta cadastro e mantém o último link acessível em orienta
   await expect(page.getByRole('main')).toBeFocused();
 });
 
-test('navega para a prévia desativada de Tasks sem habilitar gravação fictícia', async ({
+test('creates a Task through the authenticated API without loading global users', async ({
   page,
 }) => {
+  let usersRequests = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/users/') usersRequests += 1;
+  });
+
   await page.goto('/#/painel');
+  await expect(page.getByRole('link', { name: 'Tasks' })).toBeVisible();
+  await expect(page.getByRole('table').first()).toContainText('Ana Silva');
+  const usersRequestsBeforeTasks = usersRequests;
+
   await page
     .getByRole('navigation', { name: 'Menu principal' })
     .getByRole('link', { name: 'Tasks' })
     .click();
   await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
-  await expect(page.getByText('Gestão de Tasks indisponível')).toBeVisible();
-  await expect(
-    page.getByText(/prévia desativada; nenhuma chamada ou gravação será feita/i),
-  ).toBeVisible();
-  await expect(page.getByLabel('Título')).toBeDisabled();
-  await expect(page.getByLabel('Descrição')).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Criar Task' })).toBeDisabled();
-});
+  await expect(page.locator('input[maxlength="200"]')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Criar Task' })).toBeEnabled();
+  await expect(page.getByText(/GET \/users\//)).toBeVisible();
+  expect(usersRequests).toBe(usersRequestsBeforeTasks);
 
+  await page.locator('input[maxlength="200"]').fill('Prepare quarterly planning');
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().endsWith('/tasks/') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Criar Task' }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(201);
+  expect(response.request().headers().authorization).toBe('Bearer ' + managerToken);
+  expect(response.request().postDataJSON()).toEqual({
+    title: 'Prepare quarterly planning',
+    description: null,
+    collaborator_ids: [],
+  });
+  await expect(page.getByText('Prepare quarterly planning')).toBeVisible();
+});
 test('menu móvel aceita teclado e tema escuro', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto('/#/painel');
@@ -357,9 +400,11 @@ test('menu móvel aceita teclado e tema escuro', async ({ page }) => {
 });
 
 for (const [width, height] of [
+  [320, 568],
   [375, 667],
   [390, 844],
   [768, 1024],
+  [1024, 768],
   [1366, 768],
   [1920, 1080],
 ]) {

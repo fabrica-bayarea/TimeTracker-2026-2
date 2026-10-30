@@ -37,9 +37,13 @@
 /** @typedef {{ id: string, username: string, full_name?: string | null }} TaskCollaborator */
 
 /**
- * Candidate Task shape used only by development mocks and UI tests. The backend has no Task API.
- * @typedef {{ id: string, title: string, description: string, collaborators: TaskCollaborator[], created_at: string, updated_at: string }} Task
+ * Response from the authenticated manager Task API.
+ * @typedef {{ id: string, title: string, description: string | null, collaborators: TaskCollaborator[], created_at: string, updated_at: string }} Task
  */
+
+/** @typedef {{ title: string, description?: string | null, collaborator_ids?: string[] }} TaskCreate */
+
+/** @typedef {{ title?: string, description?: string | null, collaborator_ids?: string[] }} TaskUpdate */
 
 /**
  * @typedef {{
@@ -88,10 +92,12 @@
 /** @typedef {{ email: string, password: string }} ManagerCredentials */
 
 /**
- * Public manager fields returned by `ManagerOut`. The backend does not include
- * `association_code` in this schema.
+ * Public fields returned by `ManagerOut`; registration does not include the
+ * association code.
  * @typedef {{ id: string, email: string, created_at: string }} Manager
  */
+
+/** @typedef {Manager & { association_code: string }} ManagerProfile */
 
 /** @typedef {{ access_token: string, token_type: 'bearer', expires_in: number }} ManagerToken */
 
@@ -107,7 +113,13 @@
  * @property {(format: 'csv' | 'pdf', date: string, username?: string, signal?: AbortSignal) => Promise<Blob>} exportFile
  * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<Manager>} registerManager
  * @property {(credentials: ManagerCredentials, signal?: AbortSignal) => Promise<ManagerToken>} loginManager
- * @property {(accessToken: string, signal?: AbortSignal) => Promise<Manager>} getCurrentManager
+ * @property {(accessToken: string, signal?: AbortSignal) => Promise<ManagerProfile>} getCurrentManager
+ * @property {(signal?: AbortSignal) => Promise<string>} getAssociationCode
+ * @property {(signal?: AbortSignal) => Promise<Task[]>} tasks
+ * @property {(taskId: string, signal?: AbortSignal) => Promise<Task>} getTask
+ * @property {(payload: TaskCreate, signal?: AbortSignal) => Promise<Task>} createTask
+ * @property {(taskId: string, payload: TaskUpdate, signal?: AbortSignal) => Promise<Task>} updateTask
+ * @property {(taskId: string, signal?: AbortSignal) => Promise<void>} deleteTask
  */
 
 export {};

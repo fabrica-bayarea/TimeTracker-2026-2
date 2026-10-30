@@ -57,7 +57,7 @@ describe('handlers das propostas de contrato', () => {
     const meResponse = await fetch(`${baseUrl}/auth/me`, {
       headers: { Authorization: `Bearer ${token.access_token}` },
     });
-    expect(await meResponse.json()).toEqual(manager);
+    expect(await meResponse.json()).toEqual({ ...manager, association_code: '001234' });
 
     const unauthorized = await fetch(`${baseUrl}/auth/me`);
     expect(unauthorized.status).toBe(401);
@@ -100,6 +100,12 @@ describe('handlers das propostas de contrato', () => {
     expect(persistedResponse.status).toBe(200);
     expect(await persistedResponse.json()).toEqual([created]);
 
+    const detailResponse = await fetch(`${baseUrl}/tasks/${created.id}`, {
+      headers: authorization,
+    });
+    expect(detailResponse.status).toBe(200);
+    expect(await detailResponse.json()).toEqual(created);
+
     const updateResponse = await fetch(`${baseUrl}/tasks/${created.id}`, {
       method: 'PUT',
       headers: { ...authorization, 'Content-Type': 'application/json' },
@@ -118,12 +124,23 @@ describe('handlers das propostas de contrato', () => {
     });
     expect(Date.parse(updated.updated_at)).toBeGreaterThanOrEqual(Date.parse(created.updated_at));
 
+    const removeAssignmentsResponse = await fetch(`${baseUrl}/tasks/${created.id}`, {
+      method: 'PUT',
+      headers: { ...authorization, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collaborator_ids: [] }),
+    });
+    expect(removeAssignmentsResponse.status).toBe(200);
+    const unassigned = await removeAssignmentsResponse.json();
+    expect(unassigned.collaborators).toEqual([]);
+    expect(unassigned.title).toBe(updated.title);
+    expect(unassigned.description).toBe(updated.description);
+
     const deleteResponse = await fetch(`${baseUrl}/tasks/${created.id}`, {
       method: 'DELETE',
       headers: authorization,
     });
-    expect(deleteResponse.status).toBe(200);
-    expect(await deleteResponse.json()).toMatchObject({ id: created.id });
+    expect(deleteResponse.status).toBe(204);
+    expect(await deleteResponse.text()).toBe('');
     const afterDeleteResponse = await fetch(`${baseUrl}/tasks/`, { headers: authorization });
     expect(afterDeleteResponse.status).toBe(200);
     expect(await afterDeleteResponse.json()).toEqual([]);
@@ -164,6 +181,22 @@ describe('handlers das propostas de contrato', () => {
       headers: authorization,
     });
     expect(missingDelete.status).toBe(404);
+  });
+
+  it('permite criar Task sem descrição ou colaboradores', async () => {
+    const authorization = await demoAuthorization();
+    const response = await fetch(`${baseUrl}/tasks/`, {
+      method: 'POST',
+      headers: { ...authorization, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Task sem atribuição', collaborator_ids: [] }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      title: 'Task sem atribuição',
+      description: null,
+      collaborators: [],
+    });
   });
 
   it('responde à jornada com fuso e nulos para colaborador sem registro', async () => {

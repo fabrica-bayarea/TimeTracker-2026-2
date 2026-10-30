@@ -9,6 +9,11 @@ function compareTitle(left, right) {
   );
 }
 
+function compareIdDescending(left, right) {
+  if (left.id === right.id) return 0;
+  return left.id < right.id ? 1 : -1;
+}
+
 /** @param {unknown} tasks @param {string} search @param {string} sortOrder */
 export function filterAndSortTasks(tasks, search = '', sortOrder = 'recent') {
   const list = Array.isArray(tasks) ? tasks : [];
@@ -26,7 +31,7 @@ export function filterAndSortTasks(tasks, search = '', sortOrder = 'recent') {
 
     const dateDifference = Date.parse(right.created_at) - Date.parse(left.created_at);
     return Number.isNaN(dateDifference) || dateDifference === 0
-      ? left.id.localeCompare(right.id)
+      ? compareIdDescending(left, right)
       : dateDifference;
   });
 }

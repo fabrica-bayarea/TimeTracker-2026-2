@@ -108,10 +108,7 @@ describe('AssociationCodeCard', () => {
   it('explica que a consulta aguarda o contrato do Backend sem exibir código', () => {
     render(<AssociationCodeCard pending />);
 
-    expect(screen.getByText(/Backend ainda não disponibiliza/)).toHaveAttribute(
-      'aria-live',
-      'polite',
-    );
+    expect(screen.getByRole('note')).toHaveAttribute('aria-live', 'polite');
     expect(screen.queryByText(/^\d{6}$/)).not.toBeInTheDocument();
     expect(
       screen.queryByText('Compartilhe este código com os membros da sua equipe.'),

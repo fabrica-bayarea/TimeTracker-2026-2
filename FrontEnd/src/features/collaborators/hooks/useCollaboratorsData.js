@@ -45,8 +45,8 @@ export function useCollaboratorsData() {
 
       setState((previous) => ({
         loading: false,
-        users: users.status === 'fulfilled' ? users.value.value : null,
-        realtime: realtime.status === 'fulfilled' ? realtime.value.value : null,
+        users: users.status === 'fulfilled' ? users.value.value : previous.users,
+        realtime: realtime.status === 'fulfilled' ? realtime.value.value : previous.realtime,
         error:
           [
             requestFailure(users, users.status === 'fulfilled', 'Usuários'),

@@ -44,21 +44,73 @@ function mockService(overrides = {}) {
 }
 
 describe('TasksPage', () => {
-  it('mostra uma prévia desativada sem API e não faz chamadas', () => {
-    render(<TasksPage />);
+  it('mantém operações desativadas quando nenhum cliente de API é fornecido', () => {
+    render(<TasksPage taskClient={null} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Tasks' })).toBeInTheDocument();
-    expect(screen.getByText('Gestão de Tasks indisponível')).toBeInTheDocument();
+    expect(screen.getByText('API de Tasks indisponível')).toBeInTheDocument();
     expect(screen.getByLabelText('Título')).toBeDisabled();
     expect(screen.getByLabelText('Descrição')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Criar Task' })).toBeDisabled();
-    expect(screen.getByText(/lista será carregada quando o Backend/i)).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma Task cadastrada.')).toBeInTheDocument();
+  });
+
+  it('cria Task real sem descrição e mantém atribuições bloqueadas sem consultar usuários globais', async () => {
+    const user = userEvent.setup();
+    const created = { ...task, description: null, collaborators: [] };
+    const taskClient = mockService({
+      tasks: vi.fn().mockResolvedValue([]),
+      createTask: vi.fn().mockResolvedValue(created),
+    });
+    delete taskClient.collaborators;
+    render(<TasksPage taskClient={taskClient} />);
+
+    expect(await screen.findByText(/CRUD de Tasks está conectado/)).toBeInTheDocument();
+    expect(screen.getByText(/GET \/users\//)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Título'), 'Task sem atribuição');
+    await user.click(screen.getByRole('button', { name: 'Criar Task' }));
+
+    expect(await screen.findByText('Task criada.')).toBeInTheDocument();
+    expect(taskClient.createTask).toHaveBeenCalledWith(
+      { title: 'Task sem atribuição', description: null, collaborator_ids: [] },
+      expect.any(AbortSignal),
+    );
+    expect(taskClient).not.toHaveProperty('collaborators');
+    expect(
+      screen.getByRole('button', { name: 'Ver detalhes da Task: Relatório trimestral' }),
+    ).toBeInTheDocument();
+  });
+
+  it('edita os campos da Task sem substituir colaboradores existentes', async () => {
+    const user = userEvent.setup();
+    const taskClient = mockService({
+      tasks: vi.fn().mockResolvedValue([task]),
+      updateTask: vi.fn().mockResolvedValue({ ...task, title: 'Relatório revisado' }),
+    });
+    delete taskClient.collaborators;
+    render(<TasksPage taskClient={taskClient} />);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Editar Task: Relatório trimestral' }),
+    );
+    expect(screen.getByText('Ana Souza')).toBeInTheDocument();
+    await user.clear(screen.getByLabelText('Título'));
+    await user.type(screen.getByLabelText('Título'), 'Relatório revisado');
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByText('Task atualizada.')).toBeInTheDocument();
+    expect(taskClient.updateTask).toHaveBeenCalledWith(
+      task.id,
+      { title: 'Relatório revisado', description: task.description },
+      expect.any(AbortSignal),
+    );
   });
 
   it('valida os campos e cria uma Task com seleção múltipla nos mocks', async () => {
     const service = mockService();
     const user = userEvent.setup();
     render(<TasksPage devApi={service} />);
-    expect(await screen.findByText(/Nenhuma Task foi criada/)).toBeInTheDocument();
+    expect(await screen.findByText('Nenhuma Task cadastrada.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Criar Task' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Informe o título');
@@ -85,7 +137,7 @@ describe('TasksPage', () => {
     expect(screen.getByLabelText(/Bruno Lima/)).not.toBeChecked();
   });
 
-  it('mostra carregamento e impede envio sem colaborador', async () => {
+  it('permite criar Task sem colaboradores conforme o contrato do Backend', async () => {
     let finish;
     const service = mockService({
       tasks: vi.fn(
@@ -101,12 +153,12 @@ describe('TasksPage', () => {
     await act(async () => finish([]));
 
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Task válida' } });
-    fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Descrição válida' } });
-    fireEvent.submit(
-      screen.getByRole('heading', { name: 'Criar Task' }).closest('section').querySelector('form'),
+    await userEvent.click(screen.getByRole('button', { name: 'Criar Task' }));
+    expect(await screen.findByText('Task criada nos dados simulados.')).toBeInTheDocument();
+    expect(service.createTask).toHaveBeenCalledWith(
+      { title: 'Task válida', description: null, collaborator_ids: [] },
+      expect.any(AbortSignal),
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('Selecione pelo menos um colaborador');
-    expect(service.createTask).not.toHaveBeenCalled();
   });
 
   it('impede submissão enquanto os colaboradores estão sendo atualizados', async () => {
@@ -220,7 +272,7 @@ describe('TasksPage', () => {
     await user.click(screen.getByRole('button', { name: 'Excluir Task: Relatório trimestral' }));
     expect(await screen.findByText('Task excluída dos dados simulados.')).toBeInTheDocument();
     expect(service.deleteTask).toHaveBeenCalledWith(task.id, expect.any(AbortSignal));
-    expect(await screen.findByText(/Nenhuma Task foi criada/)).toBeInTheDocument();
+    expect(await screen.findByText('Nenhuma Task cadastrada.')).toBeInTheDocument();
   });
 
   it('mostra erro ao falhar a lista e oferece retry', async () => {
@@ -347,7 +399,7 @@ describe('TasksPage', () => {
 
     const refreshedService = mockService({ tasks: vi.fn().mockResolvedValue([]) });
     rerender(<TasksPage devApi={refreshedService} />);
-    expect(await screen.findByText(/Nenhuma Task foi criada/)).toBeInTheDocument();
+    expect(await screen.findByText('Nenhuma Task cadastrada.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Editar Task' })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Task selecionada para consulta' }),

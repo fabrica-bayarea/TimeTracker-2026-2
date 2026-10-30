@@ -4,10 +4,11 @@ import { PageHeader } from '../../../shared/components/PageHeader';
 import { TaskForm } from '../components/TaskForm';
 import { TaskList } from '../components/TaskList';
 import { useTasks } from '../hooks/useTasks';
+import { api } from '../../../shared/api/api';
 
-export function TasksPage({ devApi = null }) {
+export function TasksPage({ devApi = null, taskClient = api }) {
   const mockMode = import.meta.env.DEV && !!devApi;
-  const service = mockMode ? devApi : null;
+  const service = mockMode ? devApi : taskClient;
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const {
@@ -26,7 +27,7 @@ export function TasksPage({ devApi = null }) {
     createTask,
     updateTask,
     deleteTask,
-  } = useTasks(service);
+  } = useTasks(service, { demo: mockMode });
   const editingTask = tasks.find((task) => task.id === editingTaskId) || null;
   const editTrigger = useRef(null);
 
@@ -77,11 +78,15 @@ export function TasksPage({ devApi = null }) {
           Tasks no Backend, não atribuem trabalho real e não iniciam nem controlam o monitoramento
           pelo Agent.
         </IntegrationNotice>
+      ) : service ? (
+        <IntegrationNotice title="Atribuição de colaboradores indisponível">
+          O CRUD de Tasks está conectado à API autenticada. A seleção de colaboradores permanece
+          bloqueada porque `GET /users/` retorna uma lista global sem autorização por gestor; a
+          interface não usa essa lista para sugerir membros de uma equipe.
+        </IntegrationNotice>
       ) : (
-        <IntegrationNotice title="Gestão de Tasks indisponível">
-          O Backend ainda não publica o CRUD de Tasks nem a associação autenticada de colaboradores.
-          O formulário abaixo é uma prévia desativada; nenhuma chamada ou gravação será feita. A
-          integração depende das issues #133 e #137.
+        <IntegrationNotice title="API de Tasks indisponível">
+          Não foi possível configurar um cliente para a API. Nenhuma operação de Task será enviada.
         </IntegrationNotice>
       )}
 
@@ -101,6 +106,7 @@ export function TasksPage({ devApi = null }) {
         collaboratorsLoading={collaboratorsLoading}
         collaboratorsError={collaboratorsError}
         onRetryCollaborators={retryCollaborators}
+        allowCollaboratorSelection={mockMode}
         onSubmit={saveTask}
         onCancel={() => {
           setEditingTaskId(null);
@@ -109,7 +115,7 @@ export function TasksPage({ devApi = null }) {
           });
         }}
         saving={mutationBusy}
-        disabled={!mockMode}
+        disabled={!service}
         error={mutationError}
       />
 
@@ -132,7 +138,7 @@ export function TasksPage({ devApi = null }) {
         }}
         onDeleteTask={removeTask}
         mutationBusy={mutationBusy}
-        disabled={!mockMode}
+        disabled={!service}
       />
       {mockMode && mutation && (
         <p className="sr-only" role="status">

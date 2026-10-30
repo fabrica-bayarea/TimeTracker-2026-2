@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   validManager,
+  validManagerProfile,
+  validAssociationCode,
   validManagerToken,
   validJwtAccessToken,
   validAgentStatuses,
@@ -10,9 +12,12 @@ import {
   validSummary,
   validTask,
   validTaskDescription,
+  validTaskCreatePayload,
   validTaskHours,
   validTaskSummary,
   validTaskTitle,
+  validTaskUpdatePayload,
+  validUuid,
   validTasks,
   validUsers,
 } from './validators';
@@ -88,7 +93,7 @@ describe('contratos da API', () => {
     expect(validSettings(null)).toBe(false);
   });
 
-  it('validates ManagerOut without accepting password fields', () => {
+  it('validates ManagerOut and ManagerProfile without accepting password fields', () => {
     const manager = {
       id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',
       email: 'gestor@empresa.com',
@@ -97,7 +102,13 @@ describe('contratos da API', () => {
     expect(validManager(manager)).toBe(true);
     expect(validManager({ ...manager, password_hash: 'hash' })).toBe(false);
     expect(validManager({ ...manager, password: 'segredo' })).toBe(false);
-    expect(validManager({ ...manager, association_code: '012345' })).toBe(false);
+    expect(validManager({ ...manager, association_code: '012345' })).toBe(true);
+    expect(validManager({ ...manager, association_code: '12345' })).toBe(false);
+    expect(validManagerProfile({ ...manager, association_code: '001234' })).toBe(true);
+    expect(validManagerProfile(manager)).toBe(false);
+    expect(validManagerProfile({ ...manager, association_code: '12a456' })).toBe(false);
+    expect(validAssociationCode('001234')).toBe(true);
+    expect(validAssociationCode(123456)).toBe(false);
     expect(validManager({ ...manager, email: null })).toBe(false);
     expect(validManager({ ...manager, id: 'not-a-uuid' })).toBe(false);
     expect(validManager({ ...manager, created_at: 'ontem' })).toBe(false);
@@ -130,7 +141,7 @@ describe('contratos da API', () => {
     expect(validJwtAccessToken('a.b.c')).toBe(false);
   });
 
-  it('valida Task, descrição obrigatória, UUID e instantes com fuso', () => {
+  it('valida o contrato Task com descrição opcional e lista vazia de colaboradores', () => {
     const collaborator = {
       id: 'd94a4d6c-8542-4c3e-889b-89db302ef4cc',
       username: 'ana',
@@ -147,19 +158,42 @@ describe('contratos da API', () => {
     expect(validTaskTitle('  Relatório  ')).toBe(true);
     expect(validTaskTitle(' ')).toBe(false);
     expect(validTaskTitle(null)).toBe(false);
+    expect(validTaskTitle('x'.repeat(200))).toBe(true);
+    expect(validTaskTitle('x'.repeat(201))).toBe(false);
     expect(validTaskDescription('  Revisar relatório  ')).toBe(true);
-    expect(validTaskDescription(' ')).toBe(false);
-    expect(validTaskDescription('x'.repeat(201))).toBe(false);
-    expect(validTaskDescription(null)).toBe(false);
+    expect(validTaskDescription(' ')).toBe(true);
+    expect(validTaskDescription('x'.repeat(5000))).toBe(true);
+    expect(validTaskDescription('x'.repeat(5001))).toBe(false);
+    expect(validTaskDescription(null)).toBe(true);
     expect(validTask(task)).toBe(true);
+    expect(validTask({ ...task, description: null, collaborators: [] })).toBe(true);
     expect(validTasks([task])).toBe(true);
     expect(validTasks([task, task])).toBe(false);
     expect(validTask({ ...task, id: 'inválido' })).toBe(false);
-    expect(validTask({ ...task, updated_at: '2026-10-13T14:20:00' })).toBe(false);
-    expect(validTask({ ...task, collaborators: [] })).toBe(false);
+    expect(validTask({ ...task, updated_at: '2026-10-13T14:20:00' })).toBe(true);
     expect(validTask({ ...task, collaborators: [collaborator, collaborator] })).toBe(false);
     expect(validTask({ ...task, unexpected: true })).toBe(false);
     expect(validTasks(null)).toBe(false);
+    expect(validUuid(task.id)).toBe(true);
+    expect(validUuid('not-a-uuid')).toBe(false);
+  });
+
+  it('valida criação e PUT parcial de Task sem exigir colaboradores', () => {
+    const collaboratorId = 'd94a4d6c-8542-4c3e-889b-89db302ef4cc';
+    expect(validTaskCreatePayload({ title: '  Planejar  ', description: null })).toBe(true);
+    expect(validTaskCreatePayload({ title: 'Planejar', collaborator_ids: [] })).toBe(true);
+    expect(validTaskCreatePayload({ title: 'Planejar', collaborator_ids: [collaboratorId] })).toBe(
+      true,
+    );
+    expect(validTaskCreatePayload({ title: ' ', collaborator_ids: [] })).toBe(false);
+    expect(validTaskCreatePayload({ title: 'x'.repeat(201) })).toBe(false);
+    expect(validTaskCreatePayload({ title: 'T', description: 'x'.repeat(5001) })).toBe(false);
+    expect(validTaskCreatePayload({ title: 'T', collaborator_ids: ['bad-id'] })).toBe(false);
+    expect(validTaskUpdatePayload({ title: 'Novo título' })).toBe(true);
+    expect(validTaskUpdatePayload({ description: null })).toBe(true);
+    expect(validTaskUpdatePayload({ collaborator_ids: [] })).toBe(true);
+    expect(validTaskUpdatePayload({})).toBe(false);
+    expect(validTaskUpdatePayload({ collaborator_ids: null })).toBe(false);
   });
 
   it('valida resumo candidato de horas por Task e atividade geral sem task_id', () => {

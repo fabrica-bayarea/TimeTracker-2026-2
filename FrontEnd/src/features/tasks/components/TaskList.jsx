@@ -21,11 +21,7 @@ export function TaskList({
   const taskSelected = tasks.find((task) => task.id === selectedTaskId);
 
   async function confirmDelete(task) {
-    if (
-      !window.confirm(
-        `Excluir a Task “${task.title}”? Esta ação não pode ser desfeita nos dados demonstrativos.`,
-      )
-    ) {
+    if (!window.confirm(`Excluir a Task “${task.title}”? Esta ação não pode ser desfeita.`)) {
       return;
     }
     if (await onDeleteTask(task)) {
@@ -46,11 +42,7 @@ export function TaskList({
       {loading ? (
         <LoadingSkeleton label="Carregando Tasks…" />
       ) : error && tasks.length === 0 ? null : tasks.length === 0 ? (
-        <EmptyState>
-          {disabled
-            ? 'A lista será carregada quando o Backend disponibilizar a API de Tasks.'
-            : 'Nenhuma Task foi criada neste modo de demonstração.'}
-        </EmptyState>
+        <EmptyState>Nenhuma Task cadastrada.</EmptyState>
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

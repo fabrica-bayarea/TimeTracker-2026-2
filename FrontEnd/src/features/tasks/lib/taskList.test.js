@@ -40,4 +40,24 @@ describe('Task list filters', () => {
     expect(filterAndSortTasks(tasks).map(({ id }) => id)).toEqual(['1', '2', '3']);
     expect(filterAndSortTasks(null)).toEqual([]);
   });
+
+  it('uses the backend UUID-descending tie-break for equal creation times', () => {
+    const createdTogether = [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        title: 'Task antiga',
+        created_at: '2026-10-15T10:00:00Z',
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        title: 'Task nova',
+        created_at: '2026-10-15T10:00:00Z',
+      },
+    ];
+
+    expect(filterAndSortTasks(createdTogether).map(({ id }) => id)).toEqual([
+      '00000000-0000-4000-8000-000000000002',
+      '00000000-0000-4000-8000-000000000001',
+    ]);
+  });
 });

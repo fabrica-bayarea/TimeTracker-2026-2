@@ -1,5 +1,87 @@
 # Contratos da API do Frontend
 
+**Snapshot auditado:** 30/10/2026. **Checkout:** branch main, commit `eec089a976cd2678473ad2f992269538fd1a4a57`. Contratos descritos continuam limitados às rotas confirmadas no backend; o comportamento seguro de mensagens HTTP pertence ao frontend.
+
+Este snapshot substitui as conclusões dos checkpoints históricos arquivados ao final deste arquivo. A fonte de verdade desta revisão é o código local em backend/app, agent/ e FrontEnd/src/shared/api. PRs #142, #145 e #146 estão incorporados na ancestralidade Git local pelos merges 5b72a3e, dffb107 e cccc5ac. PR #144 do Agent está incorporado em 189a7e9.
+
+## Convenções e origem da API
+
+VITE_API_URL configura a origem. Em desenvolvimento, o fallback é http://localhost:8000; sem valor em produção o frontend usa a mesma origem da página. As rotas que exigem gestor usam Authorization: Bearer com o token recebido em /auth/login. O frontend não decodifica o JWT para decidir autorização.
+
+O envio de Bearer pelo frontend não torna uma rota protegida. As rotas marcadas como globais abaixo não validam o gestor nem filtram dados por equipe no backend consultado. Não use seu resultado para afirmar que os dados pertencem ao gestor autenticado.
+
+## Autenticação de gestores
+
+| Método e endpoint   | Autenticação              | Entrada                         | Resposta comprovada                                                | Erros relevantes                                                               |
+| ------------------- | ------------------------- | ------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| POST /auth/register | Não                       | ManagerCreate: email e password | 201 ManagerOut: id UUID, email, created_at                         | 409 email já cadastrado; 422 validação; 503 indisponibilidade ao gerar código  |
+| POST /auth/login    | Não                       | email e password                | 200 Token: access_token, token_type bearer, expires_in em segundos | 401 credenciais inválidas; 422 validação                                       |
+| GET /auth/me        | JWT de gestor obrigatório | Sem corpo                       | 200 ManagerProfileOut: ManagerOut mais association_code            | 401 token ausente, inválido ou expirado; 503 indisponibilidade ao gerar código |
+
+ManagerOut de cadastro não contém association_code. ManagerProfileOut de /auth/me exige association_code como string de exatamente seis dígitos. O frontend preserva zeros à esquerda, valida o perfil separadamente do cadastro e reutiliza o valor presente na sessão do gestor. Consulta de fallback usa a mesma rota protegida. O estado do código é escopado à identidade atual e descartado em troca de sessão/logout.
+
+## CRUD de Tasks
+
+Todas as rotas abaixo exigem JWT de gestor. O router verifica o escopo do gestor no servidor. Uma Task inexistente ou pertencente a outro gestor responde 404, evitando revelar a existência cruzada.
+
+| Método e endpoint       | Entrada            | Resposta comprovada                             | Erros relevantes                                         |
+| ----------------------- | ------------------ | ----------------------------------------------- | -------------------------------------------------------- |
+| GET /tasks/             | Sem corpo          | 200 lista de TaskResponse do gestor autenticado | 401                                                      |
+| POST /tasks/            | TaskCreate         | 201 TaskResponse                                | 401, 422 dados ou colaboradores inválidos/fora da equipe |
+| GET /tasks/{task_id}    | UUID no caminho    | 200 TaskResponse                                | 401, 404                                                 |
+| PUT /tasks/{task_id}    | TaskUpdate parcial | 200 TaskResponse                                | 401, 404, 422                                            |
+| DELETE /tasks/{task_id} | UUID no caminho    | 204 sem corpo                                   | 401, 404                                                 |
+
+TaskCreate aceita title obrigatório não vazio (máximo 200), description opcional/nula (máximo 5.000) e collaborator_ids opcional, lista de UUIDs, padrão vazio. TaskUpdate aceita campos omitidos para preservar valores; description nula limpa a descrição; collaborator_ids substitui a lista completa e [] remove todas as atribuições. Embora use PUT, a atualização é parcial no backend atual.
+
+TaskResponse contém id, title, description nula ou string, collaborators, created_at e updated_at. Não contém manager_id nem collaborator_ids. Cada TaskCollaboratorOut contém id, username e full_name opcional/nulo. Uma Task sem colaboradores é válida. O frontend valida esses formatos, envia Bearer, valida UUIDs, impede mutações concorrentes, atualiza o estado apenas após resposta válida e trata DELETE 204 sem ler JSON. A ordenação padrão da tela acompanha `created_at` decrescente e, em empate, UUID decrescente, como `crud.list_tasks`.
+
+O backend valida no momento de criar/atualizar que cada collaborator_id pertence à equipe do gestor e rejeita a operação inteira se um ID for inválido. Isso não fornece ao frontend uma consulta segura para montar a equipe.
+
+## Associação de colaborador e consulta da equipe
+
+| Método e endpoint             | Autenticação                                        | Entrada                                                            | Resposta e erros comprovados                                                                                                                                                                                                              |
+| ----------------------------- | --------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST /collaborators/associate | Sem JWT de gestor; rota usada pelo Agent com código | association_code (string de seis dígitos), username e machine_name | 200 AssociationOut: access_token do Agent, expires_in, collaborator_id, username, machine_name, manager_id e already_associated; 404 código inválido; 409 já associado a outro gestor; 422 validação; 429 limite excedido com Retry-After |
+
+A rota associa o usuário ao gestor dono do código e emite token com audiência do Agent; não é uma rota de sessão web. GET /users/ não é autenticado nem isolado: retorna usuários globais. Por isso, o frontend não oferece seleção de membros usando essa rota e não filtra uma lista global no cliente como substituto de autorização. Não foi encontrado endpoint autenticado que liste somente a equipe do gestor.
+
+O Agent local ainda usa outro caminho/payload: associate/ com code, username e hostname; o backend espera /collaborators/associate com association_code, username e machine_name. O frontend pode exibir o código correto, mas a associação ponta a ponta depende da adaptação do Agent.
+
+A bandeja do Agent também solicita `GET /tasks/my-tasks`, rota que o backend não declara. O caminho é capturado como `/tasks/{task_id}` e falha na validação UUID com `422`; a lista `/tasks/` existente exige token de gestor e não aceita o token do Agent.
+
+## Atividades, Dashboard, relatórios, configurações e categorias
+
+As rotas seguintes existem no backend local, mas não exigem JWT e não aplicam isolamento por gestor. Embora a camada HTTP do frontend possa enviar o Bearer da sessão, isso não restringe os dados no servidor.
+
+| Método e endpoint                      | Entrada                                                       | Saída comprovada                                     | Limite de autorização                                                           |
+| -------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| POST /activities/                      | ActivityLogCreate, sem task_id                                | 201 ActivityLogOut                                   | Sem autenticação de Agent/gestor e sem vínculo com Task                         |
+| GET /activities/realtime               | Nenhuma                                                       | lista RealtimeEntry                                  | Global, agrupada por usuário; idade baseada em captured_at enviado pelo cliente |
+| GET /dashboard/summary                 | date obrigatório; username opcional                           | DailySummaryResponse com total_seconds e by_category | Global; username é filtro, não autorização                                      |
+| GET /dashboard/export/csv              | mesmos filtros do sumário                                     | CSV                                                  | Global                                                                          |
+| GET /dashboard/export/pdf              | mesmos filtros do sumário                                     | PDF                                                  | Global                                                                          |
+| GET /config/                           | Nenhuma                                                       | SystemSettingsOut                                    | Sem autenticação                                                                |
+| PUT /config/                           | capture_interval_seconds e idle_timeout_seconds inteiros >= 1 | SystemSettingsOut                                    | Sem autenticação                                                                |
+| GET/POST /categories/                  | dados de categoria na criação                                 | lista ou CategoryOut; criação 201                    | Sem autenticação                                                                |
+| GET/POST /categories/rules             | dados de regra na criação                                     | lista ou regra; criação 201                          | Sem autenticação                                                                |
+| PUT/DELETE /categories/rules/{rule_id} | UUID e campos de atualização                                  | regra atualizada ou 204                              | Sem autenticação; PUT/404 ou DELETE/404 quando ausente                          |
+
+Realtime.status e seconds_since_last_activity descrevem a regra atual de idade/inatividade da captura. Não provam conexão de rede do Agent, presença do usuário nem tempo trabalhado. O backend não oferece /dashboard/tasks-summary, /dashboard/attendance ou /dashboard/task-hours. ActivityLogCreate não recebe task_id; relatórios por Task e jornada real permanecem bloqueados, sem dados artificiais no bundle de produção.
+
+## Evidências locais e propostas futuras
+
+Contratos confirmados: backend/app/routers/auth.py, tasks.py, users.py, activities.py, dashboard.py, config.py e categories.py; backend/app/schemas.py, models.py, security.py e crud.py. Tipos e validações consumidos estão em FrontEnd/src/shared/api/contracts.js e validators.js.
+
+Não são contratos implementados: rota segura para listar equipe do gestor, leitura de Tasks por token do Agent, associação alinhada ao cliente Agent, status por máquina, eventos idempotentes ligados a Task, resumo de horas por Task/jornada, escopo autenticado para dados globais e timezone do dia de negócio. As propostas e critérios estão em [PENDENCIAS.md](PENDENCIAS.md). Status e funcionamento de issues externas não foram confirmados nesta auditoria; referências a PR são limitadas aos merges locais comprovados.
+
+## Histórico preservado
+
+O conteúdo abaixo é a versão anterior, registrada em 22/10/2026. Seus estados e conclusões foram superados pelo snapshot acima e não devem ser usados como descrição do checkout atual. Foi preservado para rastreabilidade.
+---
+
+# Contratos da API do Frontend
+
 Revalidado em **22/10/2026** no checkout local `main`, HEAD `b9d78e515d6e65fbf5076309ecee1a89e8bf9cf0`, com base nos arquivos de `backend/app/`, `agent/` e `FrontEnd/src/shared/api/`. As páginas GitHub das issues #132 e #140 não carregaram nesta sessão (`Cache miss`), então os status externos não foram atualizados. A existência de um contrato frontend ou mock não significa que o servidor o implemente ou proteja.
 
 ## Como interpretar os status

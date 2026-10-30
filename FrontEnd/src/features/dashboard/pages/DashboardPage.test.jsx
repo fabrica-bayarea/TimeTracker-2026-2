@@ -28,16 +28,12 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('heading', { name: 'Código de associação' })).not.toBeInTheDocument();
   });
 
-  it('exibe o estado pendente do código para o gestor autenticado sem afetar os indicadores', () => {
+  it('exibe o estado pendente do código para o gestor autenticado sem afetar os indicadores', async () => {
     useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
-    render(<DashboardPage manager={{ id: 'manager-1' }} />);
+    render(<DashboardPage manager={{ id: 'manager-1' }} associationClient={{}} />);
 
     expect(screen.getByRole('heading', { name: 'Código de associação' })).toBeInTheDocument();
-    expect(
-      within(
-        screen.getByRole('heading', { name: 'Código de associação' }).closest('section'),
-      ).getByText(/Backend ainda não disponibiliza/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('note')).toHaveTextContent('sessão');
     expect(screen.getByText('Tempo registrado').closest('article')).toHaveTextContent('1h 00min');
     expect(screen.getByRole('button', { name: 'Copiar código de associação' })).toBeDisabled();
   });

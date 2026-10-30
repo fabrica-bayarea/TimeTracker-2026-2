@@ -6,6 +6,7 @@ const manager = {
   id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',
   email: 'gestor@empresa.com',
   created_at: '2026-10-21T12:00:00Z',
+  association_code: '001234',
 };
 
 test.beforeEach(async ({ page }) => {
@@ -26,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-for (const route of ['painel', 'colaboradores', 'relatorios', 'configuracoes']) {
+for (const route of ['painel', 'tasks', 'colaboradores', 'relatorios', 'configuracoes']) {
   test(`sem violações WCAG detectadas em ${route}`, async ({ page }) => {
     await page.goto(`/#/${route}`);
     await expect(page.getByRole('main')).toBeVisible();
@@ -36,11 +37,13 @@ for (const route of ['painel', 'colaboradores', 'relatorios', 'configuracoes']) 
       await expect(page.getByRole('status', { name: 'Atualização da consulta' })).toContainText(
         'Última atualização da consulta',
       );
+    } else if (route === 'tasks') {
+      await expect(page.getByText('Nenhuma Task cadastrada.')).toBeVisible();
     } else {
       await expect(page.getByRole('status')).toHaveCount(0);
     }
     const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
       .analyze();
     expect(
       results.violations.map(({ id, nodes }) => ({
@@ -59,7 +62,7 @@ test('foco do menu e conteúdo continuam acessíveis no mobile escuro', async ({
   await page.getByRole('button', { name: 'Abrir menu' }).click();
   await expect(page.getByRole('button', { name: 'Fechar menu' })).toBeFocused();
   const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
     .analyze();
   expect(
     results.violations.map(({ id, nodes }) => ({
@@ -80,9 +83,11 @@ test('erros e retry da exportação têm contraste acessível no tema escuro', a
   await page.goto('/#/relatorios');
   await expect(page.getByRole('alert')).toContainText('A lista de usuários não carregou');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
-  await expect(page.getByRole('alert').last()).toContainText('Falha na exportação');
+  await expect(page.getByRole('alert').last()).toContainText(
+    'O serviço está temporariamente indisponível.',
+  );
   const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
     .analyze();
   expect(
     results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map(({ target }) => target) })),
