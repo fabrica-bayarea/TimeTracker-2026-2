@@ -1,5 +1,13 @@
 # Contratos da API do Frontend
 
+## Revalidação do Dashboard — 04/11/2026
+
+Leitura atual de `backend/app/routers`, schemas, modelos e CRUD confirma o catálogo autenticado `GET /tasks/`, limitado às Tasks do gestor, mas não confirma endpoint analítico por Task. O modelo `ActivityLog` e `ActivityLogCreate` seguem sem `task_id`; o router de atividades não exige sessão de gestor. Também não existem consulta cronológica por Task ou classificação de tempo produtivo.
+
+No cliente, `api.tasks()` usa o cliente HTTP centralizado com JWT. `taskAnalyticsSource` escolhe esse catálogo em produção e não expõe função de resumo real; a rota candidata `/dashboard/tasks-summary` permanece ausente. O resumo vazio sob MSW existe somente no desenvolvimento e não calcula atividade. Os tipos `TaskProductivity` e `TaskTimeline` em `contracts.js` e suas validações são formatos candidatos de apresentação, não contratos do servidor.
+
+`/users/`, `/activities/realtime` e `/dashboard/summary` continuam globais e sem autorização por gestor. Nenhum filtro frontend deve ser considerado mecanismo de isolamento. A análise completa de pendências está em [PENDENCIAS.md](PENDENCIAS.md).
+
 **Snapshot auditado:** 30/10/2026. **Checkout:** branch main, commit `eec089a976cd2678473ad2f992269538fd1a4a57`. Contratos descritos continuam limitados às rotas confirmadas no backend; o comportamento seguro de mensagens HTTP pertence ao frontend.
 
 Este snapshot substitui as conclusões dos checkpoints históricos arquivados ao final deste arquivo. A fonte de verdade desta revisão é o código local em backend/app, agent/ e FrontEnd/src/shared/api. PRs #142, #145 e #146 estão incorporados na ancestralidade Git local pelos merges 5b72a3e, dffb107 e cccc5ac. PR #144 do Agent está incorporado em 189a7e9.
@@ -204,11 +212,11 @@ Os schemas de atividade e respostas de realtime/summary estão detalhados acima.
 
 ### Grafia dos caminhos e diferença de barra final
 
-Os caminhos do cliente real devem permanecer iguais aos métodos em src/shared/api/api.js: ele usa /users/, /activities/realtime, /dashboard/summary, /dashboard/export/{csv|pdf}, /config/ e as rotas de autenticação sem barra final. Os routers atuais declaram esses caminhos. Não há chamada de Tasks no cliente de produção.
+Os caminhos do cliente real permanecem alinhados aos métodos em src/shared/api/api.js. Além dos caminhos gerais listados acima, o cliente usa `/tasks/` e `/tasks/{task_id}` com JWT; o router atual limita essas Tasks ao gestor autenticado. O Dashboard usa a listagem para preencher o catálogo de Task quando há sessão.
 
 No ambiente demonstrativo, `devApi.tasks()` e `devApi.createTask()` usam GET e POST `/tasks/`, como os handlers MSW. Atualização e exclusão usam `/tasks/{task_id}` sem barra terminal. A execução integrada de F-04 reproduziu o estado anterior: POST `/tasks` não casou com o handler `/tasks/` e caiu no handler curinga, que respondeu 501; não houve redirecionamento. A chamada do cliente foi corrigida para `/tasks/`, e o teste integrado agora confirma criação e listagem.
 
-A proposta de CRUD em [Pendências — I-03](PENDENCIAS.md#propostas-de-contratos-de-integracao) adota `/tasks/` para operações da coleção e `/tasks/{task_id}` para um item, seguindo a issue #133. F-04 está resolvida no Frontend demonstrativo. Isso não aprova o contrato de produção nem implementa #133 (CRUD/autorizações no Backend) ou #134 (integração real da interface); ambas as issues permanecem abertas. A interface de produção não chama as rotas simuladas.
+O CRUD real de Tasks está presente no router e no cliente autenticado; isso não fornece listagem autorizada de colaboradores para atribuições pelo formulário. A UI demonstrativa continua separada em MSW. O catálogo vazio do MSW e as propostas históricas não são evidência de cálculo real por Task.
 
 O mock GET /dashboard/tasks-summary recebe date, username e task_id opcionais/obrigatórios conforme o cliente, mas a resposta vazia { "date": "AAAA-MM-DD", "timezone": "America/Sao_Paulo", "tasks": [] } pertence só à demonstração. Não existe endpoint de Dashboard por Task, presença diária ou horas por Task no Backend atual. Os demais caminhos propostos ficam em [Propostas de contratos](PROPOSTA_CONTRATOS_BACKEND.md) e [Pendências](PENDENCIAS.md).
 

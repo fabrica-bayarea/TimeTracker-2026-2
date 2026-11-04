@@ -51,7 +51,7 @@ export function DashboardFilters({
         </select>
       </label>
       <label className="text-xs font-semibold muted">
-        Task (somente resumo por Task)
+        Task (resumo por Task)
         <select
           className="form-field mt-1"
           value={taskId}
@@ -76,7 +76,7 @@ export function DashboardFilters({
             ))}
         </select>
         <span id="task-filter-help" className="mt-1 block text-xs font-normal muted">
-          Não altera os indicadores gerais, que não têm identificação de Task.
+          Não altera os indicadores gerais; a consolidação real por Task aguarda a API.
         </span>
       </label>
       <div className="flex flex-wrap items-end gap-2 sm:col-span-2">

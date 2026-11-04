@@ -1,6 +1,7 @@
 import { EmptyState, ErrorNotice, LoadingSkeleton } from '../../../shared/components/AsyncFeedback';
 import { IntegrationNotice } from '../../../shared/components/IntegrationNotice';
 import { fmtDuration } from '../../../shared/lib/duration';
+import { validTaskSummary } from '../../../shared/api/validators';
 
 export function TaskSummaryCard({
   demo = false,
@@ -11,7 +12,9 @@ export function TaskSummaryCard({
   error = null,
   onRetry,
 }) {
-  const entries = Array.isArray(summary?.tasks) ? summary.tasks : [];
+  const validSummary =
+    summary == null || (validTaskSummary(summary) && (!date || summary.date === date));
+  const entries = validSummary && Array.isArray(summary?.tasks) ? summary.tasks : [];
   const integrationPending = !demo && !summary && !loading && !error;
 
   if (integrationPending) {
@@ -22,8 +25,9 @@ export function TaskSummaryCard({
         </h2>
         <div className="mt-3">
           <IntegrationNotice>
-            A API ainda não fornece agregações reais com `task_id`. Horas por Task e filtro de Tasks
-            ficam indisponíveis até a entrega dos contratos #133, #137 e #140.
+            A API não fornece uma consulta real de duração por Task. As atividades ainda não
+            persistem `task_id`, e essa consolidação também precisa ser escopada ao gestor
+            autenticado.
           </IntegrationNotice>
         </div>
       </section>
@@ -57,6 +61,9 @@ export function TaskSummaryCard({
             : `Não foi possível carregar o resumo por Task. ${error}`}
         </ErrorNotice>
       )}
+      {!loading && !error && !validSummary && (
+        <ErrorNotice className="mt-3">A resposta do resumo por Task é inválida.</ErrorNotice>
+      )}
       {loading && summary && (
         <p role="status" className="mt-3 text-xs muted">
           Atualizando resumo por Task…
@@ -64,7 +71,7 @@ export function TaskSummaryCard({
       )}
       {loading && !summary ? (
         <LoadingSkeleton label="Carregando resumo por Task…" />
-      ) : !loading && !error && entries.length === 0 ? (
+      ) : !loading && !error && validSummary && entries.length === 0 ? (
         <EmptyState className="mt-3">
           {demo
             ? selectedTaskId
@@ -74,7 +81,7 @@ export function TaskSummaryCard({
               ? 'A API não retornou dados para a Task selecionada.'
               : 'A API não retornou atividades por Task para esta data.'}
         </EmptyState>
-      ) : entries.length > 0 ? (
+      ) : validSummary && entries.length > 0 ? (
         <ul
           className="mt-4 space-y-4"
           aria-label={demo ? 'Horas simuladas por Task' : 'Horas por Task'}

@@ -1,5 +1,16 @@
 # Testes e validação do frontend
 
+## Dashboard analítico por Task — 04/11/2026
+
+A suíte nova cobre seleção da fonte (catálogo real JWT versus resumo MSW exclusivo de desenvolvimento), ausência de chamada de resumo candidato em produção, validação de métricas produtivas, duração zero/segundos, timeline em ordem cronológica, timestamp zonado, janela omitida na interface, estados de carregamento/erro/vazio e callback de atualização manual. Os componentes de produtividade e timeline recebem dados somente quando um futuro adaptador os fornecer; a suíte não simula uma integração real.
+
+| Verificação solicitada | Comando                | Resultado desta rodada                                                                                                                                                  |
+| ---------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Check do Frontend      | `npm.cmd run check`    | Passou: lint, Prettier, typecheck, 363 testes Vitest, build e 4 verificações de bundle. Cobertura: 93,23% statements, 90,54% branches, 94,96% functions e 95,66% lines. |
+| E2E do Frontend        | `npm.cmd run test:e2e` | 34 passaram, 0 falharam e 2 cenários de API real foram ignorados por exigirem ambiente/credenciais autorizados.                                                         |
+
+Os testes de UI e o mock MSW não comprovam persistência de `task_id`, cálculo de produtividade, isolamento por gestor, cenários A/B de CA-11, HTTPS ou comunicação entre redes. Nenhuma chamada à API real foi prevista para esta rodada.
+
 ## Auditoria atual de qualidade — 30/10/2026
 
 **Checkout analisado:** branch `main`, HEAD `eec089a976cd2678473ad2f992269538fd1a4a57`. A árvore inicial estava limpa; a linha de base anterior no mesmo checkout foi confirmada com 338 testes Vitest aprovados.

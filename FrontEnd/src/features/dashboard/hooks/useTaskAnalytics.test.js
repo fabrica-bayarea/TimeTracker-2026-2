@@ -1,6 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from '../../../shared/api/api';
 import { useTaskAnalytics } from './useTaskAnalytics';
+
+vi.mock('../../../shared/api/api', () => ({ api: { tasks: vi.fn() } }));
 
 const task = {
   id: '6e7b94da-5651-46a0-bf28-fcb8f4f14c04',
@@ -11,6 +14,11 @@ const task = {
   updated_at: '2026-10-13T14:20:00Z',
 };
 const summary = { date: '2026-10-13', timezone: 'America/Sao_Paulo', tasks: [] };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  api.tasks.mockResolvedValue([]);
+});
 
 afterEach(() => vi.useRealTimers());
 
@@ -96,10 +104,24 @@ describe('useTaskAnalytics', () => {
   });
 
   it('não consulta API nem cria opções de Task quando integração não foi injetada', () => {
-    const { result } = renderHook(() => useTaskAnalytics(null, '2026-10-13', '', ''));
+    const { result } = renderHook(() =>
+      useTaskAnalytics(null, '2026-10-13', '', '', { enabled: false }),
+    );
     expect(result.current.tasksAvailable).toBe(false);
     expect(result.current.tasks).toEqual([]);
     expect(result.current.summary).toBeNull();
+    expect(api.tasks).not.toHaveBeenCalled();
+  });
+
+  it('loads the authenticated Task catalog without calling a production summary route', async () => {
+    api.tasks.mockResolvedValue([task]);
+    const { result } = renderHook(() => useTaskAnalytics(null, '2026-10-13', '', ''));
+    await waitFor(() => expect(result.current.tasksLoading).toBe(false));
+    expect(result.current.tasks).toEqual([task]);
+    expect(result.current.tasksAvailable).toBe(true);
+    expect(result.current.summaryMode).toBe('api');
+    expect(result.current.summary).toBeNull();
+    expect(api.tasks).toHaveBeenCalledWith(expect.any(AbortSignal));
   });
 
   it('ignora a resposta anterior do catálogo mesmo se o serviço não respeitar o cancelamento', async () => {

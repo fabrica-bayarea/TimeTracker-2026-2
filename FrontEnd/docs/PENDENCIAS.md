@@ -4,6 +4,36 @@
 
 Este snapshot substitui os checkpoints anteriores deste documento. As afirmações históricas de que o backend não tinha CRUD de Tasks, código de associação ou associação colaborador–gestor deixaram de representar o checkout: PRs #142, #145 e #146 estão incorporados na branch. Seus merges locais são `5b72a3e`, `dffb107` e `cccc5ac`, respectivamente. O PR #144 do Agent também está incorporado (`189a7e9`), mas seus caminhos de API ainda não correspondem ao backend atual. O snapshot anterior completo foi preservado ao final deste arquivo com status histórico identificado.
 
+## Revalidação do Dashboard analítico — 04/11/2026
+
+Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue #132, sua filha #140 e RF-27. A árvore inicial estava limpa. A leitura local confirmou que o Backend já oferece CRUD autenticado de Tasks, incluindo `GET /tasks/` escopado ao gestor; o cliente do Dashboard agora usa esse catálogo real quando há sessão autenticada.
+
+| Área                      | Evidência local                                                                                                                                 | Estado no Frontend                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Tempo registrado por Task | `ActivityLog`/`ActivityLogCreate` não têm `task_id`; `GET /dashboard/tasks-summary` não existe.                                                 | Card e filtro preservados; resumo real indisponível. O MSW de desenvolvimento retorna lista vazia.                                 |
+| Tempo produtivo           | Não há regra aprovada nem resposta do Backend por Task. `is_idle` não define produtividade.                                                     | Indicador separado criado, valida valores futuros e mostra indisponibilidade sem inferir dados.                                    |
+| Linha do tempo            | Não existe consulta de eventos vinculados a Task; `GET /activities/realtime` é somente leitura atual.                                           | Componente e validador preparados para um contrato candidato; nenhum evento é solicitado nem inventado.                            |
+| Filtros                   | O Dashboard oferece um dia, colaborador e Task. `/users/` e os endpoints globais de atividade/resumo não são escopados pelo Backend.            | A Task vem do catálogo autenticado e manager-scoped; filtros não são tratados como autorização. Período ainda depende de contrato. |
+| Segurança gerencial       | `/users/`, `/activities/realtime` e `/dashboard/summary` não exigem JWT nem filtram a equipe; `GET /tasks/` exige JWT e limita Tasks ao gestor. | Aviso global continua visível. A tela não consegue provar nem impor isolamento da equipe com essas rotas.                          |
+
+### Pendências de outras equipes
+
+- **Backend:** persistir `task_id` no registro e aceitar o vínculo na entrada; criar agregação autenticada por Task/data/período com total registrado, lista de tarefas sem atividade e regra para atividade sem Task; aplicar o escopo do gestor a usuários, atividades, resumo e timeline; definir paginação e semântica temporal dos eventos.
+- **Backend e requisitos:** publicar a regra confiável de tempo produtivo a partir do escopo da Task, sem inferência baseada somente em `is_idle`.
+- **Agent:** selecionar/vincular a Task durante a captura e sincronizar o vínculo; definir os eventos de troca/encerramento somente se fizerem parte da regra aprovada.
+- **Requisitos/produto:** definir RN-19, tempo registrado versus produtivo, agrupamento, fuso/período, atividade sem Task e significado dos timestamps. A busca em `requisitos/` não encontrou CA-11 nem os cenários A/B solicitados; confirmar o documento oficial sem presumir conteúdo. CA-12 e evidência de exposição HTTPS também precisam de homologação externa.
+- **Implantação:** disponibilizar ambiente autorizado com HTTPS e API/Frontend acessíveis para validar CA-12 e redes distintas da issue #141. Não há evidência de deploy neste checkout.
+
+### Matriz de aceite revalidada
+
+| Critério | Evidência atual                                                                                             | Situação                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| RF-27    | Filtros e painéis atuais; componentes separados para produtividade e timeline.                              | Parcial; os dados requeridos dependem de contratos ausentes.                 |
+| RN-19    | Sem rankings; Tasks listadas por rota autenticada e escopada. O resumo/usuários/realtime ainda são globais. | Não atendido pelo Backend; o frontend não substitui autorização de servidor. |
+| CA-10    | Atualização manual/automática das fontes existentes; resumo por Task fica sem dados reais.                  | Parcial; falta agregação real e aplicação de filtros no servidor.            |
+| CA-11    | Cenários A/B não localizados no documento oficial disponível.                                               | Pendente de confirmação; não homologado.                                     |
+| CA-12    | Nenhum ambiente público/HTTPS ou teste entre redes disponível no workspace.                                 | Pendente de implantação/homologação externa.                                 |
+
 ## Resumo vigente
 
 | ID    | Pendência ou entrega acompanhada                        | Responsável           | Prioridade | Status                                    |

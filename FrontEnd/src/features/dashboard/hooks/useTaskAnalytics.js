@@ -1,74 +1,85 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createTaskAnalyticsSource } from '../services/taskAnalyticsSource';
+import { validTaskSummary } from '../../../shared/api/validators';
 import { useAutoRefresh } from './useAutoRefresh';
 
-export function useTaskAnalytics(devApi, date, username, taskId) {
-  const [tasks, setTasks] = useState([]);
-  const [tasksLoading, setTasksLoading] = useState(Boolean(devApi));
-  const [tasksError, setTasksError] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(Boolean(devApi));
-  const [summaryError, setSummaryError] = useState(null);
+const emptyTasks = { key: null, tasks: [], loading: true, error: null };
+const emptySummary = { key: null, summary: null, loading: false, error: null };
+
+export function useTaskAnalytics(
+  devApi,
+  date,
+  username,
+  taskId,
+  { scopeKey = '', enabled = true } = {},
+) {
+  const source = useMemo(() => createTaskAnalyticsSource({ demoClient: devApi }), [devApi]);
+  const tasksKey = String(scopeKey || '');
+  const summaryKey = `${tasksKey}|${date}|${username}|${taskId}`;
+  const [tasksResult, setTasksResult] = useState(emptyTasks);
+  const [summaryResult, setSummaryResult] = useState(emptySummary);
   const tasksRequest = useRef(null);
   const summaryRequest = useRef(null);
+  const tasksSequence = useRef(0);
   const summarySequence = useRef(0);
 
   const loadTasks = useCallback(async () => {
     tasksRequest.current?.abort();
-    if (!devApi) {
-      setTasks([]);
-      setTasksLoading(false);
-      setTasksError(null);
+    if (!enabled) {
+      setTasksResult({ key: tasksKey, tasks: [], loading: false, error: null });
       return;
     }
-
     const controller = new AbortController();
     tasksRequest.current = controller;
-    setTasksLoading(true);
-    setTasks([]);
-    setTasksError(null);
+    const sequence = ++tasksSequence.current;
+    setTasksResult({ key: tasksKey, tasks: [], loading: true, error: null });
     try {
-      const response = await devApi.tasks(controller.signal);
-      if (!controller.signal.aborted) setTasks(response);
-    } catch (cause) {
-      if (!controller.signal.aborted) {
-        setTasksError(cause?.message || 'Não foi possível carregar a lista de Tasks.');
+      const response = await source.tasks(controller.signal);
+      if (!controller.signal.aborted && sequence === tasksSequence.current) {
+        setTasksResult({ key: tasksKey, tasks: response, loading: false, error: null });
       }
-    } finally {
-      if (!controller.signal.aborted) setTasksLoading(false);
+    } catch (cause) {
+      if (!controller.signal.aborted && sequence === tasksSequence.current) {
+        setTasksResult({
+          key: tasksKey,
+          tasks: [],
+          loading: false,
+          error: cause?.message || 'Não foi possível carregar a lista de Tasks.',
+        });
+      }
     }
-  }, [devApi]);
+  }, [enabled, source, tasksKey]);
 
   const loadSummary = useCallback(async () => {
     summaryRequest.current?.abort();
     const sequence = ++summarySequence.current;
-    if (!devApi) {
-      setSummary(null);
-      setSummaryLoading(false);
-      setSummaryError(null);
+    if (!enabled || !source.summary) {
+      setSummaryResult({ key: summaryKey, summary: null, loading: false, error: null });
       return;
     }
 
     const controller = new AbortController();
     summaryRequest.current = controller;
-    setSummary(null);
-    setSummaryLoading(true);
-    setSummaryError(null);
+    setSummaryResult({ key: summaryKey, summary: null, loading: true, error: null });
     try {
-      const response = await devApi.taskSummary(date, username, taskId, controller.signal);
-      if (response?.date !== date) {
-        throw new Error('A resposta do resumo não corresponde à data selecionada.');
+      const response = await source.summary(date, username, taskId, controller.signal);
+      if (!validTaskSummary(response) || response.date !== date) {
+        throw new Error('A resposta do resumo é inválida ou não corresponde à data selecionada.');
       }
-      if (!controller.signal.aborted && sequence === summarySequence.current) setSummary(response);
+      if (!controller.signal.aborted && sequence === summarySequence.current) {
+        setSummaryResult({ key: summaryKey, summary: response, loading: false, error: null });
+      }
     } catch (cause) {
       if (!controller.signal.aborted && sequence === summarySequence.current) {
-        setSummaryError(cause?.message || 'Não foi possível carregar o resumo por Task.');
-      }
-    } finally {
-      if (!controller.signal.aborted && sequence === summarySequence.current) {
-        setSummaryLoading(false);
+        setSummaryResult({
+          key: summaryKey,
+          summary: null,
+          loading: false,
+          error: cause?.message || 'Não foi possível carregar o resumo por Task.',
+        });
       }
     }
-  }, [date, devApi, taskId, username]);
+  }, [date, enabled, source, summaryKey, taskId, username]);
 
   useEffect(() => {
     void loadTasks();
@@ -85,20 +96,23 @@ export function useTaskAnalytics(devApi, date, username, taskId) {
     [loadSummary, loadTasks],
   );
 
-  useAutoRefresh(refresh, Boolean(devApi));
+  useAutoRefresh(refresh, enabled && source.mode === 'demo');
 
   const retry = useCallback(() => {
     void refresh();
   }, [refresh]);
+  const currentTasks = tasksResult.key === tasksKey ? tasksResult : emptyTasks;
+  const currentSummary = summaryResult.key === summaryKey ? summaryResult : emptySummary;
 
   return {
-    tasks,
-    tasksAvailable: !tasksLoading && !tasksError && Boolean(devApi),
-    tasksLoading,
-    tasksError,
-    summary,
-    summaryLoading,
-    summaryError,
+    tasks: currentTasks.tasks,
+    tasksAvailable: enabled && !currentTasks.loading && !currentTasks.error,
+    tasksLoading: currentTasks.loading,
+    tasksError: currentTasks.error,
+    summary: currentSummary.summary,
+    summaryLoading: currentSummary.loading,
+    summaryError: currentSummary.error,
+    summaryMode: source.mode,
     retry,
     retryTasks: loadTasks,
     retrySummary: loadSummary,

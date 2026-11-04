@@ -56,7 +56,7 @@ it('combina seleção de Task com filtros sem oferecê-la quando a lista está i
       onUsernameChange={vi.fn()}
     />,
   );
-  expect(screen.getByLabelText(/Task \(somente resumo por Task\)/)).toBeDisabled();
+  expect(screen.getByLabelText(/Task \(resumo por Task\)/)).toBeDisabled();
   expect(screen.getByRole('option', { name: 'Nenhuma Task disponível' })).toBeInTheDocument();
 
   rerender(
@@ -70,7 +70,7 @@ it('combina seleção de Task com filtros sem oferecê-la quando a lista está i
       onUsernameChange={vi.fn()}
     />,
   );
-  fireEvent.change(screen.getByLabelText(/Task \(somente resumo por Task\)/), {
+  fireEvent.change(screen.getByLabelText(/Task \(resumo por Task\)/), {
     target: { value: taskId },
   });
   expect(onTaskChange).toHaveBeenCalledWith(taskId);

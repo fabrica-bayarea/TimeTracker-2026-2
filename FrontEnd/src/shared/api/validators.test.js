@@ -15,6 +15,8 @@ import {
   validTaskCreatePayload,
   validTaskHours,
   validTaskSummary,
+  validTaskProductivity,
+  validTaskTimeline,
   validTaskTitle,
   validTaskUpdatePayload,
   validUuid,
@@ -234,6 +236,67 @@ describe('contratos da API', () => {
     ).toBe(false);
     expect(validTaskSummary({ ...summary, timezone: 'UTC' })).toBe(false);
     expect(validTaskSummary(null)).toBe(false);
+  });
+
+  it('valida mÃ©tricas candidatas de produtividade sem aceitar inferÃªncias ou valores fora do escopo', () => {
+    const productivity = {
+      task_id: '6e7b94da-5651-46a0-bf28-fcb8f4f14c04',
+      title: 'RelatÃ³rio mensal',
+      registered_seconds: 14400,
+      productive_seconds: 11400,
+    };
+    expect(validTaskProductivity(productivity)).toBe(true);
+    expect(validTaskProductivity({ ...productivity, productive_seconds: 0 })).toBe(true);
+    expect(validTaskProductivity({ ...productivity, registered_seconds: -1 })).toBe(false);
+    expect(validTaskProductivity({ ...productivity, productive_seconds: 1.5 })).toBe(false);
+    expect(validTaskProductivity({ ...productivity, productive_seconds: 14401 })).toBe(false);
+    expect(validTaskProductivity({ ...productivity, is_idle: false })).toBe(false);
+    expect(validTaskProductivity(null)).toBe(false);
+  });
+
+  it('valida timeline com timestamps zonados, duraÃ§Ã£o zero e inatividade opcional', () => {
+    const timeline = {
+      task_id: '6e7b94da-5651-46a0-bf28-fcb8f4f14c04',
+      events: [
+        {
+          id: 'd94a4d6c-8542-4c3e-889b-89db302ef4cc',
+          username: 'ana',
+          process_name: 'Code.exe',
+          window_title: null,
+          captured_at: '2026-11-04T12:00:00Z',
+          duration_seconds: 0,
+          is_idle: false,
+        },
+        {
+          id: 'b50c6ae9-531b-4fa7-9cf7-b7e05e741acc',
+          username: 'ana',
+          process_name: 'Browser.exe',
+          captured_at: '2026-11-04T13:00:00-03:00',
+          duration_seconds: 900,
+        },
+      ],
+    };
+    expect(validTaskTimeline(timeline)).toBe(true);
+    expect(validTaskTimeline({ ...timeline, events: [] })).toBe(true);
+    expect(
+      validTaskTimeline({
+        ...timeline,
+        events: [{ ...timeline.events[0], captured_at: '2026-11-04T12:00:00' }],
+      }),
+    ).toBe(false);
+    expect(
+      validTaskTimeline({
+        ...timeline,
+        events: [{ ...timeline.events[0], duration_seconds: -1 }],
+      }),
+    ).toBe(false);
+    expect(
+      validTaskTimeline({
+        ...timeline,
+        events: [timeline.events[0], timeline.events[0]],
+      }),
+    ).toBe(false);
+    expect(validTaskTimeline(null)).toBe(false);
   });
 
   it('valida jornada com America/Sao_Paulo, horários nulos ou instantes explícitos', () => {

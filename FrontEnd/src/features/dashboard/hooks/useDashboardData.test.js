@@ -16,6 +16,15 @@ beforeEach(() => {
 });
 
 describe('useDashboardData', () => {
+  it('não consulta nem conserva dados sem a sessão do gestor', async () => {
+    const { result } = renderHook(() => useDashboardData('2026-09-25', '', '', false));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toBeNull();
+    expect(api.summary).not.toHaveBeenCalled();
+    expect(api.users).not.toHaveBeenCalled();
+    expect(api.realtime).not.toHaveBeenCalled();
+  });
+
   it('não apresenta o resumo de outro usuário como se correspondesse ao filtro', async () => {
     api.summary.mockResolvedValue({
       date: '2026-09-25',
@@ -50,6 +59,35 @@ describe('useDashboardData', () => {
       realtime: true,
     });
     expect(result.current.updatedAt).toBeInstanceOf(Date);
+  });
+
+  it('descarta os dados e a resposta pendente ao trocar o escopo da sessão', async () => {
+    let finishOldSummary;
+    let oldSignal;
+    const newSummary = {
+      date: '2026-09-25',
+      users: [{ username: 'bia', total_seconds: 20, by_category: [] }],
+    };
+    api.summary
+      .mockImplementationOnce((_date, _username, signal) => {
+        oldSignal = signal;
+        return new Promise((resolve) => {
+          finishOldSummary = resolve;
+        });
+      })
+      .mockResolvedValueOnce(newSummary);
+    const { result, rerender } = renderHook(
+      ({ scopeKey }) => useDashboardData('2026-09-25', '', scopeKey),
+      { initialProps: { scopeKey: 'manager-a' } },
+    );
+    await waitFor(() => expect(oldSignal).toBeInstanceOf(AbortSignal));
+
+    rerender({ scopeKey: 'manager-b' });
+    expect(result.current.data).toBeNull();
+    await waitFor(() => expect(result.current.data?.summary).toEqual(newSummary));
+    expect(oldSignal.aborted).toBe(true);
+    await act(async () => finishOldSummary(summary));
+    expect(result.current.data.summary).toEqual(newSummary);
   });
 
   it('mantém os dados durante atualização manual', async () => {

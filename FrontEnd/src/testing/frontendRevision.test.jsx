@@ -9,6 +9,7 @@ import { useDashboardData } from '../features/dashboard/hooks/useDashboardData';
 vi.mock('../shared/api/api', () => ({
   api: {
     summary: vi.fn(),
+    tasks: vi.fn(),
     users: vi.fn(),
     realtime: vi.fn(),
     settings: vi.fn(),
@@ -17,7 +18,10 @@ vi.mock('../shared/api/api', () => ({
   },
 }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  api.tasks.mockResolvedValue([]);
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe('estados de integração', () => {
@@ -25,7 +29,7 @@ describe('estados de integração', () => {
     api.summary.mockImplementation(async (date) => ({ date, users: [] }));
     api.users.mockResolvedValue([{ username: 'ana', full_name: 'Ana' }]);
     api.realtime.mockRejectedValue(new Error('offline'));
-    render(<DashboardPage dark={false} toggleTheme={vi.fn()} />);
+    render(<DashboardPage dark={false} toggleTheme={vi.fn()} manager={{ id: 'manager-1' }} />);
     await screen.findByRole('alert');
     expect(screen.getByText('Online').closest('article')).toHaveTextContent('—');
     expect(screen.getByText('Tempo registrado').closest('article')).toHaveTextContent('0h 00min');
@@ -55,7 +59,7 @@ describe('estados de integração', () => {
     api.summary.mockRejectedValue(new Error('Resposta inválida da API'));
     api.users.mockResolvedValue([]);
     api.realtime.mockResolvedValue([]);
-    render(<DashboardPage dark={false} toggleTheme={vi.fn()} />);
+    render(<DashboardPage dark={false} toggleTheme={vi.fn()} manager={{ id: 'manager-1' }} />);
     await screen.findByRole('alert');
     expect(screen.getByText('Tempo registrado').closest('article')).toHaveTextContent('—');
   });

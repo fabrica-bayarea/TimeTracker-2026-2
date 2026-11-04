@@ -267,6 +267,67 @@ export function validTaskSummary(value) {
   );
 }
 
+/** @param {any} value @returns {value is import('./contracts').TaskProductivity} */
+export function validTaskProductivity(value) {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).every((field) =>
+      ['task_id', 'title', 'registered_seconds', 'productive_seconds'].includes(field),
+    ) &&
+    validUuid(value.task_id) &&
+    validTaskTitle(value.title) &&
+    Number.isSafeInteger(value.registered_seconds) &&
+    value.registered_seconds >= 0 &&
+    Number.isSafeInteger(value.productive_seconds) &&
+    value.productive_seconds >= 0 &&
+    value.productive_seconds <= value.registered_seconds,
+  );
+}
+
+/** @param {any} value @returns {value is import('./contracts').TaskTimeline} */
+export function validTaskTimeline(value) {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).every((field) => ['task_id', 'events'].includes(field)) &&
+    validUuid(value.task_id) &&
+    Array.isArray(value.events) &&
+    value.events.every(
+      (event) =>
+        event &&
+        typeof event === 'object' &&
+        !Array.isArray(event) &&
+        Object.keys(event).every((field) =>
+          [
+            'id',
+            'username',
+            'process_name',
+            'window_title',
+            'captured_at',
+            'duration_seconds',
+            'is_idle',
+          ].includes(field),
+        ) &&
+        validUuid(event.id) &&
+        typeof event.username === 'string' &&
+        event.username.trim().length > 0 &&
+        typeof event.process_name === 'string' &&
+        event.process_name.trim().length > 0 &&
+        (event.window_title === undefined ||
+          event.window_title === null ||
+          typeof event.window_title === 'string') &&
+        validTimestamp(event.captured_at) &&
+        Number.isSafeInteger(event.duration_seconds) &&
+        event.duration_seconds >= 0 &&
+        optionalBoolean(event.is_idle),
+    ) &&
+    uniqueBy(value.events, (event) => event.id),
+  );
+}
+
 /** @param {any} value @returns {value is import('./contracts').AgentStatusResponse} */
 export function validAgentStatuses(value) {
   return Boolean(

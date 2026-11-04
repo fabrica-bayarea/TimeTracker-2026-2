@@ -2,6 +2,12 @@
 
 Este é o inventário das telas que a aplicação **executa hoje**. A [visão do produto](../../requisitos/visao.md), as [regras de negócio e requisitos funcionais](../../requisitos/requisitos/rn_rf.md) e os [critérios de aceite](../../requisitos/requisitos/ca.md) descrevem o produto desejado; os links nos IDs abaixo levam à seção de origem de cada requisito. A ausência de contratos no backend está registrada em [Pendências](PENDENCIAS.md). Nenhuma informação de task, produtividade ou equipe é criada no navegador; a identidade do gestor é obtida da API autenticada.
 
+### Atualização do Dashboard — 04/11/2026
+
+Com sessão autenticada, o seletor de Task usa `GET /tasks/` e recebe apenas o catálogo do gestor segundo o contrato atual. O cartão de resumo não consulta `/dashboard/tasks-summary` em produção, porque essa rota ainda não existe. O catálogo MSW de desenvolvimento mantém o resumo vazio e não cria horas.
+
+Foram adicionados indicadores separados para tempo registrado/produtivo e uma timeline cronológica com contratos candidatos validados. Em produção, ambos mostram a dependência da API, sem classificar `is_idle` como produtividade ou converter capturas em intervalos. A timeline apresenta `process_name`, colaborador, timestamp e duração se dados validados forem fornecidos; `window_title` não é exibido. Os filtros atuais continuam com um dia, colaborador e Task; a lista global `/users/` não representa equipe autorizada, e as consultas gerais seguem sem isolamento pelo gestor.
+
 ## Rotas e navegação
 
 | Hash                     | Conteúdo atual                                                       | Fonte de dados                              |

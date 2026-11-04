@@ -1,5 +1,17 @@
 # Alterações do frontend
 
+## 04/11/2026 — preparação do Dashboard analítico por Task
+
+- `useTaskAnalytics` agora seleciona uma fonte explícita: em produção, lista Tasks por `GET /tasks/` usando cliente HTTP e JWT; resumo candidato continua somente no adaptador MSW de desenvolvimento. `useDashboardData` e `useTaskAnalytics` descartam o estado e as respostas antigas ao trocar/remover a sessão do gestor. Nenhuma rota analítica inexistente é chamada.
+- O card de resumo valida o contrato candidato antes de apresentar dados. A formatação compartilhada aceita somente segundos inteiros não negativos e exibe segundos quando a duração é inferior a um minuto.
+- Criados `TaskProductivityCard` e `TaskActivityTimeline`, junto com validadores de dados candidatos. Os componentes mostram dependência do Backend sem produzir números; a timeline ordena por instante explícito, não exibe título da janela e não calcula intervalos. Atualização manual está disponível quando um serviço de timeline for conectado.
+- Filtros gerais permanecem separados do filtro de Task. O Dashboard informa que `/users/`, realtime e resumo ainda não têm escopo de equipe; a lista de Tasks usa a rota autenticada, mas não corrige autorização das demais consultas.
+- Pendências, contratos candidatos, matriz RF-27/RN-19/CA-10/CA-11/CA-12 e registro de testes estão em `PENDENCIAS.md`, `CONTRATOS_API.md` e `TESTES.md`.
+
+**Arquivos desta rodada:** `src/features/dashboard/services/taskAnalyticsSource.js`, hooks `useTaskAnalytics.js`/`useDashboardData.js`, seus testes, `src/features/dashboard/components/TaskSummaryCard.jsx`, `TaskProductivityCard.jsx`, `TaskActivityTimeline.jsx`, `DashboardPage.jsx`, `DashboardFilters.jsx`, validadores/contratos da API, `src/shared/lib/duration.js` e documentos do Dashboard em `docs/`.
+
+**Verificação:** `npm.cmd run check` passou (363 testes Vitest; cobertura 93,23% statements, 90,54% branches, 94,96% functions e 95,66% lines; build e 4 verificações do bundle passaram). `npm.cmd run test:e2e` passou com 34 cenários aprovados, nenhum erro e 2 testes opt-in de API real ignorados. Nenhuma API real ou Backend/Agent foi executado.
+
 ## 30/10/2026 — resiliência e acessibilidade do frontend
 
 **Base auditada:** branch `main`, HEAD `eec089a976cd2678473ad2f992269538fd1a4a57`; a árvore inicial estava limpa. Todas as alterações permaneceram em `FrontEnd/`.
