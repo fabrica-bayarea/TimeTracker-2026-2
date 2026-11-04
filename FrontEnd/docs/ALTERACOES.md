@@ -10,7 +10,7 @@
 
 **Arquivos desta rodada:** `src/features/dashboard/services/taskAnalyticsSource.js`, hooks `useTaskAnalytics.js`/`useDashboardData.js`, seus testes, `src/features/dashboard/components/TaskSummaryCard.jsx`, `TaskProductivityCard.jsx`, `TaskActivityTimeline.jsx`, `DashboardPage.jsx`, `DashboardFilters.jsx`, validadores/contratos da API, `src/shared/lib/duration.js` e documentos do Dashboard em `docs/`.
 
-**Verificação:** `npm.cmd run check` passou (363 testes Vitest; cobertura 93,23% statements, 90,54% branches, 94,96% functions e 95,66% lines; build e 4 verificações do bundle passaram). `npm.cmd run test:e2e` passou com 34 cenários aprovados, nenhum erro e 2 testes opt-in de API real ignorados. Nenhuma API real ou Backend/Agent foi executado.
+**Verificação:** `npm.cmd run check` passou (365 testes Vitest; cobertura 93,25% statements, 90,58% branches, 94,96% functions e 95,68% lines; build e 4 verificações do bundle passaram). `npm.cmd run test:e2e` passou com 34 cenários aprovados, nenhum erro e 2 testes opt-in de API real ignorados. Nenhuma API real ou Backend/Agent foi executado.
 
 ## 30/10/2026 — resiliência e acessibilidade do frontend
 

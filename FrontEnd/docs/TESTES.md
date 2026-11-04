@@ -6,7 +6,7 @@ A suíte nova cobre seleção da fonte (catálogo real JWT versus resumo MSW exc
 
 | Verificação solicitada | Comando                | Resultado desta rodada                                                                                                                                                  |
 | ---------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Check do Frontend      | `npm.cmd run check`    | Passou: lint, Prettier, typecheck, 363 testes Vitest, build e 4 verificações de bundle. Cobertura: 93,23% statements, 90,54% branches, 94,96% functions e 95,66% lines. |
+| Check do Frontend      | `npm.cmd run check`    | Passou: lint, Prettier, typecheck, 365 testes Vitest, build e 4 verificações de bundle. Cobertura: 93,25% statements, 90,58% branches, 94,96% functions e 95,68% lines. |
 | E2E do Frontend        | `npm.cmd run test:e2e` | 34 passaram, 0 falharam e 2 cenários de API real foram ignorados por exigirem ambiente/credenciais autorizados.                                                         |
 
 Os testes de UI e o mock MSW não comprovam persistência de `task_id`, cálculo de produtividade, isolamento por gestor, cenários A/B de CA-11, HTTPS ou comunicação entre redes. Nenhuma chamada à API real foi prevista para esta rodada.
