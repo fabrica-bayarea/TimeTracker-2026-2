@@ -24,7 +24,7 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe(`Bearer ${token}`);
   });
 
-  it('cria Task com título, descrição e colaboradores validados', async () => {
+  it('cria Task com descrição opcional e zero ou mais colaboradores', async () => {
     const task = {
       id: '6e7b94da-5651-46a0-bf28-fcb8f4f14c04',
       title: 'Relatório mensal',
@@ -53,7 +53,18 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     expect(fetchMock.mock.calls[0][1].headers.get('Content-Type')).toBe('application/json');
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(payload);
     expect(() => devApi.createTask({ ...payload, title: ' ' })).toThrow('válidos');
-    expect(() => devApi.createTask({ ...payload, collaborator_ids: [] })).toThrow('válidos');
+    const unassignedTask = { ...task, description: null, collaborators: [] };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => unassignedTask })),
+    );
+    await expect(
+      devApi.createTask({ title: 'Task sem atribuição', collaborator_ids: [] }),
+    ).resolves.toEqual(unassignedTask);
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1].body)).toEqual({
+      title: 'Task sem atribuição',
+      collaborator_ids: [],
+    });
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -66,7 +77,7 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     await expect(devApi.createTask(payload)).rejects.toMatchObject({
       type: 'client',
       status: 422,
-      message: 'Invalid task payload',
+      message: 'Confira os campos informados e tente novamente.',
     });
     vi.stubGlobal(
       'fetch',
@@ -95,10 +106,12 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     await expect(devApi.collaborators()).resolves.toEqual([collaborator]);
     expect(new URL(fetchMock.mock.calls[0][0]).pathname).toBe('/users/');
 
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => ({ ok: true, json: async () => task })),
+    const mutationMock = vi.fn(async (_url, options) =>
+      options.method === 'DELETE'
+        ? { ok: true, status: 204 }
+        : { ok: true, json: async () => task },
     );
+    vi.stubGlobal('fetch', mutationMock);
     await expect(
       devApi.updateTask(task.id, {
         title: task.title,
@@ -108,8 +121,8 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     ).resolves.toEqual(task);
     expect(vi.mocked(fetch).mock.calls[0][1]).toMatchObject({ method: 'PUT' });
 
-    await expect(devApi.deleteTask(task.id)).resolves.toEqual(task);
-    expect(vi.mocked(fetch).mock.calls[1][1]).toMatchObject({ method: 'DELETE' });
+    await expect(devApi.deleteTask(task.id)).resolves.toBeUndefined();
+    expect(mutationMock.mock.calls[1][1]).toMatchObject({ method: 'DELETE' });
   });
 
   it('consulta resumo demonstrativo por data, colaborador e Task', async () => {
@@ -150,7 +163,7 @@ describe('cliente isolado dos mocks de desenvolvimento', () => {
     }));
     vi.stubGlobal('fetch', fetchMock);
     await expect(devApi.taskHours('2026-10-01', '2026-10-13')).rejects.toThrow(
-      'Consulta indisponível',
+      'O serviço está temporariamente indisponível. Tente novamente em instantes.',
     );
     expect(new URL(fetchMock.mock.calls[0][0]).pathname).toBe('/dashboard/task-hours');
     expect(() => devApi.taskHours('2026-10-13', '2026-10-01')).toThrow('período válido');

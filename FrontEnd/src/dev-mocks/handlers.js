@@ -1,13 +1,14 @@
 import { http, HttpResponse } from 'msw';
 import { isIsoDate } from '../shared/lib/date';
 import {
-  validTaskDescription,
-  validTaskTitle,
   validTaskHours,
+  validTaskCreatePayload,
   validTask,
+  validTaskUpdatePayload,
   validTaskSummary,
   validAttendance,
   validManager,
+  validManagerProfile,
   validManagerToken,
 } from '../shared/api/validators';
 
@@ -39,22 +40,16 @@ function makeTaskId() {
   return `00000000-0000-4000-8000-${String(sequence).padStart(12, '0')}`;
 }
 
-function taskBodyIsValid(body) {
+function taskBodyIsValid(body, { partial = false } = {}) {
   const collaboratorIds = body?.collaborator_ids;
+  const schemaValid = partial ? validTaskUpdatePayload(body) : validTaskCreatePayload(body);
   return (
+    schemaValid &&
     body &&
     typeof body === 'object' &&
     !Array.isArray(body) &&
-    Object.keys(body).length === 3 &&
-    Object.hasOwn(body, 'title') &&
-    Object.hasOwn(body, 'description') &&
-    Object.hasOwn(body, 'collaborator_ids') &&
-    validTaskTitle(body.title) &&
-    validTaskDescription(body.description) &&
-    Array.isArray(collaboratorIds) &&
-    collaboratorIds.length > 0 &&
-    new Set(collaboratorIds).size === collaboratorIds.length &&
-    collaboratorIds.every((id) => collaborators.some((person) => person.id === id))
+    (!Object.hasOwn(body, 'collaborator_ids') ||
+      collaboratorIds.every((id) => collaborators.some((person) => person.id === id)))
   );
 }
 
@@ -76,6 +71,10 @@ function demoManager(email = demoManagerEmail) {
   };
 }
 
+function demoManagerProfile(email = demoManagerEmail) {
+  return { ...demoManager(email), association_code: '001234' };
+}
+
 function isDemoManagerRequest(request) {
   return request.headers.get('authorization') === `Bearer ${DEMO_MANAGER_TOKEN}`;
 }
@@ -88,12 +87,16 @@ function taskFromBody(body, previous = null) {
   const now = new Date().toISOString();
   return {
     id: previous?.id || makeTaskId(),
-    title: body.title.trim(),
-    description: body.description.trim(),
-    collaborators: body.collaborator_ids.map((id) => {
-      const person = collaborators.find((entry) => entry.id === id);
-      return { id: person.id, username: person.username, full_name: person.full_name };
-    }),
+    title: Object.hasOwn(body, 'title') ? body.title.trim() : previous?.title,
+    description: Object.hasOwn(body, 'description')
+      ? body.description?.trim() || null
+      : previous?.description || null,
+    collaborators: Object.hasOwn(body, 'collaborator_ids')
+      ? body.collaborator_ids.map((id) => {
+          const person = collaborators.find((entry) => entry.id === id);
+          return { id: person.id, username: person.username, full_name: person.full_name };
+        })
+      : previous?.collaborators || [],
     created_at: previous?.created_at || now,
     updated_at: now,
   };
@@ -151,8 +154,8 @@ export const handlers = [
     if (request.headers.get('authorization') !== `Bearer ${DEMO_MANAGER_TOKEN}`) {
       return HttpResponse.json({ detail: 'Token demonstrativo inválido' }, { status: 401 });
     }
-    const manager = demoManager();
-    return validManager(manager)
+    const manager = demoManagerProfile();
+    return validManagerProfile(manager)
       ? HttpResponse.json(manager)
       : HttpResponse.json({ detail: 'Gestor demonstrativo inválido' }, { status: 500 });
   }),
@@ -163,6 +166,16 @@ export const handlers = [
   http.get(`${API_BASE_URL}/tasks/`, ({ request }) => {
     if (!isDemoManagerRequest(request)) return unauthorizedResponse();
     return HttpResponse.json(tasks);
+  }),
+  http.get(`${API_BASE_URL}/tasks/:task_id`, ({ params, request }) => {
+    if (!isDemoManagerRequest(request)) return unauthorizedResponse();
+    if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(params.task_id)) {
+      return HttpResponse.json({ detail: 'ID de Task inválido' }, { status: 422 });
+    }
+    const task = tasks.find((entry) => entry.id === params.task_id);
+    return task
+      ? HttpResponse.json(task)
+      : HttpResponse.json({ detail: 'Task não encontrada' }, { status: 404 });
   }),
   http.post(`${API_BASE_URL}/tasks/`, async ({ request }) => {
     if (!isDemoManagerRequest(request)) return unauthorizedResponse();
@@ -179,7 +192,7 @@ export const handlers = [
   http.put(`${API_BASE_URL}/tasks/:task_id`, async ({ params, request }) => {
     if (!isDemoManagerRequest(request)) return unauthorizedResponse();
     const body = await request.json().catch(() => null);
-    if (!taskBodyIsValid(body)) {
+    if (!taskBodyIsValid(body, { partial: true })) {
       return HttpResponse.json({ detail: 'Descrição inválida' }, { status: 422 });
     }
     const index = tasks.findIndex((task) => task.id === params.task_id);
@@ -194,8 +207,8 @@ export const handlers = [
     if (!isDemoManagerRequest(request)) return unauthorizedResponse();
     const index = tasks.findIndex((task) => task.id === params.task_id);
     if (index < 0) return HttpResponse.json({ detail: 'Task não encontrada' }, { status: 404 });
-    const [deleted] = tasks.splice(index, 1);
-    return HttpResponse.json(deleted);
+    tasks.splice(index, 1);
+    return new HttpResponse(null, { status: 204 });
   }),
   http.get(`${API_BASE_URL}/dashboard/tasks-summary`, ({ request }) => {
     if (!isDemoManagerRequest(request)) return unauthorizedResponse();

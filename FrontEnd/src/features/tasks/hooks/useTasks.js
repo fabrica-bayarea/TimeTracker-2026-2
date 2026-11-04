@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { validUuid } from '../../../shared/api/validators';
 
-export function useTasks(taskService) {
+export function useTasks(taskService, { demo = false } = {}) {
   const [tasks, setTasks] = useState([]);
   const [collaborators, setCollaborators] = useState([]);
   const [loading, setLoading] = useState(Boolean(taskService));
-  const [collaboratorsLoading, setCollaboratorsLoading] = useState(Boolean(taskService));
+  const [collaboratorsLoading, setCollaboratorsLoading] = useState(
+    typeof taskService?.collaborators === 'function',
+  );
   const [error, setError] = useState(null);
   const [collaboratorsError, setCollaboratorsError] = useState(null);
   const [mutation, setMutation] = useState(null);
@@ -29,13 +32,14 @@ export function useTasks(taskService) {
     const sequence = ++loadSequence.current;
     const version = taskVersion.current;
     setLoading(true);
-    setCollaboratorsLoading(true);
+    const canLoadCollaborators = typeof taskService.collaborators === 'function';
+    setCollaboratorsLoading(canLoadCollaborators);
     setError(null);
     setCollaboratorsError(null);
 
     const [taskResult, collaboratorResult] = await Promise.allSettled([
       taskService.tasks(controller.signal),
-      taskService.collaborators(controller.signal),
+      canLoadCollaborators ? taskService.collaborators(controller.signal) : Promise.resolve([]),
     ]);
     if (controller.signal.aborted || sequence !== loadSequence.current) return;
 
@@ -64,6 +68,11 @@ export function useTasks(taskService) {
   const mutate = useCallback(
     async (operation, taskId, payload) => {
       if (!taskService || mutationInProgress.current) return false;
+      if (['update', 'delete'].includes(operation) && !validUuid(taskId)) {
+        setMutationError('ID de Task inválido.');
+        setMutationSuccess(null);
+        return false;
+      }
 
       const controller = new AbortController();
       const operationState = { controller, type: operation };
@@ -97,11 +106,17 @@ export function useTasks(taskService) {
         if (operation === 'delete')
           setTasks((current) => current.filter((task) => task.id !== taskId));
 
-        const messages = {
-          create: 'Task criada nos dados simulados.',
-          update: 'Task atualizada nos dados simulados.',
-          delete: 'Task excluída dos dados simulados.',
-        };
+        const messages = demo
+          ? {
+              create: 'Task criada nos dados simulados.',
+              update: 'Task atualizada nos dados simulados.',
+              delete: 'Task excluída dos dados simulados.',
+            }
+          : {
+              create: 'Task criada.',
+              update: 'Task atualizada.',
+              delete: 'Task excluída.',
+            };
         setMutationSuccess(messages[operation]);
         return true;
       } catch (cause) {
@@ -117,13 +132,15 @@ export function useTasks(taskService) {
         }
       }
     },
-    [taskService, tasks],
+    [demo, taskService, tasks],
   );
 
   const createTask = useCallback((payload) => mutate('create', null, payload), [mutate]);
   const updateTask = useCallback((taskId, payload) => mutate('update', taskId, payload), [mutate]);
   const deleteTask = useCallback((taskId) => mutate('delete', taskId), [mutate]);
-  const retryCollaborators = useCallback(() => void load(), [load]);
+  const retryCollaborators = useCallback(() => {
+    if (typeof taskService?.collaborators === 'function') void load();
+  }, [load, taskService]);
 
   return {
     tasks,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../../shared/api/api';
 
 const CODE_PATTERN = /^\d{6}$/;
@@ -18,10 +18,12 @@ function failureMessage(error) {
  * The adapter is a frontend seam for tests/future integration, not an HTTP contract.
  * The manager ID scopes local state and is never passed to the client.
  *
- * @param {string | null | undefined} managerId
+ * @param {string | { id?: string | null, association_code?: string } | null | undefined} manager
  * @param {{ getAssociationCode?: (signal: AbortSignal) => Promise<unknown> }} [client]
  */
-export function useAssociationCode(managerId, client = api) {
+export function useAssociationCode(manager, client = api) {
+  const managerId = typeof manager === 'string' ? manager : manager?.id;
+  const sessionCode = typeof manager === 'object' && manager ? manager.association_code : null;
   const [state, setState] = useState({ managerId: null, status: 'idle', code: null, error: null });
   const [attempt, setAttempt] = useState(0);
   const sequence = useRef(0);
@@ -30,6 +32,11 @@ export function useAssociationCode(managerId, client = api) {
     const current = ++sequence.current;
     if (!managerId) {
       setState({ managerId: null, status: 'idle', code: null, error: null });
+      return undefined;
+    }
+
+    if (typeof sessionCode === 'string' && CODE_PATTERN.test(sessionCode)) {
+      setState({ managerId, status: 'ready', code: sessionCode, error: null });
       return undefined;
     }
 
@@ -74,7 +81,7 @@ export function useAssociationCode(managerId, client = api) {
       controller.abort();
       if (sequence.current === current) sequence.current += 1;
     };
-  }, [managerId, client, attempt]);
+  }, [managerId, sessionCode, client, attempt]);
 
   const currentState = state.managerId === managerId ? state : null;
   return {
@@ -82,6 +89,6 @@ export function useAssociationCode(managerId, client = api) {
     loading: !!managerId && (!currentState || currentState.status === 'loading'),
     pending: !!managerId && currentState?.status === 'pending',
     error: currentState?.status === 'error' ? currentState.error : null,
-    retry: () => setAttempt((value) => value + 1),
+    retry: useCallback(() => setAttempt((value) => value + 1), []),
   };
 }

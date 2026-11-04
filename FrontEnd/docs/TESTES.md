@@ -1,5 +1,90 @@
 # Testes e validação do frontend
 
+## Auditoria atual de qualidade — 30/10/2026
+
+**Checkout analisado:** branch `main`, HEAD `eec089a976cd2678473ad2f992269538fd1a4a57`. A árvore inicial estava limpa; a linha de base anterior no mesmo checkout foi confirmada com 338 testes Vitest aprovados.
+
+| Comando/verificação         | Resultado                                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `npm.cmd run lint`          | Aprovado.                                                                                                                  |
+| `npm.cmd run format:check`  | Aprovado; todos os arquivos mantêm o estilo Prettier.                                                                      |
+| `npm.cmd run typecheck`     | Aprovado.                                                                                                                  |
+| `npm.cmd run test:coverage` | 61 arquivos e 348 testes aprovados. Statements 93,16%; branches 89,60%; funções 94,79%; linhas 95,60%.                     |
+| `npm.cmd run build`         | Aprovado; o bundle de produção exclui handlers, worker e rotas de mocks.                                                   |
+| `npm.cmd run test:bundle`   | 4 verificações aprovadas.                                                                                                  |
+| `npm.cmd run test:e2e`      | 36 cenários: 34 aprovados, 0 falhas e 2 testes opt-in de API real ignorados por falta de ambiente/credenciais autorizados. |
+| API real                    | Não executada. Os testes interceptados não comprovam CORS, persistência ou autorização no servidor.                        |
+
+Os scans Axe passaram sem violações detectadas nas páginas de Painel, Tasks, Colaboradores, Relatórios, Configurações e login, além dos estados mobile escuro e de erro. Os scans cobrem WCAG 2.2 A/AA e versões anteriores; isso não substitui avaliação manual. A regressão de layout passou em 320, 375, 390, 768, 1024, 1366 e 1920 px, e a ampliação CSS de 200%. A largura de 320 px também verifica o reflow equivalente a 400% de uma viewport de 1280 px.
+
+O primeiro ciclo da suíte após as mudanças revelou somente expectativas antigas de testes que ainda aguardavam o texto bruto do servidor; elas foram atualizadas para as mensagens HTTP seguras e a execução completa posterior passou.
+
+O baseline E2E foi executado em uma cópia temporária de `FrontEnd/` no próprio HEAD `eec089a`: 32 cenários, 30 aprovados, 0 falhas e 2 testes de API real ignorados. Essa cópia foi removida após a execução. O baseline Vitest no checkout original também passou com 338 testes.
+
+## Execução anterior registrada — 30/10/2026
+
+**Checkout analisado:** branch `main`, HEAD `04a272798219dd56a424847e73fad02298a0b3e3`, referência desta auditoria.
+
+**Escopo:** somente `FrontEnd/`. Nenhuma chamada à API real nem gravação em banco externo foi feita.
+
+| Comando/verificação         | Resultado                                                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm.cmd run check`         | Passou: lint, format:check, typecheck, cobertura, build e test:bundle.                                                                                  |
+| Vitest/cobertura            | 60 arquivos e 338 testes passaram. Statements 93,17%; branches 89,62%; funções 94,80%; linhas 95,61%.                                                   |
+| Build/test:bundle           | Build de produção passou; 4 verificações confirmaram que mocks, handlers e worker não entraram no bundle.                                               |
+| `npm.cmd run test:e2e`      | 32 cenários: 30 passaram, 0 falharam e 2 testes opt-in de API real foram ignorados por falta de ambiente/credenciais configurados.                      |
+| Homologação contra API real | Não executada. Não havia ambiente de teste autorizado configurado; os testes interceptados não comprovam CORS, persistência ou autorização no servidor. |
+
+### Regressões exercitadas nesta rodada
+
+- Listagem e criação pendentes são canceladas no logout; respostas resolvidas depois não aparecem após login de outro gestor.
+- Criação, edição e exclusão pendentes têm testes de cancelamento do hook ao desmontar; o fluxo de logout integra listagem e criação.
+- `401` em listagem, criação, edição ou exclusão de Tasks limpa o token, aborta a requisição e desmonta o conteúdo protegido.
+- Tasks com o mesmo `created_at` seguem o desempate UUID decrescente do backend.
+- A suíte existente preserva os testes de criação, edição, exclusão, erros, recargas e concorrência; E2E confirma que Tasks não chama a lista global de `/users/`.
+
+## Execução anterior registrada — 30/10/2026
+
+**Checkout analisado:** branch main, HEAD cccc5ac2bf6f7482fc65ba28cb7443bc02a633de.
+
+| Comando                     | Resultado                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| npm ci                      | Concluído com cache direcionado a FrontEnd/.npm-cache; 487 pacotes instalados. A primeira tentativa no modo restrito falhou ao remover cache local bloqueado por EPERM. A tentativa autorizada seguinte concluiu. npm informou que scripts postinstall de esbuild e msw ainda não estão aprovados; build, testes e E2E executados depois passaram. |
+| npm run check               | Aprovado: lint, format:check, typecheck, test:coverage, build e test:bundle.                                                                                                                                                                                                                                                                       |
+| Vitest / cobertura          | 59 arquivos e 330 testes aprovados, 0 falhos. Statements 93,22%; branches 89,60%; funções 94,79%; linhas 95,61%.                                                                                                                                                                                                                                   |
+| Build de produção           | Aprovado; verificador confirmou que handlers, worker e rotas demonstrativas não estão no bundle.                                                                                                                                                                                                                                                   |
+| test:bundle                 | 4 verificações aprovadas, 0 falhas.                                                                                                                                                                                                                                                                                                                |
+| npm run test:e2e            | 32 cenários: 30 aprovados, 0 falhos e 2 testes opt-in de API real ignorados por ausência de ambiente/credenciais configurados.                                                                                                                                                                                                                     |
+| Acessibilidade E2E          | 6 cenários aprovados, incluindo axe-core, navegação/contraste e estados de erro.                                                                                                                                                                                                                                                                   |
+| Homologação contra API real | Não executada. RUN_REAL_API, credenciais autorizadas e ambiente de teste descartável não estavam configurados.                                                                                                                                                                                                                                     |
+
+### Cenários de integração cobertos
+
+Vitest verifica cadastro com ManagerOut sem código, perfil /auth/me com association_code de seis dígitos preservando zeros à esquerda, código ausente/inválido, sessão/logout/troca de gestor, cancelamento e respostas assíncronas fora de ordem. A camada HTTP cobre Bearer, validação de UUID e payload, resposta inválida, erro de conexão, atualização parcial e DELETE 204 sem leitura de JSON.
+
+A tela de Tasks é coberta para lista/criação/edição/exclusão, descrição nula ou opcional, zero colaboradores, substituição/remoção de atribuições no modo permitido por teste/mock, prevenção de mutações simultâneas e resposta fora de ordem. Em produção, a interface não oferece seleção da lista global de /users/. O E2E do navegador cria uma Task com JWT interceptado, confirma o payload sem descrição/colaboradores e verifica que entrar na tela Tasks não dispara outra chamada a /users/.
+
+Os testes de Dashboard, colaboradores, filtros, relatórios, configurações, navegação, responsividade e acessibilidade continuam cobertos por cliente interceptado. Esses testes comprovam o frontend e os contratos de resposta simulados, não autorização, isolamento, persistência ou CORS de uma API implantada.
+
+### Falhas observadas e resolução
+
+- A primeira execução de npm run check revelou dois textos de teste ainda vinculados ao antigo estado do código de associação e erros de tipagem JSDoc nos novos payloads, no perfil e no leitor 204. As asserções foram alinhadas ao estado atual e os tipos explícitos foram corrigidos; a execução completa final passou.
+- A primeira execução E2E do novo fluxo de Task revelou que a fixture incluía manager_id e collaborator_ids, campos que não existem em TaskResponse; a fixture foi alinhada ao schema real. O E2E de acessibilidade também usava perfil sem association_code e falhava na validação de sessão; a fixture recebeu o perfil válido. As suítes completas finais passaram.
+
+### Não executado e limites
+
+- Os dois cenários de e2e/real-api.spec.js foram ignorados pelo guard opt-in. Não há evidência de login, CORS, persistência, isolamento por gestor ou exportações contra o backend real.
+- Testes do backend, Agent, banco e migrações não foram executados nem alterados nesta tarefa.
+- A auditoria identificou que rotas de Dashboard, atividade, usuários, exportações, configuração e categorias não exigem JWT nem aplicam escopo de gestor. A homologação e o contrato seguro seguem pendentes; consulte [PENDENCIAS.md](PENDENCIAS.md).
+- Nenhum teste foi alterado para ocultar incompatibilidade. As fixtures E2E foram atualizadas para corresponder ao contrato comprovado e asserções de UI desatualizadas foram corrigidas.
+
+## Histórico de execuções anteriores
+
+As seções abaixo preservam registros de checkpoints anteriores à incorporação local dos PRs #142, #145 e #146. Seus resultados continuam válidos para os commits e o código indicados em cada registro, mas não descrevem esta execução atual.
+---
+
+# Testes e validação do frontend
+
 Este guia distingue verificação automatizada, build e verificações manuais ainda pendentes. Há validações registradas em **05/10/2026**, **07/10/2026**, **09/10/2026**, **13/10/2026**, **16/10/2026** e **22/10/2026**. Resultados anteriores permanecem identificados pela data e pelo estado do código em que foram obtidos. O inventário completo das alterações está em [Alterações](ALTERACOES.md).
 
 ## US-06.2 — Código de associação no Dashboard — 22/10/2026

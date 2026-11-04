@@ -14,6 +14,34 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('mensagens HTTP seguras', () => {
+  it.each([
+    [400, 'Os dados enviados são inválidos. Revise as informações e tente novamente.'],
+    [401, 'Não foi possível autenticar. Confira seu e-mail e sua senha.'],
+    [403, 'Você não tem permissão para realizar esta operação.'],
+    [404, 'O recurso solicitado não foi encontrado.'],
+    [409, 'Já existe um registro com esses dados. Revise as informações e tente novamente.'],
+    [422, 'Confira os campos informados e tente novamente.'],
+    [429, 'Muitas solicitações foram feitas. Aguarde um pouco e tente novamente.'],
+    [500, 'O serviço está temporariamente indisponível. Tente novamente em instantes.'],
+    [503, 'O serviço está temporariamente indisponível. Tente novamente em instantes.'],
+  ])('HTTP %i não expõe o detalhe do servidor', async (status, message) => {
+    const secret = 'internal traceback, bearer eyJhbGciOi...';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status,
+        json: async () => ({ detail: secret }),
+      })),
+    );
+
+    const error = await api.users().catch((cause) => cause);
+    expect(error).toMatchObject({ status, message });
+    expect(error.message).not.toContain(secret);
+  });
+});
+
 describe('cliente da API', () => {
   it('usa localhost como padrão apenas no desenvolvimento', () => {
     expect(resolveApiBaseUrl(undefined, true, 'http://localhost:8000')).toBe(
@@ -77,6 +105,7 @@ describe('cliente da API', () => {
       id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',
       email: 'gestor@empresa.com',
       created_at: '2026-10-13T12:00:00Z',
+      association_code: '001234',
     };
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => manager }));
     vi.stubGlobal('fetch', fetchMock);
@@ -84,6 +113,112 @@ describe('cliente da API', () => {
     await expect(api.getCurrentManager(token)).resolves.toEqual(manager);
     expect(new URL(fetchMock.mock.calls[0][0]).pathname).toBe('/auth/me');
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe(`Bearer ${token}`);
+  });
+
+  it('reads the six-digit association code from the authenticated manager profile', async () => {
+    const manager = {
+      id: 'b06e3df5-c23b-49ec-9a40-081a451620b3',
+      email: 'gestor@empresa.com',
+      created_at: '2026-10-30T12:00:00Z',
+      association_code: '001234',
+    };
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => manager }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.getAssociationCode()).resolves.toBe('001234');
+    expect(new URL(fetchMock.mock.calls[0][0]).pathname).toBe('/auth/me');
+    expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe(`Bearer ${ACCESS_TOKEN}`);
+  });
+
+  it('integra o CRUD autenticado de Tasks e aceita DELETE 204 sem tentar ler JSON', async () => {
+    const taskId = '6e7b94da-5651-46a0-bf28-fcb8f4f14c04';
+    const task = {
+      id: taskId,
+      title: 'Planejar sprint',
+      description: null,
+      collaborators: [],
+      created_at: '2026-10-30T12:00:00',
+      updated_at: '2026-10-30T12:00:00',
+    };
+    const fetchMock = vi.fn(async (url, options) => {
+      const method = options.method || 'GET';
+      if (method === 'DELETE') return { ok: true, status: 204 };
+      if (method === 'PUT') {
+        return { ok: true, status: 200, json: async () => ({ ...task, title: 'Sprint' }) };
+      }
+      if (method === 'POST') return { ok: true, status: 201, json: async () => task };
+      if (method === 'GET' && url.endsWith('/tasks/')) {
+        return { ok: true, status: 200, json: async () => [task] };
+      }
+      return { ok: true, status: 200, json: async () => task };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.tasks()).resolves.toEqual([task]);
+    await expect(api.getTask(taskId)).resolves.toEqual(task);
+    await expect(
+      api.createTask({ title: 'Planejar sprint', description: null, collaborator_ids: [] }),
+    ).resolves.toEqual(task);
+    await expect(api.updateTask(taskId, { title: 'Sprint' })).resolves.toEqual({
+      ...task,
+      title: 'Sprint',
+    });
+    await expect(api.deleteTask(taskId)).resolves.toBeUndefined();
+
+    expect(fetchMock.mock.calls.map(([, options]) => options.method || 'GET')).toEqual([
+      'GET',
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+    ]);
+    expect(fetchMock.mock.calls.map(([, options]) => options.headers.get('Authorization'))).toEqual(
+      Array(5).fill(`Bearer ${ACCESS_TOKEN}`),
+    );
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
+      title: 'Planejar sprint',
+      description: null,
+      collaborator_ids: [],
+    });
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ title: 'Sprint' });
+  });
+
+  it('rejeita IDs e payloads de Task inválidos antes de enviar a requisição', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.getTask('bad-id')).rejects.toMatchObject({ type: 'client' });
+    await expect(api.updateTask('bad-id', { title: 'A' })).rejects.toMatchObject({
+      type: 'client',
+    });
+    await expect(api.deleteTask('bad-id')).rejects.toMatchObject({ type: 'client' });
+    await expect(api.createTask({ title: 'x'.repeat(201) })).rejects.toMatchObject({
+      type: 'client',
+    });
+    await expect(api.updateTask('6e7b94da-5651-46a0-bf28-fcb8f4f14c04', {})).rejects.toMatchObject({
+      type: 'client',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('preserva erros HTTP de Tasks e rejeita sucesso DELETE que não seja 204', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: async () => ({ detail: 'Task não encontrada' }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.deleteTask('6e7b94da-5651-46a0-bf28-fcb8f4f14c04')).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(api.deleteTask('6e7b94da-5651-46a0-bf28-fcb8f4f14c04')).rejects.toMatchObject({
+      type: 'invalid-response',
+    });
   });
 
   it('adds the session bearer to private data requests but not to public authentication', async () => {
@@ -146,7 +281,9 @@ describe('cliente da API', () => {
       .registerManager({ email: 'gestor@empresa.com', password: 'SenhaSegura123!' })
       .catch((error) => error);
     expect(failure).toMatchObject({ type: 'client', status: 409, detail: null });
-    expect(failure.message).toBe('API respondeu 409');
+    expect(failure.message).toBe(
+      'Já existe um registro com esses dados. Revise as informações e tente novamente.',
+    );
     expect(json).not.toHaveBeenCalled();
   });
 
@@ -161,7 +298,7 @@ describe('cliente da API', () => {
       .registerManager({ email: 'inválido', password: 'SenhaFraca!' })
       .catch((error) => error);
     expect(failure).toMatchObject({ type: 'client', status: 422, detail: null });
-    expect(failure.message).toBe('API respondeu 422');
+    expect(failure.message).toBe('Confira os campos informados e tente novamente.');
     expect(json).not.toHaveBeenCalled();
   });
 
@@ -345,7 +482,9 @@ describe('cliente da API', () => {
       'fetch',
       vi.fn(async () => ({ ok: false, status: 403, json })),
     );
-    await expect(api.users()).rejects.toThrow('API respondeu 403');
+    await expect(api.users()).rejects.toThrow(
+      'Você não tem permissão para realizar esta operação.',
+    );
     expect(json).toHaveBeenCalledOnce();
   });
 
@@ -380,7 +519,7 @@ describe('cliente da API', () => {
       status: 404,
       statusText: 'Not Found',
       detail: 'Regra não encontrada',
-      message: 'Regra não encontrada',
+      message: 'O recurso solicitado não foi encontrado.',
     });
   });
 
@@ -393,7 +532,10 @@ describe('cliente da API', () => {
         json: async () => ({ detail: [{ msg: 'valor inválido' }] }),
       })),
     );
-    await expect(api.users()).rejects.toMatchObject({ type: 'client', message: 'valor inválido' });
+    await expect(api.users()).rejects.toMatchObject({
+      type: 'client',
+      message: 'Confira os campos informados e tente novamente.',
+    });
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })),

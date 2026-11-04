@@ -56,8 +56,7 @@ export function AssociationCodeCard({
           </p>
         ) : pending ? (
           <p className="mt-1 text-sm muted" role="note" aria-live="polite">
-            A consulta depende de um contrato de código de associação que o Backend ainda não
-            disponibiliza.
+            A consulta do código não está disponível nesta sessão.
           </p>
         ) : (
           <p className="mt-1 text-sm muted" role="note" aria-live="polite">

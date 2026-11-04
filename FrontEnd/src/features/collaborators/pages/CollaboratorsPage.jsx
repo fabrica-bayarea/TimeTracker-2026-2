@@ -84,10 +84,11 @@ export function CollaboratorsPage() {
       </p>
       <IntegrationNotice>
         RF-03/RF-05 exigem código de associação e lista restrita ao gestor autenticado. A API atual
-        retorna todos os usuários. Online, Ausente e Offline são estados calculados pela API a
-        partir da captura e de sua inatividade; eles não confirmam a conexão do Agent. “Sem dados”
-        indica que o usuário não consta na janela realtime de até 24 horas. “Última leitura” é o
-        tempo desde a captura informada, não uma confirmação de sincronização ou contato atual.
+        retorna todos os usuários e não aplica autorização por gestor. Online, Ausente e Offline são
+        estados calculados pela API a partir da captura e de sua inatividade; eles não confirmam a
+        conexão do Agent. “Sem dados” indica que o usuário não consta na janela realtime de até 24
+        horas. “Última leitura” é o tempo desde a captura informada, não uma confirmação de
+        sincronização ou contato atual.
       </IntegrationNotice>
       {error && (
         <ErrorNotice className="mt-5" onRetry={refresh}>

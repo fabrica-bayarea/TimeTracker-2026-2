@@ -13,6 +13,23 @@ function deferred() {
 }
 
 describe('useAssociationCode', () => {
+  it('reutiliza o código validado na sessão sem consultar /auth/me novamente', async () => {
+    const client = { getAssociationCode: vi.fn() };
+    const { result } = renderHook(() =>
+      useAssociationCode(
+        {
+          id: 'manager-1',
+          association_code: '000007',
+        },
+        client,
+      ),
+    );
+
+    await waitFor(() => expect(result.current.code).toBe('000007'));
+    expect(result.current.loading).toBe(false);
+    expect(client.getAssociationCode).not.toHaveBeenCalled();
+  });
+
   it('mostra carregamento e preserva código válido com zeros à esquerda', async () => {
     const pending = deferred();
     const client = { getAssociationCode: vi.fn(() => pending.promise) };

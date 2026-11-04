@@ -31,7 +31,9 @@ export function ReportsPage() {
       <PageHeader title="Relatórios" description="Exportação do resumo diário disponível na API." />
       <IntegrationNotice title="Escopo parcial do RF-24/RF-25">
         O arquivo contém usuário, categoria e tempo registrado de um dia. Período, task, jornada,
-        horas extras e classificação por escopo precisam de novos contratos no backend.
+        horas extras e classificação por escopo precisam de novos contratos no backend. A lista de
+        usuários, resumo e exportação são globais; esses endpoints não exigem nem aplicam
+        autorização por gestor.
       </IntegrationNotice>
       <section className="card mt-5" aria-busy={!!exporting}>
         <h2 className="font-bold">Filtros disponíveis</h2>

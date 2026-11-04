@@ -13,7 +13,8 @@ export function SettingsPage() {
       />
       <IntegrationNotice>
         Jornada e limite de inatividade por colaborador precisam de contratos próprios. Estes campos
-        são globais; o backend também precisa aplicar o limite salvo ao cálculo de atividade.
+        são globais e as rotas atuais não exigem autorização do gestor; o backend também precisa
+        aplicar o limite salvo ao cálculo de atividade.
       </IntegrationNotice>
       <SettingsForm {...settings} />
     </>

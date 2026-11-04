@@ -3,7 +3,11 @@ import { isIsoDate } from '../lib/date';
 const BASE64URL_SEGMENT_PATTERN = /^[A-Za-z0-9_-]+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const OFFSET_TIMESTAMP_PATTERN = /(?:Z|[+-]\d{2}:\d{2})$/i;
-const TASK_DESCRIPTION_MAX_LENGTH = 200;
+const TASK_TITLE_MAX_LENGTH = 200;
+const TASK_DESCRIPTION_MAX_LENGTH = 5000;
+const TASK_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/i;
+const ASSOCIATION_CODE_PATTERN = /^\d{6}$/;
 
 /** @param {unknown} value */
 export function validJwtAccessToken(value) {
@@ -59,15 +63,83 @@ function uniqueBy(value, keyOf) {
 }
 
 /** @param {unknown} value */
+export function validUuid(value) {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+/** @param {unknown} value */
+export function validAssociationCode(value) {
+  return typeof value === 'string' && ASSOCIATION_CODE_PATTERN.test(value);
+}
+
+/** @param {unknown} value */
+function validTaskTimestamp(value) {
+  return (
+    typeof value === 'string' &&
+    TASK_TIMESTAMP_PATTERN.test(value) &&
+    Number.isFinite(Date.parse(value))
+  );
+}
+
+/** @param {unknown} value */
 export function validTaskDescription(value) {
-  if (typeof value !== 'string') return false;
-  const description = value.trim();
-  return description.length > 0 && Array.from(description).length <= TASK_DESCRIPTION_MAX_LENGTH;
+  return (
+    value === null ||
+    (typeof value === 'string' && Array.from(value).length <= TASK_DESCRIPTION_MAX_LENGTH)
+  );
 }
 
 /** @param {unknown} value */
 export function validTaskTitle(value) {
-  return typeof value === 'string' && value.trim().length > 0;
+  if (typeof value !== 'string') return false;
+  const title = value.trim();
+  return title.length > 0 && Array.from(title).length <= TASK_TITLE_MAX_LENGTH;
+}
+
+/** @param {unknown} value */
+export function validTaskCreatePayload(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const payload = /** @type {Record<string, unknown>} */ (value);
+  if (
+    !Object.keys(payload).every((field) =>
+      ['title', 'description', 'collaborator_ids'].includes(field),
+    ) ||
+    !validTaskTitle(payload.title) ||
+    (Object.hasOwn(payload, 'description') && !validTaskDescription(payload.description))
+  ) {
+    return false;
+  }
+  if (!Object.hasOwn(payload, 'collaborator_ids')) return true;
+  return (
+    Array.isArray(payload.collaborator_ids) &&
+    payload.collaborator_ids.length <= 500 &&
+    payload.collaborator_ids.every(validUuid) &&
+    uniqueBy(payload.collaborator_ids, (id) => id)
+  );
+}
+
+/** @param {unknown} value */
+export function validTaskUpdatePayload(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const payload = /** @type {Record<string, unknown>} */ (value);
+  const fields = Object.keys(payload);
+  if (
+    fields.length === 0 ||
+    !fields.every((field) => ['title', 'description', 'collaborator_ids'].includes(field))
+  ) {
+    return false;
+  }
+  if (Object.hasOwn(payload, 'title') && !validTaskTitle(payload.title)) return false;
+  if (Object.hasOwn(payload, 'description') && !validTaskDescription(payload.description)) {
+    return false;
+  }
+  if (!Object.hasOwn(payload, 'collaborator_ids')) return true;
+  return (
+    Array.isArray(payload.collaborator_ids) &&
+    payload.collaborator_ids.length <= 500 &&
+    payload.collaborator_ids.every(validUuid) &&
+    uniqueBy(payload.collaborator_ids, (id) => id)
+  );
 }
 
 function validTaskCollaborator(value) {
@@ -98,11 +170,10 @@ export function validTask(value) {
     validTaskTitle(value.title) &&
     validTaskDescription(value.description) &&
     Array.isArray(value.collaborators) &&
-    value.collaborators.length > 0 &&
     value.collaborators.every(validTaskCollaborator) &&
     uniqueBy(value.collaborators, (collaborator) => collaborator.id) &&
-    validTimestamp(value.created_at) &&
-    validTimestamp(value.updated_at),
+    validTaskTimestamp(value.created_at) &&
+    validTaskTimestamp(value.updated_at),
   );
 }
 
@@ -155,7 +226,9 @@ export function validTaskHours(value) {
         task &&
         typeof task.task_id === 'string' &&
         UUID_PATTERN.test(task.task_id) &&
-        validTaskDescription(task.description) &&
+        typeof task.description === 'string' &&
+        task.description.trim().length > 0 &&
+        Array.from(task.description).length <= TASK_DESCRIPTION_MAX_LENGTH &&
         Number.isSafeInteger(task.total_seconds) &&
         task.total_seconds >= 0,
     ) &&
@@ -277,11 +350,14 @@ export function validSettings(value) {
 
 /** @param {any} value @returns {value is import('./contracts').Manager} */
 export function validManager(value) {
+  const manager = /** @type {Record<string, unknown>} */ (value);
   return Boolean(
     value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    Object.keys(value).every((field) => ['id', 'email', 'created_at'].includes(field)) &&
+    Object.keys(value).every((field) =>
+      ['id', 'email', 'created_at', 'association_code'].includes(field),
+    ) &&
     typeof value.id === 'string' &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value.id) &&
     typeof value.email === 'string' &&
@@ -289,7 +365,16 @@ export function validManager(value) {
     !/\s/.test(value.email) &&
     value.email.includes('@') &&
     typeof value.created_at === 'string' &&
-    Number.isFinite(Date.parse(value.created_at)),
+    Number.isFinite(Date.parse(value.created_at)) &&
+    (manager.association_code === undefined || validAssociationCode(manager.association_code)),
+  );
+}
+
+/** @param {unknown} value @returns {value is import('./contracts').ManagerProfile} */
+export function validManagerProfile(value) {
+  return (
+    validManager(value) &&
+    validAssociationCode(/** @type {Record<string, unknown>} */ (value).association_code)
   );
 }
 

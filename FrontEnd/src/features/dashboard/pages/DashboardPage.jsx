@@ -33,7 +33,7 @@ export function DashboardPage({
   const [taskId, setTaskId] = useState('');
   const { data, loading, refreshing, error, updatedAt, refresh } = useDashboardData(date, username);
   const taskAnalytics = useTaskAnalytics(devApi, date, username, taskId);
-  const associationCode = useAssociationCode(manager?.id, associationClient);
+  const associationCode = useAssociationCode(manager, associationClient);
   useEffect(() => {
     if (
       taskAnalytics.tasksAvailable &&
