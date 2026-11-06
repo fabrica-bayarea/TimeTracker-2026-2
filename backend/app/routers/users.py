@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from .. import schemas, crud, security
+from .. import schemas, crud, models, security
 from ..database import get_db
 from ..rate_limit import association_limiter
 
@@ -16,11 +16,22 @@ collaborators_router = APIRouter(
 @router.get(
         "/",
         response_model=List[schemas.UserOut],
-        summary="Lista os colaboradores cadastrados",
-        # description=""
+        summary="Lista os colaboradores da equipe do gestor",
+        description=(
+            "Exige token de gestor e retorna somente os colaboradores "
+            "associados a ele."
+        ),
+        responses={
+            status.HTTP_401_UNAUTHORIZED: {
+                "description": "Token ausente, inválido ou expirado."
+            }
+        },
 )
-def list_users(db: Session = Depends(get_db)):
-    return crud.list_users(db)
+def list_users(
+    manager: models.Manager = Depends(security.get_current_manager),
+    db: Session = Depends(get_db),
+):
+    return crud.list_users(db, manager.id)
 
 
 @collaborators_router.post(
