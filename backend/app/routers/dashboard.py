@@ -3,15 +3,23 @@ import io
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from fpdf import FPDF
 
-from .. import schemas, crud
+from .. import schemas, crud, models, security
 from ..database import get_db
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["Dashboard"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Token de gestor ausente, inválido ou expirado."
+        }
+    },
+)
 
 
 @router.get(
@@ -20,7 +28,8 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
     summary="Sumário diário de produtividade",
     description=(
         "Retorna o total de horas trabalhadas e a distribuição por categoria "
-        "para uma data informada, filtrado opcionalmente por colaborador."
+        "para uma data informada, filtrado opcionalmente por colaborador. "
+        "Considera somente a equipe do gestor autenticado."
     ),
 )
 def daily_summary(
@@ -28,9 +37,12 @@ def daily_summary(
                               description="Data no formato AAAA-MM-DD"),
     username: Optional[str] = Query(None,
                                     description="Filtrar por colaborador"),
+    manager: models.Manager = Depends(security.get_current_manager),
     db: Session = Depends(get_db),
 ):
-    return crud.get_daily_summary(db, target_date, username)
+    return crud.get_daily_summary(
+        db, target_date, username, manager_id=manager.id
+    )
 
 
 @router.get(
@@ -41,9 +53,12 @@ def daily_summary(
 def export_csv(
     target_date: date = Query(..., alias="date"),
     username: Optional[str] = Query(None),
+    manager: models.Manager = Depends(security.get_current_manager),
     db: Session = Depends(get_db),
 ):
-    summary = crud.get_daily_summary(db, target_date, username)
+    summary = crud.get_daily_summary(
+        db, target_date, username, manager_id=manager.id
+    )
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -72,9 +87,12 @@ def export_csv(
 def export_pdf(
     target_date: date = Query(..., alias="date"),
     username: Optional[str] = Query(None),
+    manager: models.Manager = Depends(security.get_current_manager),
     db: Session = Depends(get_db),
 ):
-    summary = crud.get_daily_summary(db, target_date, username)
+    summary = crud.get_daily_summary(
+        db, target_date, username, manager_id=manager.id
+    )
 
     pdf = FPDF()
 

@@ -13,27 +13,11 @@ IDLE_AFTER_SECONDS = 300     # >5min sem novo evento -> "ausente"
 OFFLINE_AFTER_SECONDS = 900  # >15min sem novo evento -> "offline" (mas ainda aparece na lista)
 
 # Users
-def get_or_create_user(db: Session, username: str) -> models.User:
-    user = (
-        db.query(models.User)
-          .filter(models.User.username == username)
-          .first()
-    )
-
-    if user: return user
-
-    user = models.User(username=username)
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    return user
-
-
-def list_users(db: Session) -> list[models.User]:
+def list_users(db: Session, manager_id: uuid.UUID) -> list[models.User]:
+    """Colaboradores da equipe do gestor (nunca os de outras equipes)"""
     return (
         db.query(models.User)
+          .filter(models.User.manager_id == manager_id)
           .order_by(models.User.username)
           .all()
     )
@@ -490,9 +474,13 @@ def categorize(
 # Activity Logs
 def create_activity_log(
         db: Session,
-        log: schemas.ActivityLogCreate
+        log: schemas.ActivityLogCreate,
+        user: models.User,
 ) -> models.ActivityLog:
-    user = get_or_create_user(db, log.username)
+    """
+    Grava a leitura no colaborador autenticado (`user`, vindo do token do
+    Agente). O `username` do payload é ignorado de propósito
+    """
     category_id = categorize(db, log.process_name, log.window_title)
 
     db_log = models.ActivityLog(
@@ -514,7 +502,10 @@ def create_activity_log(
 
 
 # Realtime View
-def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
+def get_realtime_view(
+        db: Session,
+        manager_id: uuid.UUID
+) -> list[schemas.RealtimeEntry]:
     display_cutoff = (
         datetime.now(timezone.utc)
         - timedelta(hours=REALTIME_DISPLAY_WINDOW_HOURS)
@@ -526,6 +517,8 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
             models.ActivityLog.user_id,
             func.max(models.ActivityLog.captured_at).label("last_captured_at"),
         )
+        .join(models.User, models.User.id == models.ActivityLog.user_id)
+        .filter(models.User.manager_id == manager_id)
         .filter(models.ActivityLog.captured_at >= display_cutoff)
         .group_by(models.ActivityLog.user_id)
         .subquery()
@@ -540,6 +533,7 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
         .join(models.User, models.User.id == models.ActivityLog.user_id)
         .outerjoin(models.Category, 
                    models.Category.id == models.ActivityLog.category_id)
+        .filter(models.User.manager_id == manager_id)
         .all()
     )
 
@@ -548,7 +542,14 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
     result = []
 
     for log, user, category in rows:
-        seconds_since = int((now - log.captured_at).total_seconds())
+        captured_at = log.captured_at
+
+        # SQLite (usado nos testes) devolve datetimes sem fuso; o Postgres,
+        # com fuso. Em ambos os casos o valor está em UTC
+        if captured_at.tzinfo is None:
+            captured_at = captured_at.replace(tzinfo=timezone.utc)
+
+        seconds_since = int((now - captured_at).total_seconds())
 
         if log.is_idle or seconds_since > OFFLINE_AFTER_SECONDS:
             status = "offline"
@@ -576,7 +577,9 @@ def get_realtime_view(db: Session) -> list[schemas.RealtimeEntry]:
 def get_daily_summary(
         db: Session,
         target_date: date,
-        username: str | None = None
+        username: str | None = None,
+        *,
+        manager_id: uuid.UUID,
 ) -> schemas.DailySummaryResponse:
     query = (
         db.query(
@@ -592,6 +595,7 @@ def get_daily_summary(
               models.Category.id == models.ActivityLog.category_id
           )
           .filter(func.date(models.ActivityLog.captured_at) == target_date)
+          .filter(models.User.manager_id == manager_id)
     )
 
     if username:

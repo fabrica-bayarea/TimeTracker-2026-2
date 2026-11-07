@@ -1,11 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import status
 from sqlalchemy import func, select
 
-from app import models
+from app import models, security
 
 from .conftest import MANAGER_PASSWORD
 
@@ -620,3 +620,366 @@ def test_openapi_documenta_as_rotas_de_tasks(client):
     assert {"TaskCreate", "TaskUpdate", "TaskResponse"} <= (
         schema["components"]["schemas"].keys()
     )
+
+
+PROTECTED_GET = [
+    "/dashboard/summary?date=2026-01-01",
+    "/dashboard/export/csv?date=2026-01-01",
+    "/dashboard/export/pdf?date=2026-01-01",
+    "/users/",
+    "/tasks/",
+    "/activities/realtime",
+]
+ACTIVITY_BODY = {"hostname": "PC-01", "process_name": "code.exe"}
+
+
+def _bearer(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _agent(user) -> dict:
+    return _bearer(security.create_agent_token(user.id))
+
+
+def _log(db, user, process="code.exe", at=None, duration=60):
+    entry = models.ActivityLog(
+        user_id=user.id,
+        hostname="PC",
+        process_name=process,
+        duration_seconds=duration,
+        captured_at=at or datetime.now(timezone.utc),
+    )
+
+    db.add(entry)
+    db.commit()
+
+    return entry
+
+
+def _usernames(response) -> set[str]:
+    body = response.json()
+    rows = body["users"] if isinstance(body, dict) else body
+
+    return {row["username"] for row in rows}
+
+
+@pytest.fixture()
+def today():
+    return datetime.now(timezone.utc).date()
+
+
+@pytest.fixture()
+def seeded(db, team, other_team, orphan):
+    """Uma leitura recente para cada colaborador, incluindo o sem gestor"""
+    for user in (*team.values(), *other_team.values(), orphan):
+        _log(db, user)
+
+
+# 401 sem token ou com token inválido
+@pytest.mark.parametrize("path", PROTECTED_GET)
+def test_rotas_de_gestor_sem_token_retornam_401(client, path):
+    assert client.get(path).status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.parametrize("path", PROTECTED_GET)
+@pytest.mark.parametrize("header", [
+    "Bearer lixo",
+    "Basic abc",
+    "Bearer ",
+])
+def test_rotas_de_gestor_com_token_invalido_retornam_401(
+    client, path, header
+):
+    response = client.get(path, headers={"Authorization": header})
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_enviar_atividade_sem_token_retorna_401_e_nao_grava(
+    client, db
+):
+    response = client.post("/activities/", json=ACTIVITY_BODY)
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert _count(db, models.ActivityLog) == 0
+
+
+def test_enviar_atividade_com_token_invalido_retorna_401(client, db):
+    response = client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=_bearer("lixo")
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# Separação entre os tokens
+@pytest.mark.parametrize("path", PROTECTED_GET)
+def test_token_de_agente_nao_acessa_rotas_do_gestor(
+    client, team, path
+):
+    response = client.get(path, headers=_agent(team["ana"]))
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_token_de_gestor_nao_envia_atividades(
+    client, db, auth_headers
+):
+    response = client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=auth_headers
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert _count(db, models.ActivityLog) == 0
+
+
+def test_token_de_agente_expirado_retorna_401(client, team):
+    token = security.create_agent_token(
+        team["ana"].id, timedelta(seconds=-5)
+    )
+
+    response = client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=_bearer(token)
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_agente_sem_gestor_retorna_401(client, db, orphan):
+    response = client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=_agent(orphan)
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert _count(db, models.ActivityLog) == 0
+
+
+def test_agente_removido_perde_o_acesso_mesmo_com_token_valido(
+    client, db, team
+):
+    headers = _agent(team["ana"])
+
+    db.delete(team["ana"])
+    db.commit()
+
+    response = client.post("/activities/", json=ACTIVITY_BODY, headers=headers)
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_token_do_agente_sobrevive_ao_login_do_gestor(
+    client, team
+):
+    """O token do gestor não interfere nas associações/tokens dos agentes"""
+    headers = _agent(team["ana"])
+
+    client.post(
+        "/auth/login",
+        json={"email": "gestor@example.com", "password": MANAGER_PASSWORD},
+    )
+
+    assert (
+        client.post("/activities/", json=ACTIVITY_BODY, headers=headers)
+        .status_code == status.HTTP_201_CREATED
+    )
+
+
+# Atividade vinculada ao colaborador autenticado
+def test_atividade_e_gravada_no_dono_do_token(client, db, team):
+    response = client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=_agent(team["bruno"])
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["user_id"] == str(team["bruno"].id)
+    assert db.query(models.ActivityLog).one().user_id == team["bruno"].id
+
+
+def test_username_do_corpo_e_ignorado(client, db, team, other_team):
+    """Com o token da ana, dizer que é o diego não grava no diego"""
+    response = client.post(
+        "/activities/",
+        json={**ACTIVITY_BODY, "username": "diego"},
+        headers=_agent(team["ana"]),
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["user_id"] == str(team["ana"].id)
+    assert db.query(models.ActivityLog).filter_by(
+        user_id=other_team["diego"].id
+    ).count() == 0
+
+
+def test_username_inexistente_no_corpo_nao_cria_usuario(client, db, team):
+    users_before = _count(db, models.User)
+
+    response = client.post(
+        "/activities/",
+        json={**ACTIVITY_BODY, "username": "invasor"},
+        headers=_agent(team["ana"]),
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert _count(db, models.User) == users_before
+
+
+def test_atividade_categoriza_e_aceita_corpo_sem_username(client, team):
+    response = client.post(
+        "/activities/",
+        json={**ACTIVITY_BODY, "window_title": "x", "duration_seconds": 10},
+        headers=_agent(team["ana"]),
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["duration_seconds"] == 10
+
+
+# Isolamento entre gestores
+def test_users_retorna_somente_a_equipe_do_gestor(
+    client, auth_headers, other_manager
+):
+    mine = client.get("/users/", headers=auth_headers)
+    theirs = client.get("/users/", headers=other_manager["headers"])
+
+    assert _usernames(mine) == {"ana", "bruno", "carla"}
+    assert _usernames(theirs) == {"diego", "elisa"}
+
+
+def test_users_de_gestor_sem_equipe_retorna_lista_vazia(
+    client, auth_headers
+):
+    response = client.get("/users/", headers=auth_headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+
+def test_realtime_retorna_somente_a_equipe_do_gestor(
+    client, auth_headers, other_manager
+):
+    mine = client.get("/activities/realtime", headers=auth_headers)
+    theirs = client.get(
+        "/activities/realtime", headers=other_manager["headers"]
+    )
+
+    assert _usernames(mine) == {"ana", "bruno", "carla"}
+    assert _usernames(theirs) == {"diego", "elisa"}
+
+
+def test_realtime_nao_mostra_colaborador_sem_gestor(
+    client, auth_headers, other_manager
+):
+    for headers in (auth_headers, other_manager["headers"]):
+        response = client.get("/activities/realtime", headers=headers)
+
+        assert "sem-gestor" not in _usernames(response)
+
+
+def test_summary_retorna_somente_a_equipe_do_gestor(
+    client, auth_headers, other_manager, today
+):
+    url = f"/dashboard/summary?date={today.isoformat()}"
+    mine = client.get(url, headers=auth_headers)
+    theirs = client.get(url, headers=other_manager["headers"])
+
+    assert _usernames(mine) == {"ana", "bruno", "carla"}
+    assert _usernames(theirs) == {"diego", "elisa"}
+
+
+def test_summary_com_filtro_de_colaborador_de_outra_equipe_vem_vazio(
+    client, auth_headers, today
+):
+    response = client.get(
+        f"/dashboard/summary?date={today.isoformat()}&username=diego",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["users"] == []
+
+
+def test_summary_com_filtro_do_proprio_colaborador_funciona(
+    client, auth_headers, today
+):
+    response = client.get(
+        f"/dashboard/summary?date={today.isoformat()}&username=ana",
+        headers=auth_headers,
+    )
+
+    assert _usernames(response) == {"ana"}
+
+
+def test_summary_soma_apenas_a_equipe(
+    client, db, team, other_team, auth_headers, today
+):
+    _log(db, team["ana"], duration=100)
+    _log(db, team["bruno"], duration=50)
+    _log(db, other_team["diego"], duration=9999)
+
+    users = client.get(
+        f"/dashboard/summary?date={today.isoformat()}", headers=auth_headers
+    ).json()["users"]
+
+    assert sum(u["total_seconds"] for u in users) == 150
+
+
+def test_exportacao_csv_contem_somente_a_equipe(
+    client, auth_headers, today
+):
+    response = client.get(
+        f"/dashboard/export/csv?date={today.isoformat()}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "ana" in response.text
+    assert "diego" not in response.text
+    assert "elisa" not in response.text
+    assert "sem-gestor" not in response.text
+
+
+def test_exportacao_pdf_funciona_para_o_gestor_autenticado(
+    client, auth_headers, today
+):
+    response = client.get(
+        f"/dashboard/export/pdf?date={today.isoformat()}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+def test_atividade_enviada_pelo_agente_aparece_so_para_o_gestor_dele(
+    client, team, auth_headers, other_manager
+):
+    client.post(
+        "/activities/", json=ACTIVITY_BODY, headers=_agent(team["carla"])
+    )
+
+    mine = client.get("/activities/realtime", headers=auth_headers)
+    theirs = client.get(
+        "/activities/realtime", headers=other_manager["headers"]
+    )
+
+    assert _usernames(mine) == {"carla"}
+    assert theirs.json() == []
+
+
+# Documentação
+def test_openapi_documenta_401_nas_rotas_protegidas(client):
+    schema = client.get("/openapi.json").json()["paths"]
+
+    for path, method in [
+        ("/dashboard/summary", "get"),
+        ("/users/", "get"),
+        ("/activities/", "post"),
+        ("/activities/realtime", "get"),
+    ]:
+        operation = schema[path][method]
+
+        assert operation["security"], path
+        assert "401" in operation["responses"], path
+
+    assert not schema["/collaborators/associate"]["post"].get("security")

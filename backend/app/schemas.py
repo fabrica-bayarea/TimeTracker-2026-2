@@ -296,7 +296,15 @@ class ActivityLogCreate(BaseModel):
     Payload enviado pelo agente desktop a cada leitura da janela ativa
     """
 
-    username: str = Field(..., description="Usuário do Windows capturado automaticamente (RF05)")
+    username: str | None = Field(
+        None,
+        deprecated=True,
+        description=(
+            "Ignorado: o colaborador é identificado pelo token do Agente "
+            "(emitido em `POST /collaborators/associate`), nunca por um "
+            "nome informado no corpo."
+        ),
+    )
     hostname: str = Field(..., description="Nome da máquina (RF05)")
     process_name: str
     window_title: str | None = None

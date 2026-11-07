@@ -5,6 +5,7 @@ Backend do projeto Time Tracker, conforme o SRS v1.0.0 (seções 6 e 7).
 ## Rodando com Docker (recomendado — RNF06)
 
 ```bash
+cp .env.example .env   # preencha JWT_SECRET_KEY (obrigatória) e as senhas
 docker compose up --build
 ```
 
@@ -28,6 +29,8 @@ pip install -r requirements.txt
 
 # Suba um Postgres local e ajuste DATABASE_URL (veja .env.example)
 export DATABASE_URL=postgresql://timetracker:timetracker@localhost:5432/timetracker
+# Obrigatória (a API não inicia sem ela); mantenha a mesma entre reinícios
+export JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
 
 python seed.py
 uvicorn app.main:app --reload
@@ -79,9 +82,9 @@ Variáveis de ambiente (veja `.env.example`):
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `JWT_SECRET_KEY` | *(vazia)* | Chave de assinatura dos tokens, mínimo de 32 caracteres. Gere com `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Se vazia, o servidor gera uma chave temporária e avisa no log: os tokens deixam de valer a cada reinício. **Defina em produção.** |
+| `JWT_SECRET_KEY` | *(obrigatória)* | Chave de assinatura dos tokens, mínimo de 32 caracteres. Gere com `python -c "import secrets; print(secrets.token_urlsafe(64))"`. **Sem ela a API não inicia.** Mantenha a mesma chave entre reinicializações: trocá-la invalida todos os tokens (gestores e Agentes). |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Validade do token de acesso, em minutos. |
-| `AGENT_TOKEN_EXPIRE_MINUTES` | `43200` (30 dias) | Validade do token do Agente Desktop, em minutos. |
+| `AGENT_TOKEN_EXPIRE_MINUTES` | `525600` (365 dias) | Validade do token do Agente Desktop, em minutos. |
 
 ### Contrato (para o Frontend)
 
@@ -115,7 +118,7 @@ GET /auth/me          Authorization: Bearer <jwt>
 ```http
 POST /collaborators/associate   (sem autenticação)
 {"association_code": "048215", "username": "joao", "machine_name": "PC-JOAO-01"}
-→ 200 {"access_token": "<jwt>", "token_type": "bearer", "expires_in": 2592000,
+→ 200 {"access_token": "<jwt>", "token_type": "bearer", "expires_in": 31536000,
        "collaborator_id": "<uuid>", "username": "joao", "machine_name": "PC-JOAO-01",
        "manager_id": "<uuid>", "already_associated": false}
 → 404 código inexistente (nada é gravado e nenhum token é emitido)
@@ -127,7 +130,7 @@ POST /collaborators/associate   (sem autenticação)
 - É **idempotente**: repetir com o mesmo gestor responde 200 com `already_associated: true`, atualiza `machine_name` e emite um novo token.
 - O colaborador é identificado por `username` (único). O token do Agente tem audiência própria (`time-tracker:agent`) e **não** vale como sessão de gestor, nem o contrário.
 - Após 10 tentativas com código inexistente em 15 minutos, a origem recebe 429. O contador é por processo e usa o IP da conexão; atrás de proxy/túnel, configure o proxy para repassar o IP real (ex.: `uvicorn --proxy-headers`).
-- A validação do token do Agente nas demais rotas (`get_current_agent`) fica para a US-15.1.
+- O token do Agente só vale em `POST /activities/` (veja "Quem acessa o quê").
 
 ### Protegendo rotas
 
@@ -149,7 +152,29 @@ router = APIRouter(
 )
 ```
 
-> **Status atual:** por decisão do MVP de 13/10, as rotas existentes (`/dashboard`, `/config`, `/users`, `/categories`...) **continuam abertas**; apenas `/auth/me` é protegida. Proteger as demais e filtrar os dados por equipe (B-01) depende do vínculo gestor–colaborador (I-02), ainda não implementado.
+### Quem acessa o quê
+
+| Rota | Credencial | Observação |
+|---|---|---|
+| `POST /auth/register`, `POST /auth/login`, `POST /collaborators/associate`, `GET /` | nenhuma | Públicas por necessidade (o `associate` tem limite de tentativas). |
+| `POST /activities/` | **token do Agente** | O registro é gravado no colaborador dono do token; o `username` do corpo é ignorado. |
+| `GET /activities/realtime`, `GET /dashboard/*`, `GET /users/`, `/tasks/*`, `GET /auth/me` | **token do gestor** | Os dados retornados são somente os da equipe do gestor logado. |
+| `/config/*`, `/categories/*` | nenhuma (por enquanto) | Dados globais, ainda abertos; pendente de decisão. |
+
+- Sem `Authorization: Bearer ...` válido, as rotas protegidas respondem **401**.
+- Os dois tokens têm audiências diferentes: o token do Agente não acessa rotas de gestor e o do gestor não envia atividades.
+- O Agente é revalidado a cada chamada: se o colaborador for removido ou ficar sem gestor, o token deixa de funcionar mesmo antes de expirar.
+- Um colaborador nunca enxerga dados de outro; um gestor nunca enxerga dados de outra equipe (consultas inexistentes ou de outra equipe voltam vazias ou 404, sem revelar a diferença).
+
+### Resetar o banco (desenvolvimento)
+
+```bash
+docker compose down -v        # apaga o volume do Postgres (todos os dados)
+docker compose up --build
+docker compose exec api python seed.py
+```
+
+Depois do reset, as contas de gestor e os colaboradores deixam de existir. Os tokens antigos (de gestor e de Agente) passam a responder 401, mesmo com `JWT_SECRET_KEY` igual: os gestores precisam se cadastrar de novo e os Agentes precisam ser associados novamente com o novo código. Para só invalidar tokens sem apagar dados, troque a `JWT_SECRET_KEY`.
 
 ## Testes
 

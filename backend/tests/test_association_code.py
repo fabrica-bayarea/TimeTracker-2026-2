@@ -32,7 +32,7 @@ def _headers(client, email, password=MANAGER_PASSWORD):
 
 # Geração
 def test_gerador_produz_6_digitos_com_zeros_a_esquerda(monkeypatch):
-    monkeypatch.setattr(utils.secrets, "randbelow", lambda _: 42)
+    monkeypatch.setattr(utils, "randbelow", lambda _: 42)
 
     assert utils.generate_association_code() == "000042"
 

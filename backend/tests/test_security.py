@@ -1,4 +1,3 @@
-import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -199,14 +198,12 @@ def test_decode_rejeita_lixo(garbage):
 
 
 # Configuração
-def test_secret_key_ausente_gera_chave_temporaria_e_avisa(caplog):
-    with caplog.at_level(logging.WARNING, logger="app.security"):
-        first = security._resolve_secret_key(None)
-        second = security._resolve_secret_key("   ")
+@pytest.mark.parametrize("raw", [None, "", "   "])
+def test_secret_key_ausente_e_recusada_com_instrucao(raw):
+    with pytest.raises(RuntimeError, match="JWT_SECRET_KEY é obrigatória") as exc:
+        security._resolve_secret_key(raw)
 
-    assert len(first) >= security.MIN_SECRET_KEY_LENGTH
-    assert first != second
-    assert "JWT_SECRET_KEY" in caplog.text
+    assert "secrets.token_urlsafe" in str(exc.value)
 
 
 def test_secret_key_curta_e_recusada():
