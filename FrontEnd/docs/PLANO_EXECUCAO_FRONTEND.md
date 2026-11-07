@@ -1,6 +1,16 @@
 # Plano de execução do Frontend
 
-Revisão iniciada em **21/10/2026**. Este documento registra o diagnóstico antes das mudanças e o trabalho executado nesta rodada. Todas as escritas desta revisão permanecem em `FrontEnd/`.
+## Estado vigente — 07/11/2026
+
+Base: branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`; árvore limpa antes da execução e merge local do PR #148 (`db8f46c`). A atribuição de Tasks usa `/users/` autenticado e UUIDs validados. A cobertura local passou (372 testes Vitest, 34 E2E aprovados e 2 testes de API real ignorados); os resultados estão em [TESTES](TESTES.md).
+
+Próximos marcos: (1) homologar sessão, escopo e rejeição de tokens entre perfis com API autorizada; (2) alinhar o Agent a `/collaborators/associate` e ao payload/token do Backend; (3) definir e persistir `task_id` em atividades e entregar resumo real por Task; (4) validar HTTPS/CORS e comunicação entre redes. `/config/*` e `/categories/*` seguem globais no Backend observado.
+
+As seções abaixo preservam diagnósticos e planos de checkpoints anteriores. Suas afirmações são válidas para as datas/SHAs que identificam e não substituem o estado vigente acima.
+
+## Snapshot histórico — revisão iniciada em 21/10/2026
+
+Este documento registra o diagnóstico anterior às mudanças daquele checkpoint. Todas as escritas daquela revisão permaneceram em `FrontEnd/`.
 
 ## Estado após a auditoria documental — 21/10/2026
 
@@ -9,7 +19,7 @@ Revisão iniciada em **21/10/2026**. Este documento registra o diagnóstico ante
 - A consulta oficial nesta data confirma 38 issues, 35 abertas e 3 fechadas. As classificações técnicas e os critérios permanecem em [Matriz de issues](MATRIZ_ISSUES_FRONTEND.md).
 - Todos os 11 documentos existentes em FrontEnd/docs foram revisados. O README agora inclui a proposta de contratos no índice; os mapas de código e teste estão em Arquitetura e Funcionalidades; a auditoria registrou a diferença de caminho de Task em Contratos e F-04. Na validação funcional de F-04 em 21/10/2026, a chamada foi reproduzida, corrigida para /tasks/ e integrada com sucesso ao MSW de testes. O relato anterior permanece como histórico em [Pendências](PENDENCIAS.md).
 - Não foram executados testes de código nesta auditoria documental. Os resultados históricos mais recentes continuam em [Testes](TESTES.md); validações locais desta revisão se limitam aos documentos e ao escopo de edição.
-- **Próximos marcos:** (1) aguardar autorização e isolamento B-01/#137 antes de liberar uso com dados reais; (2) definir CRUD/atribuição de Tasks em I-03/#133 e integração real da interface em #134; (3) validar task_id, idempotência, agregação e timezone; (4) realizar homologação ponta a ponta em ambiente autorizado. F-04 está resolvida no Frontend demonstrativo.
+- **Próximos marcos após PR #148:** (1) homologar login e isolamento com API autorizada; (2) alinhar o Agent ao endpoint de associação e ao token dedicado; (3) definir e entregar `task_id` na captura e agregação real para #140; (4) validar HTTPS/CORS e comunicação entre redes em ambiente publicado.
 
 ## Escopo e fontes
 
@@ -44,13 +54,14 @@ O estado oficial continua independente: **35 abertas e 3 fechadas**. Issues fech
 
 ## Dependências principais
 
-| Área/issue                    | Evidência no checkout                                                                                                            | Efeito no frontend                                                                     | Condição de desbloqueio                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Backend #137 / B-01           | Só `/auth/me` usa `get_current_manager`; rotas de usuários, atividade, resumo, exportação e configuração não filtram por gestor. | O frontend valida a sessão e envia Bearer, mas os dados continuam sem isolamento real. | Proteger cada rota, filtrar pelo gestor autenticado e testar isolamento entre gestores.      |
-| Backend #113/#115; Agent #116 | Não existe rota/schema de código, associação ou vínculo gestor–colaborador no backend.                                           | Código permanece oculto; a integração do Agent não pode ser validada de ponta a ponta. | Definir contrato de geração/consulta, associação, validade, erros e persistência do vínculo. |
-| Backend #133; Agent #135/#136 | Sem modelo/router/schema de Tasks no backend; DTOs/rotinas do Agent não carregam task ativa/TaskId.                              | Gestão persistida, atribuição e início do monitoramento não podem ser afirmados.       | CRUD autorizado, atribuições e protocolo de início/troca/fim com TaskId.                     |
-| Backend #140                  | Não existe agregação de tempo por Task nem campo de Task nos registros.                                                          | Sem indicadores reais de tempo por Task.                                               | Persistir TaskId no registro e disponibilizar agregação filtrada por período/equipe.         |
-| Infra #141                    | Docker Compose local existe, mas não configura túnel HTTPS ou homologação distribuída.                                           | E2E real e comportamento de produção não foram exercitados.                            | Ambiente HTTPS autorizado, conta/dados de teste e roteiro em redes distintas.                |
+| Área/issue             | Evidência no checkout                                                                                                         | Efeito no frontend                                                                     | Condição de desbloqueio                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| PR #148 / #131         | Rotas privadas exigem JWT de gestor; `/users/`, atividades de consulta, resumo/exportações e Tasks são filtrados pela equipe. | Frontend envia Bearer e usa as rotas autenticadas; falta homologação real do ambiente. | Testar token errado/expirado e isolamento entre gestores com API autorizada.           |
+| Agent / associação     | Backend oferece `/collaborators/associate`; Agent local ainda chama `/associate/` com outro payload.                          | Código aparece em `/auth/me`, mas o vínculo ponta a ponta não foi validado.            | Alinhar caminho, payload, token e tratamento de expiração do Agent.                    |
+| #140 — resumo por Task | `ActivityLog` não tem `task_id`; `/dashboard/tasks-summary` não existe; Agent não envia a Task.                               | Filtro/catálogo e componentes existem, mas produção não mostra horas por Task.         | Definir contrato real, persistir `task_id`, agregar durações e validar escopo/filtros. |
+| #132 — deploy          | Sem ambiente público/HTTPS indicado neste workspace. `VITE_API_URL` é configurável; CORS precisa ser validado em execução.    | Integração local/mock não comprova comunicação entre redes.                            | Homologar URL HTTPS, preflight `Authorization` e Agent em rede externa.                |
+| Backend #140           | Não existe agregação de tempo por Task nem campo de Task nos registros.                                                       | Sem indicadores reais de tempo por Task.                                               | Persistir TaskId no registro e disponibilizar agregação filtrada por período/equipe.   |
+| Infra #141             | Docker Compose local existe, mas não configura túnel HTTPS ou homologação distribuída.                                        | E2E real e comportamento de produção não foram exercitados.                            | Ambiente HTTPS autorizado, conta/dados de teste e roteiro em redes distintas.          |
 
 Os detalhes e contratos ainda propostos estão preservados em [Pendências](PENDENCIAS.md). Nenhuma rota de Tasks, associação, jornada, conexão do Agent ou agregação foi inventada.
 
@@ -65,8 +76,8 @@ Os detalhes e contratos ainda propostos estão preservados em [Pendências](PEND
 
 - `sessionStorage` é legível por JavaScript e suscetível a XSS; evita persistência além da aba, não elimina o risco. Não armazenamos senha ou imprimimos token.
 - Não há refresh/revogação de JWT. Logout remove a cópia local e o token segue válido no servidor até expirar.
-- Guardas React protegem a apresentação, não os dados. Até #137 ser entregue, a API continua acessível sem token e sem isolamento.
-- O card de associação fica oculto sem contrato real; a resposta `ManagerOut` não contém código.
+- Rotas privadas exigem JWT de gestor e filtram pela equipe após o PR #148; `/config/*` e `/categories/*` permanecem globais.
+- `GET /auth/me` contém `association_code`; o Agent local ainda precisa alinhar seu caminho e payload de associação.
 - A implementação nova muda o fluxo anterior sem login previsto para apresentação de 13/10. A issue #138 aberta e o pedido atual orientam o avanço, mas o status histórico do MVP foi preservado.
 - O checkout tem modificações pessoais prévias em PR #128. Essas alterações foram mantidas; nenhuma edição foi feita em Backend, Agent, requisitos, raiz do repositório ou Git remoto.
 
@@ -81,7 +92,7 @@ Os detalhes e contratos ainda propostos estão preservados em [Pendências](PEND
 
 ## Estado da execução
 
-A autenticação do gestor está implementada no frontend. Nesta continuação, a interface de CRUD de Tasks e o card de horas por Task foram concluídos como demonstrações explicitamente isoladas; a versão de produção segue desabilitada até haver contrato. O principal bloqueio externo permanece B-01/#137; Tasks reais, associação, jornada, atividade por Task e deploy dependem de Backend, Agent ou DevOps. Resultados integrais das validações ficam no [Relatório](RELATORIO_EXECUCAO_FRONTEND.md).
+A autenticação do gestor, o CRUD real de Tasks e a seleção de colaboradores da equipe estão implementados no Frontend e Backend local. Após o PR #148, o isolamento das rotas privadas está presente no código do servidor. Permanecem pendentes a homologação real, o alinhamento do Agent, `task_id`/agregação por Task e o deploy HTTPS. Resultados integrais desta auditoria ficam no [Relatório](RELATORIO_EXECUCAO_FRONTEND.md).
 
 ## Continuação — conclusão da interface de Tasks, 21/10/2026
 

@@ -118,6 +118,7 @@
 /**
  * @typedef {Object} ApiClient
  * @property {(signal?: AbortSignal) => Promise<User[]>} users
+ * @property {(signal?: AbortSignal) => Promise<TaskCollaborator[]>} collaborators
  * @property {(signal?: AbortSignal) => Promise<RealtimeEntry[]>} realtime
  * @property {(date: string, username?: string, signal?: AbortSignal) => Promise<DailySummary>} summary
  * @property {(signal?: AbortSignal) => Promise<SystemSettings>} settings

@@ -1,6 +1,24 @@
 # Testes e validação do frontend
 
+## Execução vigente — auditoria e sincronização do PR #148 — 07/11/2026
+
+**Base analisada:** branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`; checkout limpo antes das alterações. Todas as escritas ficaram em `FrontEnd/`. Os resultados abaixo substituem os snapshots anteriores como estado atual.
+
+| Verificação        | Comando                | Resultado                                                                                                                                                                                            |
+| ------------------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qualidade completa | `npm.cmd run check`    | Passou: ESLint, Prettier, typecheck, 372 testes Vitest em 64 arquivos, build de produção e 4 verificações do bundle. Cobertura: 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines. |
+| E2E                | `npm.cmd run test:e2e` | 36 cenários: 34 passaram, 0 falharam e 2 testes opt-in de API real foram ignorados. O build e os cenários Playwright passaram.                                                                       |
+| API real           | Não executada          | Nenhum endpoint externo foi chamado; cenários com `real-api` foram ignorados por não haver ambiente/credenciais explicitamente configurados.                                                         |
+
+O E2E confirma no navegador o Bearer em `GET /users/` e em `POST /tasks/`, a seleção de uma pessoa da equipe e o payload UUID enviado. A resposta é interceptada pelo Playwright: isso não comprova autorização, persistência, CORS ou isolamento no servidor. Os testes Vitest de sessão cobrem logout, troca de gestor, resposta atrasada e recuperação após falha temporária de rede. Backend, Agent e banco não foram executados.
+
+Durante a atualização do E2E, a primeira execução encontrou uma expectativa antiga que exigia que `GET /users/` não fosse chamado. Após alinhá-la ao contrato autenticado, uma fixture retornou o campo extra `department` no schema de Task; o mock foi ajustado para serializar colaboradores conforme o contrato (`id`, `username`, `full_name`). A execução final passou.
+
+As seções datadas abaixo são registros históricos de seus respectivos checkpoints. As descrições de segurança e integração anteriores a 07/11 não representam o estado atual do checkout.
+
 ## Dashboard analítico por Task — 04/11/2026
+
+**Snapshot histórico:** os números e a descrição abaixo representam a execução de 04/11 e foram superados pela execução vigente de 07/11 no início deste arquivo. A afirmação desta fotografia de que as rotas de usuários/atividade/resumo não tinham escopo de equipe antecede a incorporação local do PR #148.
 
 A suíte nova cobre seleção da fonte (catálogo real JWT versus resumo MSW exclusivo de desenvolvimento), ausência de chamada de resumo candidato em produção, validação de métricas produtivas, duração zero/segundos, timeline em ordem cronológica, timestamp zonado, janela omitida na interface, estados de carregamento/erro/vazio e callback de atualização manual. Os componentes de produtividade e timeline recebem dados somente quando um futuro adaptador os fornecer; a suíte não simula uma integração real.
 

@@ -2,7 +2,7 @@
 
 Frontend do **TimeTrack**, responsável pela interface web do dashboard. A aplicação consulta os dados disponíveis na API FastAPI e utiliza navegação por hash, sem React Router. Atualmente, não possui manifest nem service worker e não é instalável como PWA.
 
-> **Estado em 22/10:** cadastro, login JWT, validação de sessão e proteção do Dashboard estão integrados. O card de associação aparece somente para o gestor autenticado e informa que a consulta está pendente; não apresenta código fictício. Este checkout do Backend não declara `association_code` em `GET /auth/me` nem rota de consulta autenticada. O Frontend não gera código e não chama uma rota presumida; a integração de produção aguarda contrato do Backend. `POST /associate/`, persistência e isolamento da associação também não foram encontrados. A consulta de entrada/último registro e a criação persistente de Tasks aguardam contratos reais. Consulte [Pendências](docs/PENDENCIAS.md).
+> **Estado em 07/11:** a branch `main` contém o PR #148. Login JWT de gestor, validação e logout estão implementados; `/users/`, realtime, resumo/exportações e CRUD de Tasks agora exigem gestor e filtram pela equipe no Backend. O token do Agent é separado. A tela de Tasks usa a lista autenticada da equipe para selecionar atribuições. `/config/*` e `/categories/*` continuam globais. A agregação real por Task segue bloqueada: o Backend não tem `ActivityLog.task_id` nem `/dashboard/tasks-summary`, e o Agent não envia `task_id`. A associação do Agent também aguarda alinhamento do cliente Agent com `/collaborators/associate`. Nenhuma métrica de Task é inventada em produção. Consulte [Contratos da API](docs/CONTRATOS_API.md) e [Pendências](docs/PENDENCIAS.md).
 
 O realtime apresenta os estados `online`, `ausente` e `offline` recebidos da API; usuários sem entrada realtime são identificados como “Sem dados”. Consulte [Arquitetura](docs/ARQUITETURA.md) e [Funcionalidades](docs/FUNCIONALIDADES.md) para a semântica e os limites desses estados.
 
@@ -13,7 +13,7 @@ O realtime apresenta os estados `online`, `ausente` e `offline` recebidos da API
 - **React 18.2.0** — biblioteca principal para construção da interface.
 - **React DOM 18.2.0** — renderização da aplicação no navegador.
 - **JavaScript + JSX** — linguagem e sintaxe dos componentes.
-- **Vite 6.4.3** — servidor de desenvolvimento e processo de build.
+- **Vite 6.4.4** — servidor de desenvolvimento e processo de build.
 - **Hash routing próprio** — navegação entre telas sem dependência de React Router.
 - **React.lazy/Suspense** — carregamento sob demanda das páginas.
 

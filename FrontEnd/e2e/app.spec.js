@@ -1,8 +1,18 @@
 import { expect, test } from '@playwright/test';
 
 const users = [
-  { id: '1', username: 'ana', full_name: 'Ana Silva', department: 'Produto' },
-  { id: '2', username: 'bia', full_name: 'Bia Lima', department: 'TI' },
+  {
+    id: 'd94a4d6c-8542-4c3e-889b-89db302ef4cc',
+    username: 'ana',
+    full_name: 'Ana Silva',
+    department: 'Produto',
+  },
+  {
+    id: '52ba0ef0-0c95-4cbf-b5a8-897b0b93ef27',
+    username: 'bia',
+    full_name: 'Bia Lima',
+    department: 'TI',
+  },
 ];
 const realtime = [
   { username: 'ana', status: 'offline', seconds_since_last_activity: 901, process_name: 'Editor' },
@@ -39,7 +49,10 @@ async function mockApi(page) {
           id: 'fc0e3df5-c23b-49ec-9a40-081a451620b3',
           title: payload.title,
           description: payload.description,
-          collaborators: [],
+          collaborators: (payload.collaborator_ids || [])
+            .map((id) => users.find((user) => user.id === id))
+            .filter(Boolean)
+            .map(({ id, username, full_name }) => ({ id, username, full_name })),
           created_at: '2026-10-30T12:00:00Z',
           updated_at: '2026-10-30T12:00:00Z',
         };
@@ -349,18 +362,16 @@ test('menu móvel oculta cadastro e mantém o último link acessível em orienta
   await expect(page.getByRole('main')).toBeFocused();
 });
 
-test('creates a Task through the authenticated API without loading global users', async ({
-  page,
-}) => {
-  let usersRequests = 0;
+test('creates a Task with a collaborator from the authenticated team API', async ({ page }) => {
+  const usersRequests = [];
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/users/') usersRequests += 1;
+    if (new URL(request.url()).pathname === '/users/') usersRequests.push(request);
   });
 
   await page.goto('/#/painel');
   await expect(page.getByRole('link', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('table').first()).toContainText('Ana Silva');
-  const usersRequestsBeforeTasks = usersRequests;
+  const usersRequestsBeforeTasks = usersRequests.length;
 
   await page
     .getByRole('navigation', { name: 'Menu principal' })
@@ -369,10 +380,13 @@ test('creates a Task through the authenticated API without loading global users'
   await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
   await expect(page.locator('input[maxlength="200"]')).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Criar Task' })).toBeEnabled();
-  await expect(page.getByText(/GET \/users\//)).toBeVisible();
-  expect(usersRequests).toBe(usersRequestsBeforeTasks);
+  await expect(page.getByText('Atribuição restrita à equipe do gestor')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Ana Silva/ })).toBeVisible();
+  expect(usersRequests).toHaveLength(usersRequestsBeforeTasks + 1);
+  expect(usersRequests.at(-1).headers().authorization).toBe('Bearer ' + managerToken);
 
   await page.locator('input[maxlength="200"]').fill('Prepare quarterly planning');
+  await page.getByRole('checkbox', { name: /Ana Silva/ }).check();
   const responsePromise = page.waitForResponse(
     (response) => response.url().endsWith('/tasks/') && response.request().method() === 'POST',
   );
@@ -383,7 +397,7 @@ test('creates a Task through the authenticated API without loading global users'
   expect(response.request().postDataJSON()).toEqual({
     title: 'Prepare quarterly planning',
     description: null,
-    collaborator_ids: [],
+    collaborator_ids: [users[0].id],
   });
   await expect(page.getByText('Prepare quarterly planning')).toBeVisible();
 });

@@ -54,7 +54,7 @@ describe('TasksPage', () => {
     expect(screen.getByText('Nenhuma Task cadastrada.')).toBeInTheDocument();
   });
 
-  it('cria Task real sem descrição e mantém atribuições bloqueadas sem consultar usuários globais', async () => {
+  it('mantém atribuições bloqueadas se o cliente não oferece uma consulta autenticada da equipe', async () => {
     const user = userEvent.setup();
     const created = { ...task, description: null, collaborators: [] };
     const taskClient = mockService({
@@ -64,8 +64,7 @@ describe('TasksPage', () => {
     delete taskClient.collaborators;
     render(<TasksPage taskClient={taskClient} />);
 
-    expect(await screen.findByText(/CRUD de Tasks está conectado/)).toBeInTheDocument();
-    expect(screen.getByText(/GET \/users\//)).toBeInTheDocument();
+    expect(await screen.findByText('Atribuição de colaboradores indisponível')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Título'), 'Task sem atribuição');
     await user.click(screen.getByRole('button', { name: 'Criar Task' }));
@@ -79,6 +78,50 @@ describe('TasksPage', () => {
     expect(
       screen.getByRole('button', { name: 'Ver detalhes da Task: Relatório trimestral' }),
     ).toBeInTheDocument();
+  });
+
+  it('permite atribuir colaboradores retornados pela consulta autenticada da equipe', async () => {
+    const user = userEvent.setup();
+    const created = { ...task, collaborators: [ana] };
+    const taskClient = mockService({
+      tasks: vi.fn().mockResolvedValue([]),
+      collaborators: vi.fn().mockResolvedValue([ana, bruno]),
+      createTask: vi.fn().mockResolvedValue(created),
+    });
+    render(<TasksPage taskClient={taskClient} />);
+
+    expect(await screen.findByText('Atribuição restrita à equipe do gestor')).toBeInTheDocument();
+    expect(taskClient.collaborators).toHaveBeenCalledWith(expect.any(AbortSignal));
+    await user.type(screen.getByLabelText('Título'), 'Task da equipe');
+    await user.click(screen.getByRole('checkbox', { name: /Ana Souza/ }));
+    await user.click(screen.getByRole('button', { name: 'Criar Task' }));
+
+    expect(await screen.findByText('Task criada.')).toBeInTheDocument();
+    expect(taskClient.createTask).toHaveBeenCalledWith(
+      { title: 'Task da equipe', description: null, collaborator_ids: [ana.id] },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('permite criar sem atribuição quando a equipe autenticada está vazia', async () => {
+    const user = userEvent.setup();
+    const created = { ...task, collaborators: [] };
+    const taskClient = mockService({
+      tasks: vi.fn().mockResolvedValue([]),
+      collaborators: vi.fn().mockResolvedValue([]),
+      createTask: vi.fn().mockResolvedValue(created),
+    });
+    render(<TasksPage taskClient={taskClient} />);
+
+    expect(await screen.findByText(/Nenhum colaborador disponível/)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Título'), 'Task sem equipe');
+    await user.click(screen.getByRole('button', { name: 'Criar Task' }));
+
+    expect(taskClient.createTask).toHaveBeenCalledWith(
+      { title: 'Task sem equipe', description: null, collaborator_ids: [] },
+      expect.any(AbortSignal),
+    );
   });
 
   it('edita os campos da Task sem substituir colaboradores existentes', async () => {

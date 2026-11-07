@@ -1,14 +1,35 @@
 # Contratos da API do Frontend
 
-## Revalidação do Dashboard — 04/11/2026
+## Estado vigente após o PR #148 — 07/11/2026
+
+O checkout `main` contém o merge local do PR #148 (`db8f46c`, token dedicado do Agent e isolamento por gestor). A auditoria deste estado confirma que `GET /users/`, `GET /activities/realtime`, `GET /dashboard/summary`, `GET /dashboard/export/csv`, `GET /dashboard/export/pdf` e o CRUD `/tasks/` exigem JWT de gestor e usam o escopo dessa identidade. `POST /activities/` exige token do Agent; `POST /collaborators/associate` é público e emite esse token. O navegador envia Bearer nas rotas privadas e não decide autorização pelo `manager_id`.
+
+| Método/rota                                                                                                                            | Autenticação atual   | Escopo ou comportamento                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------- |
+| `POST /auth/login`, `POST /auth/register`                                                                                              | Público              | Sessão de gestor; `/auth/login` emite JWT com audiência `time-tracker:manager`. |
+| `GET /auth/me`                                                                                                                         | JWT de gestor        | Perfil autenticado, incluindo `association_code`.                               |
+| `GET /users/`, `GET /activities/realtime`, `GET /dashboard/summary`, `GET /dashboard/export/{csv,pdf}`, `GET/POST/PUT/DELETE /tasks/*` | JWT de gestor        | Consultas e operações limitadas à equipe/Tasks do gestor autenticado.           |
+| `POST /activities/`                                                                                                                    | JWT de Agent         | Identifica colaborador pelo token; schema não recebe `task_id`.                 |
+| `POST /collaborators/associate`                                                                                                        | Público              | Associa pelo código e emite JWT com audiência `time-tracker:agent`.             |
+| `/config/*`, `/categories/*`                                                                                                           | Sem a mesma proteção | Continuam globais; não são isoladas por gestor.                                 |
+
+`GET /users/` agora retorna somente colaboradores associados ao gestor. O cliente oferece esse mesmo endpoint como `api.collaborators()` para atribuições de Tasks, exigindo UUID válido antes de habilitar a seleção; o Backend valida novamente o pertencimento à equipe ao gravar. `/config/*` e `/categories/*` continuam sem a mesma proteção e não devem ser tratados como isolados por gestor.
+
+O contrato candidato `GET /dashboard/tasks-summary` continua ausente em `backend/app/routers/dashboard.py`; nem `ActivityLog` nem `ActivityLogCreate` têm `task_id`. Os componentes de resumo, produtividade e timeline ficam sem métricas reais em produção. Os handlers MSW e os formatos candidatos não comprovam integração. A UI não infere duração de Task a partir de tempo geral, realtime, categoria ou colaborador atribuído.
+
+O Agent local ainda usa `POST /associate/` e não envia `task_id`; o Backend espera `POST /collaborators/associate` e o payload de atividades não aceita associação a Task. A autenticação do Agent e o fluxo de associação ponta a ponta ainda precisam da adaptação do Agent. Para produção, `VITE_API_URL` precisa apontar a HTTPS; CORS e preflight de `Authorization` precisam ser homologados no ambiente publicado. O backend exige `JWT_SECRET_KEY` de pelo menos 32 caracteres para iniciar.
+
+Os checkpoints abaixo são históricos e foram preservados. Onde divergem, prevalece esta leitura do código local após o PR #148.
+
+## Snapshot histórico do Dashboard — 04/11/2026 (superado)
 
 Leitura atual de `backend/app/routers`, schemas, modelos e CRUD confirma o catálogo autenticado `GET /tasks/`, limitado às Tasks do gestor, mas não confirma endpoint analítico por Task. O modelo `ActivityLog` e `ActivityLogCreate` seguem sem `task_id`; o router de atividades não exige sessão de gestor. Também não existem consulta cronológica por Task ou classificação de tempo produtivo.
 
 No cliente, `api.tasks()` usa o cliente HTTP centralizado com JWT. `taskAnalyticsSource` escolhe esse catálogo em produção e não expõe função de resumo real; a rota candidata `/dashboard/tasks-summary` permanece ausente. O resumo vazio sob MSW existe somente no desenvolvimento e não calcula atividade. Os tipos `TaskProductivity` e `TaskTimeline` em `contracts.js` e suas validações são formatos candidatos de apresentação, não contratos do servidor.
 
-`/users/`, `/activities/realtime` e `/dashboard/summary` continuam globais e sem autorização por gestor. Nenhum filtro frontend deve ser considerado mecanismo de isolamento. A análise completa de pendências está em [PENDENCIAS.md](PENDENCIAS.md).
+Na data deste snapshot, `/users/`, `/activities/realtime` e `/dashboard/summary` foram descritos como globais. Essa conclusão foi superada pelo PR #148 integrado à `main`; consulte o estado vigente acima.
 
-**Snapshot auditado:** 30/10/2026. **Checkout:** branch main, commit `eec089a976cd2678473ad2f992269538fd1a4a57`. Contratos descritos continuam limitados às rotas confirmadas no backend; o comportamento seguro de mensagens HTTP pertence ao frontend.
+**Snapshot histórico auditado:** 30/10/2026. **Checkout:** branch main, commit `eec089a976cd2678473ad2f992269538fd1a4a57`.
 
 Este snapshot substitui as conclusões dos checkpoints históricos arquivados ao final deste arquivo. A fonte de verdade desta revisão é o código local em backend/app, agent/ e FrontEnd/src/shared/api. PRs #142, #145 e #146 estão incorporados na ancestralidade Git local pelos merges 5b72a3e, dffb107 e cccc5ac. PR #144 do Agent está incorporado em 189a7e9.
 
@@ -16,7 +37,7 @@ Este snapshot substitui as conclusões dos checkpoints históricos arquivados ao
 
 VITE_API_URL configura a origem. Em desenvolvimento, o fallback é http://localhost:8000; sem valor em produção o frontend usa a mesma origem da página. As rotas que exigem gestor usam Authorization: Bearer com o token recebido em /auth/login. O frontend não decodifica o JWT para decidir autorização.
 
-O envio de Bearer pelo frontend não torna uma rota protegida. As rotas marcadas como globais abaixo não validam o gestor nem filtram dados por equipe no backend consultado. Não use seu resultado para afirmar que os dados pertencem ao gestor autenticado.
+O envio de Bearer pelo frontend não torna uma rota protegida. As rotas marcadas como globais abaixo (`/config/*` e `/categories/*`) não validam o gestor nem filtram dados por equipe. As rotas privadas descritas no estado vigente exigem JWT do gestor no Backend.
 
 ## Autenticação de gestores
 
@@ -44,7 +65,7 @@ TaskCreate aceita title obrigatório não vazio (máximo 200), description opcio
 
 TaskResponse contém id, title, description nula ou string, collaborators, created_at e updated_at. Não contém manager_id nem collaborator_ids. Cada TaskCollaboratorOut contém id, username e full_name opcional/nulo. Uma Task sem colaboradores é válida. O frontend valida esses formatos, envia Bearer, valida UUIDs, impede mutações concorrentes, atualiza o estado apenas após resposta válida e trata DELETE 204 sem ler JSON. A ordenação padrão da tela acompanha `created_at` decrescente e, em empate, UUID decrescente, como `crud.list_tasks`.
 
-O backend valida no momento de criar/atualizar que cada collaborator_id pertence à equipe do gestor e rejeita a operação inteira se um ID for inválido. Isso não fornece ao frontend uma consulta segura para montar a equipe.
+O backend valida no momento de criar/atualizar que cada collaborator_id pertence à equipe do gestor e rejeita a operação inteira se um ID for inválido. `GET /users/` fornece essa equipe autenticada; `api.collaborators()` aplica também a validação de UUID antes de habilitar a seleção.
 
 ## Associação de colaborador e consulta da equipe
 
@@ -52,7 +73,7 @@ O backend valida no momento de criar/atualizar que cada collaborator_id pertence
 | ----------------------------- | --------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | POST /collaborators/associate | Sem JWT de gestor; rota usada pelo Agent com código | association_code (string de seis dígitos), username e machine_name | 200 AssociationOut: access_token do Agent, expires_in, collaborator_id, username, machine_name, manager_id e already_associated; 404 código inválido; 409 já associado a outro gestor; 422 validação; 429 limite excedido com Retry-After |
 
-A rota associa o usuário ao gestor dono do código e emite token com audiência do Agent; não é uma rota de sessão web. GET /users/ não é autenticado nem isolado: retorna usuários globais. Por isso, o frontend não oferece seleção de membros usando essa rota e não filtra uma lista global no cliente como substituto de autorização. Não foi encontrado endpoint autenticado que liste somente a equipe do gestor.
+A rota associa o usuário ao gestor dono do código e emite token com audiência do Agent; não é uma rota de sessão web. `GET /users/` exige JWT de gestor e retorna somente a equipe autenticada. O Frontend usa essa resposta para seleção de colaboradores em Tasks, e o Backend valida o escopo novamente na criação/atualização.
 
 O Agent local ainda usa outro caminho/payload: associate/ com code, username e hostname; o backend espera /collaborators/associate com association_code, username e machine_name. O frontend pode exibir o código correto, mas a associação ponta a ponta depende da adaptação do Agent.
 
@@ -60,20 +81,20 @@ A bandeja do Agent também solicita `GET /tasks/my-tasks`, rota que o backend n�
 
 ## Atividades, Dashboard, relatórios, configurações e categorias
 
-As rotas seguintes existem no backend local, mas não exigem JWT e não aplicam isolamento por gestor. Embora a camada HTTP do frontend possa enviar o Bearer da sessão, isso não restringe os dados no servidor.
+As rotas abaixo têm autenticação e escopo diferentes. Realtime, resumo diário e exportações exigem JWT de gestor; configurações e categorias permanecem globais. O token não transforma essas últimas rotas em recursos isolados.
 
-| Método e endpoint                      | Entrada                                                       | Saída comprovada                                     | Limite de autorização                                                           |
-| -------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| POST /activities/                      | ActivityLogCreate, sem task_id                                | 201 ActivityLogOut                                   | Sem autenticação de Agent/gestor e sem vínculo com Task                         |
-| GET /activities/realtime               | Nenhuma                                                       | lista RealtimeEntry                                  | Global, agrupada por usuário; idade baseada em captured_at enviado pelo cliente |
-| GET /dashboard/summary                 | date obrigatório; username opcional                           | DailySummaryResponse com total_seconds e by_category | Global; username é filtro, não autorização                                      |
-| GET /dashboard/export/csv              | mesmos filtros do sumário                                     | CSV                                                  | Global                                                                          |
-| GET /dashboard/export/pdf              | mesmos filtros do sumário                                     | PDF                                                  | Global                                                                          |
-| GET /config/                           | Nenhuma                                                       | SystemSettingsOut                                    | Sem autenticação                                                                |
-| PUT /config/                           | capture_interval_seconds e idle_timeout_seconds inteiros >= 1 | SystemSettingsOut                                    | Sem autenticação                                                                |
-| GET/POST /categories/                  | dados de categoria na criação                                 | lista ou CategoryOut; criação 201                    | Sem autenticação                                                                |
-| GET/POST /categories/rules             | dados de regra na criação                                     | lista ou regra; criação 201                          | Sem autenticação                                                                |
-| PUT/DELETE /categories/rules/{rule_id} | UUID e campos de atualização                                  | regra atualizada ou 204                              | Sem autenticação; PUT/404 ou DELETE/404 quando ausente                          |
+| Método e endpoint                      | Entrada                                                       | Saída comprovada                                     | Limite de autorização                                          |
+| -------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| POST /activities/                      | ActivityLogCreate, sem task_id                                | 201 ActivityLogOut                                   | Token do Agent; identidade vem do token; sem vínculo com Task  |
+| GET /activities/realtime               | Nenhuma                                                       | lista RealtimeEntry                                  | JWT de gestor; somente a equipe                                |
+| GET /dashboard/summary                 | date obrigatório; username opcional                           | DailySummaryResponse com total_seconds e by_category | JWT de gestor; somente a equipe                                |
+| GET /dashboard/export/csv              | mesmos filtros do sumário                                     | CSV                                                  | JWT de gestor; somente a equipe                                |
+| GET /dashboard/export/pdf              | mesmos filtros do sumário                                     | PDF                                                  | JWT de gestor; somente a equipe                                |
+| GET /config/                           | Nenhuma                                                       | SystemSettingsOut                                    | Sem autenticação                                               |
+| PUT /config/                           | capture_interval_seconds e idle_timeout_seconds inteiros >= 1 | SystemSettingsOut                                    | Sem autenticação                                               |
+| GET/POST /categories/                  | dados de categoria na criação                                 | lista ou CategoryOut; criação 201                    | Global, sem autenticação                                       |
+| GET/POST /categories/rules             | dados de regra na criação                                     | lista ou regra; criação 201                          | Global, sem autenticação                                       |
+| PUT/DELETE /categories/rules/{rule_id} | UUID e campos de atualização                                  | regra atualizada ou 204                              | Global, sem autenticação; PUT/404 ou DELETE/404 quando ausente |
 
 Realtime.status e seconds_since_last_activity descrevem a regra atual de idade/inatividade da captura. Não provam conexão de rede do Agent, presença do usuário nem tempo trabalhado. O backend não oferece /dashboard/tasks-summary, /dashboard/attendance ou /dashboard/task-hours. ActivityLogCreate não recebe task_id; relatórios por Task e jornada real permanecem bloqueados, sem dados artificiais no bundle de produção.
 
@@ -81,7 +102,7 @@ Realtime.status e seconds_since_last_activity descrevem a regra atual de idade/i
 
 Contratos confirmados: backend/app/routers/auth.py, tasks.py, users.py, activities.py, dashboard.py, config.py e categories.py; backend/app/schemas.py, models.py, security.py e crud.py. Tipos e validações consumidos estão em FrontEnd/src/shared/api/contracts.js e validators.js.
 
-Não são contratos implementados: rota segura para listar equipe do gestor, leitura de Tasks por token do Agent, associação alinhada ao cliente Agent, status por máquina, eventos idempotentes ligados a Task, resumo de horas por Task/jornada, escopo autenticado para dados globais e timezone do dia de negócio. As propostas e critérios estão em [PENDENCIAS.md](PENDENCIAS.md). Status e funcionamento de issues externas não foram confirmados nesta auditoria; referências a PR são limitadas aos merges locais comprovados.
+Não são contratos implementados: leitura de Tasks por token do Agent, associação alinhada ao cliente Agent, status por máquina, eventos idempotentes ligados a Task, resumo de horas por Task/jornada e timezone do dia de negócio. `GET /users/` já é a listagem segura de equipe. `/config/*` e `/categories/*` são globais por implementação atual. As pendências e critérios estão em [PENDENCIAS.md](PENDENCIAS.md); os status oficiais de #131, #132 e #140 usam a referência fornecida de 07/11/2026.
 
 ## Histórico preservado
 
@@ -105,19 +126,19 @@ Revalidado em **22/10/2026** no checkout local `main`, HEAD `b9d78e515d6e65fbf50
 
 ## Rotas usadas pelas telas do frontend
 
-`VITE_API_URL` define a origem da API. Sem configuração, o cliente usa `http://localhost:8000` somente durante o desenvolvimento; em produção, usa a mesma origem do Frontend (por exemplo, com proxy reverso). Para uma API em outra origem, configure a URL no ambiente de build. Em páginas HTTPS, a origem configurada também precisa usar HTTPS. A sessão do gestor envia Bearer nas rotas de dados abaixo; o Backend local consultado ainda não exige esses tokens.
+`VITE_API_URL` define a origem da API. Sem configuração, o cliente usa `http://localhost:8000` somente durante o desenvolvimento; em produção, usa a mesma origem do Frontend (por exemplo, com proxy reverso). Para uma API em outra origem, configure a URL no ambiente de build. Em páginas HTTPS, a origem configurada também precisa usar HTTPS. A sessão do gestor envia Bearer nas rotas privadas abaixo; o Backend exige e valida esse token onde indicado.
 
-| Método e rota               | Parâmetros/corpo                                                                | Resposta                                                                                            | Bearer enviado pelo frontend | Consumidor                         |
-| --------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------- |
-| `GET /users/`               | Nenhum                                                                          | Array de `UserOut`                                                                                  | Sim                          | Painel, Colaboradores e Relatórios |
-| `GET /activities/realtime`  | Nenhum                                                                          | Array de `RealtimeEntry`                                                                            | Sim                          | Painel e Colaboradores             |
-| `GET /dashboard/summary`    | `date` obrigatório (`AAAA-MM-DD`); `username` opcional                          | `{ date, users: [{ username, total_seconds, by_category: [{ category, color, total_seconds }] }] }` | Sim                          | Painel                             |
-| `GET /dashboard/export/csv` | Mesmos filtros do resumo                                                        | `text/csv`                                                                                          | Sim                          | Relatórios                         |
-| `GET /dashboard/export/pdf` | Mesmos filtros do resumo                                                        | `application/pdf`                                                                                   | Sim                          | Relatórios                         |
-| `GET /config/`              | Nenhum                                                                          | `{ capture_interval_seconds, idle_timeout_seconds, updated_at? }`                                   | Sim                          | Configurações                      |
-| `PUT /config/`              | JSON com `capture_interval_seconds` e `idle_timeout_seconds` inteiros positivos | Objeto de configuração                                                                              | Sim                          | Configurações                      |
+| Método e rota               | Parâmetros/corpo                                                                | Resposta                                                                                            | Bearer enviado pelo frontend           | Consumidor                                              |
+| --------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| `GET /users/`               | Nenhum                                                                          | Array de `UserOut` somente da equipe do gestor                                                      | Sim                                    | Painel, Colaboradores, Relatórios e atribuição de Tasks |
+| `GET /activities/realtime`  | Nenhum                                                                          | Array de `RealtimeEntry` somente da equipe do gestor                                                | Sim                                    | Painel e Colaboradores                                  |
+| `GET /dashboard/summary`    | `date` obrigatório (`AAAA-MM-DD`); `username` opcional                          | `{ date, users: [{ username, total_seconds, by_category: [{ category, color, total_seconds }] }] }` | Sim                                    | Painel                                                  |
+| `GET /dashboard/export/csv` | Mesmos filtros do resumo                                                        | `text/csv`, escopado ao gestor                                                                      | Sim                                    | Relatórios                                              |
+| `GET /dashboard/export/pdf` | Mesmos filtros do resumo                                                        | `application/pdf`, escopado ao gestor                                                               | Sim                                    | Relatórios                                              |
+| `GET /config/`              | Nenhum                                                                          | `{ capture_interval_seconds, idle_timeout_seconds, updated_at? }`                                   | Sim no cliente; ignorado pelo servidor | Configurações                                           |
+| `PUT /config/`              | JSON com `capture_interval_seconds` e `idle_timeout_seconds` inteiros positivos | Objeto de configuração                                                                              | Sim no cliente; ignorado pelo servidor | Configurações                                           |
 
-O cliente envia `Authorization: Bearer <JWT>` nas chamadas de dados da tabela. **O backend inspecionado não exige esse header nessas rotas**; envio do token pelo frontend não equivale a autenticação/isolamento. O parâmetro `username` filtra uma consulta, mas não impõe autorização no servidor.
+O cliente envia `Authorization: Bearer <JWT>` nas rotas privadas. O servidor exige audiência de gestor para `/users/`, realtime, resumo, exportações e Tasks e aplica o escopo pelo gestor autenticado. As chamadas de configuração também recebem o header no cliente, mas o router atual não autentica nem isola `/config/`; essas operações são globais. O parâmetro `username` restringe a consulta dentro da equipe, não substitui a autorização.
 
 `GET /dashboard/summary` e as exportações aplicam `date` e o filtro opcional `username` no Backend. A agregação atual usa a data de `captured_at` sem declarar `America/Sao_Paulo` nem outro fuso no schema da resposta; portanto, não confirma um dia de negócio em Brasília. Os campos `by_category` representam categorias de atividade recebida, não Task, escopo de aplicação ou jornada formal. CSV/PDF exportam esse mesmo resumo diário filtrado, não o relatório completo de RF-24/RF-25.
 
@@ -241,19 +262,19 @@ Payload enviado pelo Agent:
 - persistência do vínculo colaborador–gestor ou consulta de colaboradores por gestor;
 - política de validade, consumo único ou erros do código.
 
-Logo, o endpoint e payload acima são o comportamento do cliente Agent, não contrato confirmado do servidor. As issues #113 e #114 descrevem gerar/consultar e exibir o código, mas não confirmam rota nem resposta. `GET /auth/me` é uma rota real para identidade do gestor, não uma consulta de código.
+Logo, o endpoint e payload acima são o comportamento do cliente Agent, não contrato confirmado do servidor. O Backend atual implementa `POST /collaborators/associate`, e `GET /auth/me` do gestor autenticado inclui o `association_code`; o Agent local ainda precisa alinhar caminho, nomes de campos e uso do token dedicado.
 
-O JWT do gestor e o token do Agent são credenciais distintas. O frontend não reutiliza o token do Agent. `AssociationCodeCard` agora aparece no Dashboard somente quando `App` fornece a identidade autenticada do gestor. Como não existe contrato de consulta, o card mostra a dependência pendente e não exibe valor demonstrativo. `GET /auth/me` fornece apenas identidade; seu `ManagerOut` e o validador frontend não aceitam `association_code`. Não conectar esse payload ao card nem assumir uma rota. O Frontend mantém apenas um adapter opcional simulado nos testes; não há consulta de código no cliente HTTP de produção.
+O JWT do gestor e o token do Agent são credenciais distintas. O frontend não reutiliza o token do Agent. `AssociationCodeCard` aparece somente quando `App` fornece a identidade autenticada do gestor e mostra o código validado que vem de `GET /auth/me`, preservando zeros à esquerda. O código é escopado à identidade e some em logout ou troca de sessão.
 
 ## Autorização e isolamento de dados
 
-`get_current_manager` é aplicado em `GET /auth/me`, mas não está aplicado aos routers de `/users/`, `/activities/realtime`, `/dashboard/summary`, exportações nem `/config/`. Essas rotas dependem apenas de `get_db`; `PUT /config/` também não verifica gestor. As consultas de usuários, atividades, resumos e arquivos são globais no código atual, sem vínculo com `Manager`.
+`get_current_manager` é aplicado em `GET /auth/me`, `/users/`, `/activities/realtime`, `/dashboard/summary`, exportações e no CRUD de Tasks. As consultas de usuários, atividades, resumos, arquivos e Tasks usam a identidade do gestor no servidor. `/config/*` e `/categories/*` continuam sem autenticação/isolamento; configurações são globais.
 
-Assim, qualquer cliente que alcance a API pode consultar os dados expostos e alterar a configuração global, sujeito apenas à disponibilidade da API. A guarda de rota evita mostrar páginas do gestor sem `/auth/me` válido e os cabeçalhos Bearer estão preparados, mas as rotas acima ignoram autenticação e não filtram por gestor. Filtrar colaboradores na interface não é controle de acesso. Essa limitação e o risco permanecem em B-01/#137 de [Pendências](PENDENCIAS.md); autorização real depende do backend.
+Assim, as rotas globais de configuração e categorias podem ser acessadas sem a mesma autorização e não devem ser descritas como isoladas. Para rotas privadas, a guarda de rota do frontend complementa a API; a autorização real e a filtragem são impostas no Backend pelo token, não por filtros ou `manager_id` fornecidos pelo navegador. A configuração global continua uma pendência de segurança do Backend.
 
 ## Tasks e jornada diária
 
-Não foi localizado modelo/schema/endpoint de consulta ou gravação persistente de Tasks nem dados confiáveis de primeiro/último registro diário. O `realtime` descreve a última atividade e não substitui a jornada. O Agent não envia `task_id`. O cliente HTTP de produção não chama rotas presumidas nem infere esses dados.
+O CRUD persistente de Tasks está implementado em `/tasks/` e escopado ao gestor. Não foram localizados dados confiáveis de primeiro/último registro diário, resumo ou timeline por Task. O `realtime` descreve a última atividade e não substitui a jornada. O Agent não envia `task_id`; o cliente HTTP de produção não chama rotas presumidas nem infere esses dados.
 
 ### Rotas de demonstração local — MSW, não contratos do Backend
 

@@ -1,6 +1,28 @@
 # Alterações do frontend
 
+## 07/11/2026 — sincronização com o PR #148 e atribuição segura de Tasks
+
+**Base auditada:** branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`, com o merge local do PR #148 (`db8f46c`); o checkout estava limpo antes das alterações. Esta rodada escreveu somente em `FrontEnd/`.
+
+- Atualizado o cliente para consultar `/users/` com Bearer e validar UUIDs antes de oferecer integrantes da equipe na atribuição de Tasks. A seleção permanece bloqueada para clientes sem essa consulta segura; equipe vazia ainda permite criar Task sem atribuições.
+- Atualizados o formulário, a página de Tasks e os avisos de Colaboradores/Dashboard para refletir o escopo por gestor e esclarecer que atribuir uma Task não inicia captura no Agent.
+- Acrescentados testes para validação estrita dos colaboradores, Bearer e respostas inválidas, seleção/criação com equipe autenticada, equipe vazia, retry de sessão após falha temporária e descarte de identidade antiga após logout/troca de gestor.
+- Atualizado o E2E para verificar `GET /users/` autenticado e atribuição via `POST /tasks/`. A fixture final usa somente os campos de colaborador definidos no contrato de Task.
+- Reconciliados README e documentos de arquitetura, funcionalidades, contratos, matriz, pendências, plano, testes e relatório com o estado local observado depois do PR #148. Os registros anteriores foram mantidos como históricos.
+
+**Arquivos desta rodada:** `README.md`; `docs/README.md`, `ARQUITETURA.md`, `CONTRATOS_API.md`, `FUNCIONALIDADES.md`, `MATRIZ_ISSUES_FRONTEND.md`, `PENDENCIAS.md`, `PLANO_EXECUCAO_FRONTEND.md`, `RELATORIO_EXECUCAO_FRONTEND.md`, `TESTES.md` e este arquivo; `e2e/app.spec.js`; `src/features/collaborators/pages/CollaboratorsPage.jsx`; `src/features/dashboard/components/DashboardMetrics.jsx`; `src/features/tasks/components/TaskForm.jsx`, `hooks/useTasks.session.test.jsx`, `pages/TasksPage.jsx` e `pages/TasksPage.test.jsx`; `src/shared/api/api.js`, `api.test.js`, `contracts.js`, `validators.js`, `validators.test.js`; `src/shared/auth/ManagerSession.test.jsx`.
+
+**Validação final:** `npm.cmd run check:full` passou após as edições finais: lint, Prettier, typecheck, 372 testes Vitest em 64 arquivos, build, 4 verificações de bundle e Playwright com 34 aprovações, 0 falhas e 2 testes de API real ignorados. Cobertura Vitest: 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines. Nenhuma API real, Backend, Agent ou serviço externo foi executado.
+
+**Estado das issues:** #131 permanece aberta e parcialmente atendida no escopo Frontend; a sessão local e os fluxos protegidos têm testes, mas a homologação real não foi feita. A atribuição da equipe agora usa o endpoint protegido disponível. #132 permanece parcial por falta de implantação externa/HTTPS e agregação real. #140 permanece parcialmente bloqueada pela ausência de `/dashboard/tasks-summary` e `ActivityLog.task_id` no Backend e de `task_id` enviado pelo Agent.
+
+**Commit sugerido (não criado):** `fix(frontend): align task assignments with manager scope`. Descrição: consultar a equipe do gestor e validar UUIDs nas atribuições; cobrir sessão, atribuição e respostas antigas; documentar a integração do PR #148 e as dependências abertas de #131, #132 e #140. Nenhuma issue foi fechada automaticamente.
+
+## Snapshot histórico — 04/11/2026 (superado pela revisão de 07/11/2026)
+
 ## 04/11/2026 — preparação do Dashboard analítico por Task
+
+Este registro descreve somente a fotografia e os testes executados em 04/11. Sua afirmação de que `/users/`, realtime e resumo não tinham escopo de equipe foi superada pela auditoria local do PR #148 em 07/11; consulte a entrada vigente acima.
 
 - `useTaskAnalytics` agora seleciona uma fonte explícita: em produção, lista Tasks por `GET /tasks/` usando cliente HTTP e JWT; resumo candidato continua somente no adaptador MSW de desenvolvimento. `useDashboardData` e `useTaskAnalytics` descartam o estado e as respostas antigas ao trocar/remover a sessão do gestor. Nenhuma rota analítica inexistente é chamada.
 - O card de resumo valida o contrato candidato antes de apresentar dados. A formatação compartilhada aceita somente segundos inteiros não negativos e exibe segundos quando a duração é inferior a um minuto.

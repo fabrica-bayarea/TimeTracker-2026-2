@@ -357,6 +357,11 @@ export function validUsers(value) {
   );
 }
 
+/** @param {unknown} value @returns {value is import('./contracts').TaskCollaborator[]} */
+export function validTaskCollaborators(value) {
+  return validUsers(value) && value.every((user) => validUuid(user.id));
+}
+
 /** @param {any} value @returns {value is import('./contracts').RealtimeEntry[]} */
 export function validRealtime(value) {
   return (

@@ -1,5 +1,79 @@
 # Relatório de execução da auditoria do Frontend
 
+## Relatório vigente — auditoria e sincronização — 07/11/2026
+
+### 1. Estado do repositório
+
+- **Branch:** `main`.
+- **SHA analisado:** `e65caec77225d49c181c1ac46cc364468dd1bef4`, merge local do PR #148 (`db8f46c`). O checkout estava limpo antes da execução.
+- **Arquivos modificados:** exclusivamente arquivos sob `FrontEnd/`; sem arquivos novos fora desse diretório e sem alterações staged. Nenhuma mudança pré-existente foi encontrada fora do escopo.
+- Backend, Agent e requisitos foram inspecionados somente em leitura. Não houve commit, push, merge, deploy, alteração remota nem chamada a ambiente externo.
+
+### 2. Auditoria do PR #148
+
+A leitura local confirma que `GET /users/`, `GET /activities/realtime`, `GET /dashboard/summary`, exportações e CRUD `/tasks/` exigem identidade de gestor e aplicam escopo da equipe. O Frontend envia Bearer nas rotas autenticadas. A implementação agora oferece a lista de equipe de `/users/` à atribuição de Tasks apenas quando o cliente fornece a consulta autenticada e a resposta contém UUIDs válidos. O Backend valida novamente os IDs submetidos.
+
+O fluxo Agent ainda usa `POST /associate/` com `code` e `hostname`, enquanto o Backend local expõe `/collaborators/associate` com `association_code` e `machine_name`; o Agent também não envia `task_id`. `/dashboard/tasks-summary` e `ActivityLog.task_id` não existem no Backend local. `/config/*` e `/categories/*` permanecem globais. Nenhum endpoint fictício foi conectado.
+
+### 3. Issue #131 — autenticação e isolamento
+
+- **Atendido no Frontend:** login/cadastro existentes, sessão validada por `/auth/me`, Bearer para chamadas autenticadas, rotas protegidas, logout, tratamento separado de 401 e 403, retry após falha temporária de rede e descarte de respostas antigas ao sair/trocar gestor. A suíte Vitest inclui regressões de sessão e API; E2E valida Bearer com respostas interceptadas.
+- **Impacto desta rodada:** equipes da interface de Tasks agora são carregadas pelo endpoint autenticado disponibilizado no PR #148. A atribuição usa UUID e a seleção fica bloqueada se não houver consulta segura.
+- **Pendente:** a API real não foi homologada; testes simulados não demonstram isolamento em servidor nem rejeição de token de Agent em endpoint de gestor. A Issue pai #131 permanece aberta e não é declarada concluída.
+
+### 4. Issues #132 e #140 — Dashboard analítico
+
+O Frontend preserva filtros, catálogo de Tasks autenticado e os componentes de resumo, produtividade e timeline com estados de carregamento/erro/vazio. Não calcula produtividade artificial nem chama uma rota analítica inexistente. Como o Backend não implementa `/dashboard/tasks-summary` e `ActivityLog` não tem `task_id`, e o Agent não envia esse vínculo, não há agregação real por Task. HTTPS, CORS de produção e teste entre redes também não foram homologados. #132 e #140 continuam parciais/bloqueadas pelas dependências documentadas em `PENDENCIAS.md`.
+
+### 5. Alterações por arquivo
+
+| Arquivo                                                  | Motivo e comportamento anterior → atual                                                                                    | Issue                  | Verificação    |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------------- |
+| `README.md`                                              | Atualizar status, escopo e leitura da documentação ao estado pós-PR #148.                                                  | #131, #132, #140, #148 | `format:check` |
+| `docs/README.md`                                         | Atualizar o índice documental e substituir o resumo anterior sobre rotas globais/Tasks indisponíveis.                      | #131, #132, #140, #148 | `format:check` |
+| `docs/ARQUITETURA.md`                                    | Corrigir arquitetura e limites atuais de autenticação, equipe, Tasks e Agent.                                              | #131, #140, #148       | `format:check` |
+| `docs/CONTRATOS_API.md`                                  | Registrar rotas manager-scoped, atribuição autenticada, incompatibilidade Agent e endpoints ausentes.                      | #131, #132, #140, #148 | `format:check` |
+| `docs/FUNCIONALIDADES.md`                                | Sincronizar estado e limitações funcionais com o código Backend/Frontend local.                                            | #131, #132, #140       | `format:check` |
+| `docs/MATRIZ_ISSUES_FRONTEND.md`                         | Atualizar situação técnica das issues sem encerrar estados oficiais.                                                       | #131, #132, #140, #148 | `format:check` |
+| `docs/PENDENCIAS.md`                                     | Detalhar evidência, esperado/atual, dependências, aceite e status das pendências correntes.                                | #131, #132, #140       | `format:check` |
+| `docs/PLANO_EXECUCAO_FRONTEND.md`                        | Revisar marcos e bloqueios após sincronização com a equipe autenticada.                                                    | #131, #132, #140       | `format:check` |
+| `docs/ALTERACOES.md`                                     | Registrar a execução atual, validação e commit sugerido, preservando histórico.                                            | #131, #132, #140, #148 | `format:check` |
+| `docs/TESTES.md`                                         | Atualizar resultados vigentes e explicitar mocks, testes ignorados e limites.                                              | #131, #132, #140       | `format:check` |
+| `docs/RELATORIO_EXECUCAO_FRONTEND.md`                    | Apresentar este relatório técnico vigente e rastreabilidade arquivo a arquivo.                                             | #131, #132, #140, #148 | `format:check` |
+| `e2e/app.spec.js`                                        | Antes esperava ausência de `/users/`; agora prova GET autenticado, seleção e payload de atribuição com fixture compatível. | #131, #148             | Playwright E2E |
+| `src/features/collaborators/pages/CollaboratorsPage.jsx` | Corrigir aviso para refletir o escopo da equipe autenticada.                                                               | #131, #148             | Vitest + E2E   |
+| `src/features/dashboard/components/DashboardMetrics.jsx` | Trocar descrição de lista global por equipe do gestor autenticado.                                                         | #131, #148             | Vitest + E2E   |
+| `src/features/tasks/components/TaskForm.jsx`             | Atualizar a orientação de atribuição para o catálogo seguro da equipe.                                                     | #131, #148             | Vitest         |
+| `src/features/tasks/hooks/useTasks.session.test.jsx`     | Fornecer método de colaboradores nos casos que isolam 401 de Tasks após a nova carga do catálogo.                          | #131                   | Vitest         |
+| `src/features/tasks/pages/TasksPage.jsx`                 | Habilitar seleção somente quando o serviço oferece listagem segura; sem método, bloqueia a seleção.                        | #131, #148             | Vitest + E2E   |
+| `src/features/tasks/pages/TasksPage.test.jsx`            | Cobrir cliente sem listagem segura, seleção de equipe e equipe vazia.                                                      | #131, #148             | Vitest         |
+| `src/shared/api/api.js`                                  | Adicionar `api.collaborators()` autenticado em `/users/`, com validação estrita de UUID.                                   | #131, #148             | Vitest + E2E   |
+| `src/shared/api/api.test.js`                             | Verificar Bearer e rejeição de resposta inválida de colaboradores.                                                         | #131, #148             | Vitest         |
+| `src/shared/api/contracts.js`                            | Incluir o método autenticado de equipe no contrato `ApiClient`.                                                            | #131, #148             | Typecheck      |
+| `src/shared/api/validators.js`                           | Validar colaboradores da equipe com UUID obrigatório antes de permitir atribuições.                                        | #131, #148             | Vitest         |
+| `src/shared/api/validators.test.js`                      | Cobrir UUID válido/inválido e coleção vazia de colaboradores.                                                              | #131, #148             | Vitest         |
+| `src/shared/auth/ManagerSession.test.jsx`                | Cobrir falha temporária sem logout, retry, resposta atrasada após logout e troca de gestor.                                | #131                   | Vitest         |
+
+### 6. Testes e validação
+
+| Comando                                          | Resultado                                                                                                                                                                                                         | Erros e limites                                                                                   |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `npm.cmd run check:full`                         | Passou: lint, Prettier, typecheck, 372 testes/64 arquivos, cobertura 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines; build, 4 verificações de bundle; E2E 34 aprovados/0 falhas/2 ignorados. | Os dois testes de API real ficaram opt-in e foram ignorados; nenhum serviço externo foi acessado. |
+| Testes focados de sessão/API/Tasks/Colaboradores | Passaram: 103 testes em 5 arquivos nesta rodada.                                                                                                                                                                  | Respostas simuladas não comprovam o Backend.                                                      |
+| Backend, Agent e API real                        | Não executados.                                                                                                                                                                                                   | Sem ambiente/credenciais de homologação autorizados nesta execução.                               |
+
+O E2E primeiro encontrou uma asserção antiga de ausência de `GET /users/`; depois, a resposta mockada de criação continha `department`, fora do schema de colaborador dentro de uma Task. O teste foi atualizado para esperar o GET autenticado e a fixture foi corrigida para o contrato de resposta. A execução final completa passou.
+
+### 7. Commit sugerido (não criado)
+
+**Título:** `fix(frontend): align task assignments with manager scope`
+
+**Descrição:** consultar a equipe do gestor e validar UUIDs nas atribuições; cobrir sessão, atribuição e respostas antigas; documentar a integração do PR #148 e as dependências abertas de #131, #132 e #140.
+
+Nenhuma issue foi fechada automaticamente. #131 permanece parcial; #132 e #140 mantêm dependências de Backend, Agent e implantação externa.
+
+---
+
 Revisão: **21/10/2026**. Escopo autorizado: auditoria, implementação, documentação e validação dentro de `FrontEnd/`.
 
 ## Revisão de formatação e contratos — 21/10/2026

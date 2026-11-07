@@ -181,7 +181,9 @@ it('clears the manager session when an authenticated Task request receives 401',
 
   render(
     <ManagerSessionProvider client={client}>
-      <SessionTaskWorkspace taskService={api} />
+      <SessionTaskWorkspace
+        taskService={{ ...api, collaborators: vi.fn().mockResolvedValue([]) }}
+      />
     </ManagerSessionProvider>,
   );
 
@@ -207,6 +209,7 @@ it.each(['create', 'update', 'delete'])(
     const taskService = {
       ...api,
       tasks: vi.fn().mockResolvedValue([previousSessionTask]),
+      collaborators: vi.fn().mockResolvedValue([]),
     };
 
     render(

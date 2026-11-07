@@ -19,6 +19,7 @@ import {
   validTaskTimeline,
   validTaskTitle,
   validTaskUpdatePayload,
+  validTaskCollaborators,
   validUuid,
   validTasks,
   validUsers,
@@ -35,6 +36,15 @@ describe('contratos da API', () => {
     expect(validUsers([{ username: 'ana', full_name: {} }])).toBe(false);
     expect(validUsers([{ username: 'ana', department: [] }])).toBe(false);
     expect(validUsers(null)).toBe(false);
+  });
+
+  it('exige UUID para colaboradores usados em atribuições de Task', () => {
+    expect(
+      validTaskCollaborators([{ id: 'd94a4d6c-8542-4c3e-889b-89db302ef4cc', username: 'ana' }]),
+    ).toBe(true);
+    expect(validTaskCollaborators([{ username: 'ana' }])).toBe(false);
+    expect(validTaskCollaborators([{ id: 'inválido', username: 'ana' }])).toBe(false);
+    expect(validTaskCollaborators([])).toBe(true);
   });
 
   it('exige estado e segundos inteiros seguros nas leituras realtime', () => {

@@ -1,12 +1,64 @@
-# Pendências e estado de integração — 30/10/2026
+# Pendências e estado de integração — 07/11/2026
 
-**Revisão vigente:** branch `main`, checkout `eec089a976cd2678473ad2f992269538fd1a4a57`. A auditoria de resiliência e acessibilidade de 30/10/2026 confirmou que as pendências externas abaixo continuam vigentes.
+**Revisão vigente:** branch `main`, HEAD `e65caec`, incluindo o merge local do PR #148 (`db8f46c`). A árvore inicial estava limpa. O escopo de escrita desta revisão é `FrontEnd/`; Backend, Agent, requisitos e ambientes externos foram somente inspecionados.
 
-Este snapshot substitui os checkpoints anteriores deste documento. As afirmações históricas de que o backend não tinha CRUD de Tasks, código de associação ou associação colaborador–gestor deixaram de representar o checkout: PRs #142, #145 e #146 estão incorporados na branch. Seus merges locais são `5b72a3e`, `dffb107` e `cccc5ac`, respectivamente. O PR #144 do Agent também está incorporado (`189a7e9`), mas seus caminhos de API ainda não correspondem ao backend atual. O snapshot anterior completo foi preservado ao final deste arquivo com status histórico identificado.
+Este snapshot atualiza os checkpoints anteriores deste documento. As conclusões sobre rotas globais de dados foram superadas pelo PR #148. Os checkpoints anteriores foram preservados com a data e o estado histórico.
 
-## Revalidação do Dashboard analítico — 04/11/2026
+## Revisão vigente — Issues #131, #132 e #140 — 07/11/2026
 
-Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue #132, sua filha #140 e RF-27. A árvore inicial estava limpa. A leitura local confirmou que o Backend já oferece CRUD autenticado de Tasks, incluindo `GET /tasks/` escopado ao gestor; o cliente do Dashboard agora usa esse catálogo real quando há sessão autenticada.
+### AUTH-131 — Sessão e isolamento do gestor
+
+- **Issue relacionada:** #131 (pai aberto na referência de 07/11; US-15.2 Frontend é parte do escopo).
+- **Evidência no código:** `src/shared/api/api.js`, `src/shared/auth/ManagerSession.jsx`, `src/shared/auth/sessionStorage.js`, `src/app/App.jsx` e `backend/app/security.py`/routers (Backend somente leitura).
+- **Esperado:** JWT de gestor nas rotas privadas; Agent com token/audiência separados; sessão inválida descartada; 403 não deve ser tratado como expiração; estados e respostas antigas não podem cruzar gestores.
+- **Atual:** o Frontend já implementa login, `/auth/me`, armazenamento em `sessionStorage`, logout, guardas, Bearer, 401, 403 separado, cancelamento e sequência para descartar respostas antigas. O Backend local distingue os tokens e escopa `/users/`, realtime, resumo, exportações e Tasks. `/config/*` e `/categories/*` seguem globais.
+- **Responsáveis/dependências:** Frontend e Backend; homologação precisa de ambiente de teste, credenciais descartáveis e CORS autorizado. O Agent responde por renovação/reconexão.
+- **Critério/testes:** comprovar login, logout, sessão restaurada, 401/403, rotas protegidas, headers e isolamento por gestor; validar a API real em ambiente autorizado. Vitest/E2E com respostas interceptadas não comprovam o servidor.
+- **Status:** implementação local do Frontend presente; testes locais registrados em `TESTES.md`; integração real e Issue pai continuam pendentes.
+
+### TEAM-131/140 — Atribuição de colaboradores a Tasks
+
+- **Issue relacionada:** #131 e dependência de #140.
+- **Evidência no código:** `src/shared/api/api.js` (`api.collaborators()`), `src/shared/api/validators.js`, `src/features/tasks/pages/TasksPage.jsx`, `TaskForm.jsx`, `useTasks.js`; Backend `GET /users/`, `/tasks/` e validação de `collaborator_ids`.
+- **Esperado:** a lista deve ser da equipe autenticada, usar UUIDs e preservar as atribuições atuais durante edição; uma equipe vazia deve permitir Task sem colaboradores.
+- **Atual:** após esta revisão, o Frontend consulta `/users/` com Bearer, exige UUID antes de habilitar os controles e envia `collaborator_ids`; o Backend confere novamente que cada ID pertence ao gestor. Sem método de consulta autenticada, a seleção permanece bloqueada.
+- **Responsáveis/dependências:** Frontend e Backend; a atribuição não inicia captura nem controla o Agent.
+- **Critério/testes:** lista restrita, vazio/erro/retry, criar e editar sem perder atribuições, IDs removidos e gestor diferente. Testes específicos estão incluídos na suíte desta revisão.
+- **Status:** implementado no código local; aguarda resultado da validação final deste checkout.
+
+### ANALYTICS-140 — Agregação real de tempo por Task
+
+- **Issue relacionada:** #140 (aberta na referência de 07/11); também bloqueia parte da #132.
+- **Evidência no código:** `backend/app/routers/dashboard.py` não declara `/dashboard/tasks-summary`; `backend/app/models.py` e `schemas.py` não têm `ActivityLog.task_id`; `agent/` usa `/associate/` e não envia `task_id`. No Frontend, `taskAnalyticsSource.js` não chama resumo real em produção; cards/hook preservam loading, erro e vazio.
+- **Comportamento esperado:** agregar durações reais sem duplicação, aplicar gestor/data/filtros, agrupar eventos sem Task como “Sem Task / Atividades Gerais” e fornecer contrato real.
+- **Atual:** catálogo e filtro de Tasks vêm de `/tasks/`; nenhum total ou evento por Task é produzido em produção. Resumo, produtividade e timeline permanecem indisponíveis; os dados vazios do MSW são demonstração de desenvolvimento.
+- **Responsáveis/dependências:** Backend precisa definir/persistir `task_id` e publicar a rota/contrato escopado; Agent precisa enviar o vínculo e adaptar associação. Produto precisa confirmar semântica de tempo produtivo e período/fuso.
+- **Critério/testes:** validar contrato, sem Task, Task removida, totais em segundos, filtros, ausência de duplicação, equipe de dois gestores e erros/vazio; testes Backend e Frontend após contrato publicado.
+- **Status:** parcialmente bloqueada por Backend e Agent; não há dados reais no Dashboard por Task.
+
+### DEPLOY-132 — HTTPS, CORS e teste entre redes
+
+- **Issue relacionada:** #132, parte de implantação externa.
+- **Evidência no código:** `FrontEnd/src/shared/api/api.js`, `.env.example`, `backend/app/main.py` (CORS atual); não foi identificado ambiente de homologação publicado neste workspace.
+- **Esperado:** Frontend e API acessíveis externamente por HTTPS, preflight do header `Authorization` aceito e Agent em máquina/rede externa.
+- **Atual:** `VITE_API_URL` aceita origem configurada; build sem valor usa a mesma origem do Frontend. Código local permite CORS amplo, mas isso não prova a configuração de produção, túnel HTTPS, segurança dos secrets ou conectividade entre redes.
+- **Responsáveis/dependências:** Backend/DevOps; `JWT_SECRET_KEY` com pelo menos 32 caracteres é exigida para iniciar a API.
+- **Critério/testes:** conferir URL HTTPS e `OPTIONS`/`Authorization` no ambiente publicado, login e consultas autorizadas de ponta a ponta, Agent remoto e logs sem segredos.
+- **Status:** não homologado externamente; nenhuma API real foi chamada nesta auditoria.
+
+### GLOBAL-01 — Configurações e categorias sem escopo de gestor
+
+- **Issue relacionada:** #131 (limite de segurança identificado durante a auditoria).
+- **Evidência no código:** routers `backend/app/routers/config.py` e `categories.py` não usam `get_current_manager`; esses diretórios são somente leitura nesta tarefa.
+- **Esperado:** produto/backend deve definir se esses recursos devem ser protegidos e separados por gestor.
+- **Atual:** `/config/*` e `/categories/*` continuam globais e não devem ser descritos como isolados; o Frontend não altera o contrato nem o Backend.
+- **Responsável/dependência:** Backend/produto; decisão de escopo e implementação fora da permissão de escrita desta tarefa.
+- **Critério/testes:** definir autorização, aplicar no Backend se aprovado e cobrir acesso anônimo e isolamento.
+- **Status:** pendência externa documentada.
+
+## Snapshot histórico do Dashboard analítico — 04/11/2026 (superado)
+
+Esta é a fotografia histórica de 04/11/2026 para a issue #132, sua filha #140 e RF-27. Ela foi superada pela revisão vigente de 07/11/2026 no início deste arquivo. Naquela data, o Backend já oferecia CRUD autenticado de Tasks, incluindo `GET /tasks/` escopado ao gestor.
 
 | Área                      | Evidência local                                                                                                                                 | Estado no Frontend                                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,41 +86,41 @@ Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue
 | CA-11    | Cenários A/B não localizados no documento oficial disponível.                                               | Pendente de confirmação; não homologado.                                     |
 | CA-12    | Nenhum ambiente público/HTTPS ou teste entre redes disponível no workspace.                                 | Pendente de implantação/homologação externa.                                 |
 
-## Resumo vigente
+## Resumo do checkpoint de 04/11/2026 (histórico; superado pela revisão acima)
 
-| ID    | Pendência ou entrega acompanhada                        | Responsável           | Prioridade | Status                                    |
-| ----- | ------------------------------------------------------- | --------------------- | ---------- | ----------------------------------------- |
-| FE-01 | CRUD real de Tasks no frontend                          | Frontend              | Alta       | IMPLEMENTADO, AGUARDANDO HOMOLOGAÇÃO REAL |
-| FE-02 | Código de associação na sessão autenticada              | Frontend              | Alta       | IMPLEMENTADO, AGUARDANDO HOMOLOGAÇÃO REAL |
-| BE-01 | Autorização e isolamento das rotas globais              | Backend               | Alta       | DEPENDENTE DO BACKEND                     |
-| BE-02 | Consulta segura da equipe do gestor                     | Backend               | Alta       | BLOQUEADO POR CONTRATO                    |
-| BE-03 | CORS, HTTPS e origem de produção                        | Backend/implantação   | Alta       | DEPENDENTE DO BACKEND                     |
-| BE-04 | Seed de `SystemSettings` incompatível com UUID          | Backend               | Alta       | DEPENDENTE DO BACKEND                     |
-| BE-05 | Configuração salva não governa o status realtime        | Backend               | Média      | DEPENDENTE DO BACKEND                     |
-| BE-06 | Empate de capturas, reenvio e idempotência              | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT          |
-| BE-07 | Capturas futuras e semântica de fuso                    | Backend               | Alta       | DEPENDENTE DO BACKEND                     |
-| BE-08 | Exportações globais, neutralização CSV e fidelidade PDF | Backend               | Média      | DEPENDENTE DO BACKEND                     |
-| BE-09 | Linha única de configuração sem garantia transacional   | Backend               | Média      | DEPENDENTE DO BACKEND                     |
-| BE-10 | Realtime de usuário não mede conexão por máquina        | Backend/Agent         | Média      | DEPENDENTE DO BACKEND E DO AGENT          |
-| AG-01 | Rota e payload de associação do Agent divergentes       | Agent                 | Alta       | DEPENDENTE DO AGENT                       |
-| AG-02 | Listagem de Tasks para token do Agent ausente           | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT          |
-| AG-03 | Atividade não contém Task nem autoria de Agent          | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT          |
-| I-01  | Resumo diário por Task, jornada e horas trabalhadas     | Backend/Agent/Produto | Alta       | BLOQUEADO POR CONTRATO                    |
-| I-02  | Homologação contra API e banco de teste reais           | Backend/Frontend      | Média      | PENDENTE DE AMBIENTE                      |
-| F-01  | PWA e validação humana em dispositivos/navegadores      | Frontend/Produto      | Baixa      | NECESSITA DEFINIÇÃO                       |
+| ID    | Pendência ou entrega acompanhada                           | Responsável           | Prioridade | Status                                                |
+| ----- | ---------------------------------------------------------- | --------------------- | ---------- | ----------------------------------------------------- |
+| FE-01 | CRUD real de Tasks no frontend                             | Frontend              | Alta       | IMPLEMENTADO, AGUARDANDO HOMOLOGAÇÃO REAL             |
+| FE-02 | Código de associação na sessão autenticada                 | Frontend              | Alta       | IMPLEMENTADO, AGUARDANDO HOMOLOGAÇÃO REAL             |
+| BE-01 | Autorização e isolamento das rotas privadas                | Backend               | Alta       | IMPLEMENTADO LOCALMENTE PELO PR #148                  |
+| BE-02 | Consulta autenticada da equipe do gestor                   | Backend               | Alta       | IMPLEMENTADO LOCALMENTE PELO PR #148                  |
+| BE-03 | CORS, HTTPS e origem de produção                           | Backend/implantação   | Alta       | DEPENDENTE DO BACKEND                                 |
+| BE-04 | Seed de `SystemSettings` incompatível com UUID             | Backend               | Alta       | DEPENDENTE DO BACKEND                                 |
+| BE-05 | Configuração salva não governa o status realtime           | Backend               | Média      | DEPENDENTE DO BACKEND                                 |
+| BE-06 | Empate de capturas, reenvio e idempotência                 | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT                      |
+| BE-07 | Capturas futuras e semântica de fuso                       | Backend               | Alta       | DEPENDENTE DO BACKEND                                 |
+| BE-08 | Escopo das exportações, neutralização CSV e fidelidade PDF | Backend               | Média      | ESCOPO DE GESTOR IMPLEMENTADO; OUTROS ITENS PENDENTES |
+| BE-09 | Linha única de configuração sem garantia transacional      | Backend               | Média      | DEPENDENTE DO BACKEND                                 |
+| BE-10 | Realtime de usuário não mede conexão por máquina           | Backend/Agent         | Média      | DEPENDENTE DO BACKEND E DO AGENT                      |
+| AG-01 | Rota e payload de associação do Agent divergentes          | Agent                 | Alta       | DEPENDENTE DO AGENT                                   |
+| AG-02 | Listagem de Tasks para token do Agent ausente              | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT                      |
+| AG-03 | Atividade não contém Task nem idempotência de evento       | Backend/Agent         | Alta       | DEPENDENTE DO BACKEND E DO AGENT                      |
+| I-01  | Resumo diário por Task, jornada e horas trabalhadas        | Backend/Agent/Produto | Alta       | BLOQUEADO POR CONTRATO                                |
+| I-02  | Homologação contra API e banco de teste reais              | Backend/Frontend      | Média      | PENDENTE DE AMBIENTE                                  |
+| F-01  | PWA e validação humana em dispositivos/navegadores         | Frontend/Produto      | Baixa      | NECESSITA DEFINIÇÃO                                   |
 
 ## Entregas do Frontend
 
 ### FE-01 — CRUD autenticado de Tasks
 
-- **Responsável / prioridade / status:** Frontend; Alta; **IMPLEMENTADO, AGUARDANDO HOMOLOGAÇÃO REAL**.
+- **Responsável / prioridade / status:** Frontend; Alta; **CRUD E ATRIBUIÇÃO DA EQUIPE IMPLEMENTADOS LOCALMENTE, AGUARDANDO HOMOLOGAÇÃO REAL**.
 - **Descrição técnica:** integrar lista, detalhe, criação, atualização parcial e exclusão à API real, usando JWT do gestor, validação de payload/resposta, cancelamento e tratamento de `DELETE 204`.
-- **Comportamento atual comprovado:** `api.tasks`, `api.getTask`, `api.createTask`, `api.updateTask` e `api.deleteTask` consomem `/tasks/` e `/tasks/{task_id}`. O hook só altera a lista após resposta válida; bloqueia mutações duplicadas e ignora listagens antigas. Produção permite Task sem descrição ou colaboradores. O editor real omite `collaborator_ids` em atualizações para preservar atribuições existentes. A ordenação padrão agora desempata `created_at` igual por UUID decrescente, conforme `crud.list_tasks`.
+- **Comportamento atual comprovado:** `api.tasks`, `api.getTask`, `api.createTask`, `api.updateTask` e `api.deleteTask` consomem `/tasks/` e `/tasks/{task_id}`. `api.collaborators()` usa `GET /users/` com Bearer e exige UUID; o Frontend permite escolher membros retornados para a equipe. O Backend escopa a lista e rejeita IDs fora da equipe. O hook só altera a lista após resposta válida; bloqueia mutações duplicadas e ignora listagens antigas. A ordenação padrão desempata `created_at` igual por UUID decrescente, conforme `crud.list_tasks`.
 - **Comportamento esperado:** CRUD persistente por gestor; erros `401`, `403`, `404` e `422` sem feedback de sucesso; cancelamento e respostas atrasadas sem corromper a lista.
-- **Impacto no Frontend:** tela Tasks habilitada para CRUD. A atribuição de novas pessoas continua bloqueada conforme BE-02.
+- **Impacto no Frontend:** CRUD e atribuição para membros da equipe autenticada estão habilitados. Se a lista falhar, o formulário bloqueia gravação para evitar perda ou alteração insegura das atribuições.
 - **Endpoints/schemas:** `GET/POST /tasks/`, `GET/PUT/DELETE /tasks/{task_id}`, `TaskCreate`, `TaskUpdate`, `TaskResponse`, `TaskCollaboratorOut`.
 - **Evidências:** `FrontEnd/src/shared/api/api.js`, `validators.js`, `features/tasks/hooks/useTasks.js`, `features/tasks/pages/TasksPage.jsx`; backend `backend/app/routers/tasks.py`, `schemas.py`, `crud.py`.
-- **Dependências:** sessão JWT válida; endpoint seguro de equipe para habilitar atribuições; ambiente de integração para homologação real.
+- **Dependências:** sessão JWT válida e ambiente de integração para homologação real.
 - **Critérios de aceite:** sucesso somente após resposta confirmada; lista não muda em erro; `204` não tenta ler JSON; título >200 e descrição >5.000 são recusados no cliente; vazio/nulo de descrição e lista vazia de colaboradores são aceitos.
 - **Testes necessários:** Vitest de schemas/API/hook/tela, MSW, E2E com respostas HTTP interceptadas e E2E real read-only em ambiente autorizado. A auditoria de 30/10 adicionou cobertura para logout/troca de gestor com listagem e mutação pendentes, cancelamento de criação/edição/exclusão, `401` em listagem e todas as mutações, e desempate de ordenação.
 - **Issue/PR confirmada:** PR #142 mergeado em `5b72a3e`; não foi confirmada Issue associada nesta auditoria.
@@ -89,33 +141,33 @@ Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue
 
 ## Pendências do Backend
 
-### BE-01 — Autorização e isolamento das rotas globais
+### BE-01 — Autorização e isolamento das rotas privadas (atualizado após #148)
 
-- **Responsável / prioridade / status:** Backend; Alta; **DEPENDENTE DO BACKEND**.
-- **Descrição técnica:** rotas legadas de usuários, atividades, dashboard, exportação e configuração não usam `get_current_manager` nem filtram por `manager_id`. Enviar Bearer pelo frontend não as torna autorizadas.
-- **Comportamento atual comprovado:** `/auth/me` e o CRUD `/tasks` verificam identidade do gestor. `GET /users/`, `POST /activities/`, `GET /activities/realtime`, `GET /dashboard/summary`, exportações, `/config/` e rotas de categorias dependem somente do banco; consultas são globais e `PUT /config/` é global. O Dashboard, Colaboradores, Relatórios e Configurações exibem avisos de escopo.
-- **Comportamento esperado:** cada operação privada exige credencial apropriada; consultas e exportações de gestor filtram pela identidade autenticada. `POST /activities/` deve usar credencial do Agent, identificar colaborador autorizado e não confiar em `username` como autorização.
-- **Impacto no Frontend:** filtros de usuário e dados exibidos são globais; interface não consegue reparar exposição ou impor isolamento. Avisos informam o alcance observado.
-- **Endpoints/schemas:** routers `users.py`, `activities.py`, `dashboard.py`, `config.py`, `categories.py`; `ActivityLogCreate`, `UserOut`, `DailySummaryResponse`, `SystemSettingsOut`.
-- **Evidências:** handlers sem dependência `security.get_current_manager`; `crud.list_users` lista todos; `get_realtime_view` e `get_daily_summary` não filtram gestor; `config` consulta a primeira configuração global.
-- **Dependências:** decisões de autenticação/autorização e tokens distintos de gestor e Agent.
-- **Critérios de aceite:** teste sem token, token inválido/expirado, gestor A consultando/exportando dados de B, alteração de configuração por gestor não autorizado e Agent enviando atividade de outro colaborador; comprovar `401/403` e isolamento no servidor.
-- **Testes necessários:** testes backend de integração com dois gestores, colaboradores de equipes distintas, usuários sem equipe e tokens com audiências distintas.
-- **Issue/PR relacionada:** nenhuma Issue/PR corretiva foi confirmada nesta revisão.
+- **Responsável / prioridade / status:** Backend; Alta; **ROTAS PRIVADAS IMPLEMENTADAS LOCALMENTE PELO PR #148; CONFIGURAÇÃO/CATEGORIAS GLOBAIS CONTINUAM PENDENTES DE DECISÃO**.
+- **Descrição técnica:** separar audiências JWT e escopar rotas privadas por identidade autenticada, sem confiar em `manager_id` enviado pelo navegador.
+- **Comportamento atual comprovado:** `GET /users/`, realtime, resumo/exportações e CRUD de Tasks exigem gestor e filtram sua equipe; `POST /activities/` exige Agent. `/config/*` e `/categories/*` não usam `get_current_manager` e continuam globais.
+- **Comportamento esperado:** rotas privadas mantêm validação de perfil e escopo no servidor; produto/backend define se configuração/categorias devem receber política de acesso e separação por gestor.
+- **Impacto no Frontend:** envia Bearer nas rotas privadas e mantém `401` diferente de `403`; avisos e documentação identificam configuração/categorias globais.
+- **Endpoints/schemas:** routers `users.py`, `activities.py`, `dashboard.py`, `tasks.py`, `config.py`, `categories.py`; `ActivityLogCreate`, `UserOut`, `DailySummaryResponse`, `SystemSettingsOut`.
+- **Evidências:** `security.get_current_manager` em users/realtime/dashboard/tasks; `get_current_agent` em activities; `crud.list_users` e resumos recebem `manager_id`; configuração e categorias continuam sem dependência.
+- **Dependências:** homologação real com duas equipes; decisão sobre `/config/*` e `/categories/*`; secret e CORS por ambiente.
+- **Critérios de aceite:** teste sem token, token expirado e audiência errada, gestor A consultando/exportando dados de B, Agent tentando rota de gestor e decisão explícita sobre os endpoints ainda globais.
+- **Testes necessários:** Backend com duas equipes e tokens manager/agent; Frontend cobre Bearer, 401, 403 e sessão. Nenhuma API real foi chamada nesta auditoria.
+- **Issue/PR relacionada:** PR #148 integrado localmente; #131 permanece aberta como Issue pai.
 
-### BE-02 — Endpoint seguro de consulta da equipe
+### BE-02 — Endpoint seguro de consulta da equipe (entregue no #148)
 
-- **Responsável / prioridade / status:** Backend; Alta; **BLOQUEADO POR CONTRATO**.
-- **Descrição técnica:** fornecer lista autenticada de colaboradores cujo `User.manager_id` corresponda ao gestor autenticado.
-- **Comportamento atual comprovado:** `GET /users/` não exige JWT e `crud.list_users` retorna todos os usuários sem filtro. O backend valida colaboradores recebidos em `TaskCreate`/`TaskUpdate` contra `User.manager_id`, mas essa validação ocorre após o envio do ID. Não há GET seguro de equipe.
-- **Comportamento esperado:** contrato autenticado, escopado pelo gestor do token, com esquema de saída documentado e `401/403` apropriados; não aceitar `manager_id` escolhido pelo cliente como controle de acesso.
-- **Impacto no Frontend:** a UI real não consulta `/users/` para alimentar o editor. Ela permite Tasks sem colaboradores e exibe atribuições já retornadas pela Task em modo somente leitura. A lista global continua disponível nas páginas antigas com aviso.
-- **Endpoints/schemas:** atual `GET /users/` e `UserOut`; rota futura ainda sem nome ou schema aprovado. A sugestão de rota futura não é contrato implementado.
-- **Evidências:** `backend/app/routers/users.py:list_users`, `backend/app/crud.py:list_users`; isolamento de IDs em `backend/app/crud.py:_get_team_collaborators`; bloqueio explícito no `FrontEnd/src/features/tasks/components/TaskForm.jsx`.
-- **Dependências:** BE-01 e associação de colaboradores por código.
-- **Critérios de aceite:** respostas do gestor A não contêm usuários de B nem usuários sem gestor; chamadas ausentes/inválidas retornam erro; não há parâmetro client-side usado para ampliar a equipe.
-- **Testes necessários:** testes API com duas equipes, sem token, JWT expirado, equipe vazia, colaborador não associado e tentativa de ID cruzado; testes frontend verificam ausência de chamada a `/users/` na tela Tasks.
-- **Issue/PR relacionada:** PR #146 implementa associação pelo código, mas não implementa listagem autenticada de equipe.
+- **Responsável / prioridade / status:** Backend; Alta; **IMPLEMENTADO LOCALMENTE PELO PR #148**.
+- **Descrição técnica:** `GET /users/` retorna somente os colaboradores cujo `User.manager_id` corresponde ao gestor autenticado.
+- **Comportamento atual comprovado:** rota exige `get_current_manager`; `crud.list_users(db, manager.id)` aplica o filtro e ordena por username. O Backend valida IDs novamente em `TaskCreate`/`TaskUpdate`.
+- **Comportamento esperado:** contrato autenticado, escopado pelo gestor do token, com `401` apropriado; não aceitar `manager_id` escolhido pelo cliente como controle de acesso.
+- **Impacto no Frontend:** `api.collaborators()` consulta a mesma rota privada, exige UUID e habilita o seletor real; equipe vazia permite Task sem atribuição e falha da consulta bloqueia gravação.
+- **Endpoints/schemas:** `GET /users/`, `UserOut`, `TaskCreate`, `TaskUpdate`.
+- **Evidências:** `backend/app/routers/users.py:list_users`, `backend/app/crud.py:list_users` e `_get_team_collaborators`; `FrontEnd/src/shared/api/api.js`, `validators.js`, `features/tasks/pages/TasksPage.jsx` e `TaskForm.jsx`.
+- **Dependências:** homologação real e vínculo do colaborador pela associação do Agent.
+- **Critérios de aceite:** respostas de A não contêm usuários de B nem sem gestor; sem token retorna erro; tentativa de ID cruzado não grava.
+- **Testes necessários:** Backend com duas equipes, sem token, JWT expirado, equipe vazia e ID cruzado; Frontend valida Bearer, UUID e fluxo de atribuição.
+- **Issue/PR relacionada:** PR #148 integrado localmente.
 
 ### BE-03 — CORS e HTTPS por ambiente
 
@@ -187,19 +239,19 @@ Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue
 - **Testes necessários:** captura futura/passada, offset UTC, virada do dia e banco suportado.
 - **Issue/PR relacionada:** não confirmada.
 
-### BE-08 — Exportações globais e segurança/fidelidade dos arquivos
+### BE-08 — Segurança e fidelidade dos arquivos exportados (escopo atualizado após #148)
 
-- **Responsável / prioridade / status:** Backend; Média; **DEPENDENTE DO BACKEND**.
-- **Descrição técnica:** exportações herdam escopo global do sumário, CSV não neutraliza conteúdo de fórmula e PDF tem título que sugere produtividade além do agregado por categoria.
-- **Comportamento atual comprovado:** `/dashboard/export/csv` e `/dashboard/export/pdf` são públicos e usam o sumário global; `csv.writer` serializa campos sem neutralização explícita de fórmula; o PDF tem título “Relatorio de Produtividade” embora liste tempo por categoria. Não foi gerado arquivo com dados reais nesta auditoria.
-- **Comportamento esperado:** aplicar autorização/escopo do gestor; definir neutralização CSV e título/semântica fiéis aos dados.
-- **Impacto no Frontend:** filtro por username não é controle de autorização; download pode conter dados de outras equipes.
+- **Responsável / prioridade / status:** Backend; Média; **ESCOPO DE GESTOR IMPLEMENTADO PELO PR #148; FIDELIDADE/NEUTRALIZAÇÃO AINDA PENDENTES**.
+- **Descrição técnica:** preservar autorização nas exportações, neutralizar conteúdo CSV de fórmula e manter título/semântica PDF fiéis ao agregado por categoria.
+- **Comportamento atual comprovado:** `/dashboard/export/csv` e `/dashboard/export/pdf` exigem JWT de gestor e usam sumário da equipe; `csv.writer` serializa campos sem neutralização explícita de fórmula; o PDF usa título “Relatorio de Produtividade” embora liste tempo por categoria. Não foi gerado arquivo com dados reais nesta auditoria.
+- **Comportamento esperado:** manter escopo de gestor; definir neutralização CSV e título/semântica fiéis aos dados.
+- **Impacto no Frontend:** API limita os dados exportados à equipe autenticada; o Frontend valida status e MIME e trata resposta vazia/erro, mas não valida semântica do conteúdo do arquivo.
 - **Endpoints/schemas:** exportações CSV/PDF e `/dashboard/summary`.
 - **Evidências:** `backend/app/routers/dashboard.py:export_csv/export_pdf`, `crud.py:get_daily_summary`; aviso de escopo em `ReportsPage.jsx`.
-- **Dependências:** BE-01, regra de agregação e revisão de segurança de arquivos.
+- **Dependências:** revisão de segurança de arquivos e validação de amostras em ambiente autorizado.
 - **Critérios de aceite:** autorização cruzada negada, CSV abre sem execução de fórmula a partir de dados de texto e título descreve o conteúdo real.
 - **Testes necessários:** dois gestores, células com prefixos de fórmula e caracteres Unicode/acentos em PDF.
-- **Issue/PR relacionada:** não confirmada.
+- **Issue/PR relacionada:** PR #148 integrou o escopo de gestor; os demais itens precisam de correção Backend.
 
 ### BE-09 — Configuração singleton sem garantia transacional
 
@@ -259,11 +311,11 @@ Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue
 - **Testes necessários:** dois colaboradores/equipes, listas vazias, Task não atribuída, token cruzado e expiração.
 - **Issue/PR confirmada:** PR #144 mergeado em `189a7e9` adiciona cliente de bandeja; a rota correspondente do backend não foi encontrada.
 
-### AG-03 — Atividade não identifica Agent nem Task
+### AG-03 — Atividade ainda não identifica Task nem evento idempotente
 
 - **Responsável / prioridade / status:** Backend e Agent; Alta; **DEPENDENTE DO BACKEND E DO AGENT**.
-- **Descrição técnica:** `ActivityLogCreate` não inclui `task_id` nem identificador idempotente/máquina; rota de ingestão não autentica token de Agent.
-- **Comportamento atual comprovado:** Agent envia `username`, `hostname`, `process_name`, `window_title`, `duration_seconds`, `is_idle`, `captured_at`; backend aceita esses campos e não vincula a Task selecionada.
+- **Descrição técnica:** `ActivityLogCreate` não inclui `task_id` nem identificador idempotente/máquina; a rota autentica o Agent, mas ainda não associa o evento a uma Task.
+- **Comportamento atual comprovado:** `POST /activities/` exige token de Agent e identifica o colaborador pela identidade do token; o schema pode ignorar `username` legado e aceita `hostname`, `process_name`, `window_title`, `duration_seconds`, `is_idle`, `captured_at`. Não vincula a Task selecionada.
 - **Comportamento esperado:** contrato para autoria do Agent, identidade de máquina, evento idempotente e Task ativa, com consentimento/semântica de duração definidos.
 - **Impacto no Frontend:** Dashboard não apresenta horas por Task; estado online/offline não é conexão comprovada. O mock de resumo por Task é usado só em desenvolvimento/testes.
 - **Endpoints/schemas:** `POST /activities/`, `ActivityLogCreate`, `ActivityLog`; Agent `ActivityLogCreateDto`, `AgentOrchestrator`.
@@ -271,7 +323,7 @@ Esta revisão prevalece sobre checkpoints históricos deste arquivo para a issue
 - **Dependências:** desenho de endpoint Agent, ciclo de início/troca/fim e regras de duração/atividade.
 - **Critérios de aceite:** evento prova identidade de Agent; repetição não duplica; mudança de Task é registrada sem sobreposição; dados por gestor e colaborador são autorizados.
 - **Testes necessários:** início, troca, encerramento, fila/retry, duas máquinas e associação a gestor distinto.
-- **Issue/PR relacionada:** PR #144 inclui controle local de Task em bandeja; não confirma envio de `task_id` à API.
+- **Issue/PR relacionada:** PR #148 autenticou ingestão do Agent; PR #144 inclui controle local de Task em bandeja, sem envio de `task_id` à API.
 
 ## Pendências de integração e validação
 

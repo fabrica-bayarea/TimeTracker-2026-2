@@ -10,6 +10,7 @@ import {
   validTasks,
   validTaskUpdatePayload,
   validUuid,
+  validTaskCollaborators,
   validRealtime,
   validSettings,
   validSummary,
@@ -245,6 +246,8 @@ function exportPath(format, date, username = '') {
 export const api = {
   users: (signal) =>
     validateResponse(request('/users/', { signal, authenticated: true }), validUsers),
+  collaborators: (signal) =>
+    validateResponse(request('/users/', { signal, authenticated: true }), validTaskCollaborators),
   realtime: (signal) =>
     validateResponse(
       request('/activities/realtime', { signal, authenticated: true }),

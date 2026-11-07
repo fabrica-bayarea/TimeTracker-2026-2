@@ -1,6 +1,6 @@
 # Documentação do Frontend
 
-Use este índice para localizar informações sobre o estado atual, a arquitetura e a manutenção do frontend.
+Use este índice para localizar informações sobre o estado atual, a arquitetura e a manutenção do frontend. Estado revalidado em **07/11/2026**, no HEAD local `e65caec` após o merge do PR #148.
 
 ## Estado atual
 
@@ -10,7 +10,7 @@ Use este índice para localizar informações sobre o estado atual, a arquitetur
 - [Matriz de issues](MATRIZ_ISSUES_FRONTEND.md): inventário oficial e classificação técnica das 38 issues consultadas.
 - [Relatório da execução](RELATORIO_EXECUCAO_FRONTEND.md): mudanças, resultados reais dos testes, limites e próximos passos.
 
-O frontend integra cadastro/login JWT, restauração em `sessionStorage`, logout e guarda de páginas após validar `/auth/me`. As rotas de dados do backend ainda não exigem JWT nem isolam equipes; consulte B-01 e [Pendências](PENDENCIAS.md). Tasks têm uma interface completa de demonstração local, com mocks voláteis; produção mantém a prévia desabilitada até a implementação do CRUD e da agregação no backend. A PR #122 do Agent foi integrada, mas o backend deste checkout ainda não apresenta geração/consulta de código, `POST /associate/` ou persistência do vínculo. O card agora aparece no Dashboard autenticado e comunica a dependência; consulta e cópia permanecem desabilitadas até existir contrato real.
+O Frontend integra cadastro/login JWT, restauração em `sessionStorage`, logout e páginas protegidas após validar `/auth/me`. Depois do PR #148, `/users/`, realtime, resumo/exportações e CRUD de Tasks exigem gestor e filtram pela equipe; o Frontend envia Bearer. A tela de Tasks consome o CRUD autenticado e carrega colaboradores por `/users/` para atribuições com UUID validado. `/config/*` e `/categories/*` continuam globais. O Backend ainda não oferece `/dashboard/tasks-summary` nem `ActivityLog.task_id`; o Agent não envia `task_id` e ainda usa caminho/campos de associação incompatíveis. Não há agregação real por Task em produção. Veja [Contratos da API](CONTRATOS_API.md) e [Pendências](PENDENCIAS.md) para estado e limites completos.
 
 ## Arquitetura e contratos
 

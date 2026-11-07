@@ -25,49 +25,34 @@ As ramificações simuladas de autenticação, Tasks e jornada também verificam
 
 `app` pode importar `features` e `shared`; cada funcionalidade pode importar `shared` e seus próprios arquivos. `shared` não deve depender de `app` ou `features`. A regra local em `lint/architecture.js` verifica imports relativos, reexports e imports dinâmicos literais em `npm run lint`. Imports de pacotes externos ficam fora dessa regra. Use imports diretos, inclusive nos imports dinâmicos das páginas, sem arquivos de reexportação.
 
-| Caminho                                                                              | Responsabilidade                                                                                                                                                          |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/api/api.js`                                                              | Cliente HTTP único, timeout, cancelamento, parâmetros, downloads e contratos isolados de autenticação.                                                                    |
-| `src/shared/api/validators.js`                                                       | Validação das respostas de usuários, realtime, resumo, configurações e schemas públicos do gestor/JWT.                                                                    |
-| `src/shared/lib/date.js`, `duration.js`, `team.js`, `activityStatus.js`              | Funções reutilizadas para datas, duração, equipe e rótulos de status.                                                                                                     |
-| `src/features/dashboard/hooks/useDashboardData.js`                                   | Estado e atualização das fontes do painel: resumo, usuários e realtime.                                                                                                   |
-| `src/features/dashboard/hooks/useAutoRefresh.js`                                     | Atualização periódica apenas com a aba visível e atualização ao retornar.                                                                                                 |
-| `src/features/dashboard/lib/summary.js`                                              | Soma de duração e consolidação de categorias do painel.                                                                                                                   |
-| `src/features/dashboard/pages/DashboardPage.jsx`                                     | Composição de filtros, indicadores, atividade e categorias.                                                                                                               |
-| `src/features/dashboard/components/AssociationCodeCard.jsx`                          | Card acessível no Dashboard autenticado; estado do código isolado e consulta real pendente do Backend.                                                                    |
-| `src/features/collaborators/hooks/useCollaboratorsData.js` e `components/`           | Consultas, combinação de usuários/realtime e visualização responsiva.                                                                                                     |
-| `src/features/settings/hooks/useSettings.js` e `components/SettingsForm.jsx`         | Leitura, edição, validação, gravação e guarda de alterações não salvas.                                                                                                   |
-| `src/features/reports/`                                                              | Página, consulta de usuários e exportação organizadas por responsabilidade.                                                                                               |
-| `src/features/auth/pages/AuthPage.jsx`, `src/features/tasks/pages/TasksPage.jsx`     | Auth integra a sessão real do gestor; Tasks só recebe serviço de CRUD em memória quando os mocks de desenvolvimento estão ativos e exibe prévia desabilitada em produção. |
-| `src/features/dashboard/hooks/useTaskAnalytics.js`, `components/TaskSummaryCard.jsx` | Filtro e resumo por Task isolados dos indicadores gerais; a consulta só usa serviço de demonstração e não inventa métricas.                                               |
-| `src/app/layout/Sidebar.jsx`                                                         | Navegação desktop e diálogo móvel.                                                                                                                                        |
+| Caminho                                                                              | Responsabilidade                                                                                                            |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/api/api.js`                                                              | Cliente HTTP único, timeout, cancelamento, parâmetros, downloads e contratos isolados de autenticação.                      |
+| `src/shared/api/validators.js`                                                       | Validação das respostas de usuários, realtime, resumo, configurações e schemas públicos do gestor/JWT.                      |
+| `src/shared/lib/date.js`, `duration.js`, `team.js`, `activityStatus.js`              | Funções reutilizadas para datas, duração, equipe e rótulos de status.                                                       |
+| `src/features/dashboard/hooks/useDashboardData.js`                                   | Estado e atualização das fontes do painel: resumo, usuários e realtime.                                                     |
+| `src/features/dashboard/hooks/useAutoRefresh.js`                                     | Atualização periódica apenas com a aba visível e atualização ao retornar.                                                   |
+| `src/features/dashboard/lib/summary.js`                                              | Soma de duração e consolidação de categorias do painel.                                                                     |
+| `src/features/dashboard/pages/DashboardPage.jsx`                                     | Composição de filtros, indicadores, atividade e categorias.                                                                 |
+| `src/features/dashboard/components/AssociationCodeCard.jsx`                          | Card acessível no Dashboard autenticado; código validado vem do perfil do gestor e o estado é isolado por identidade.       |
+| `src/features/collaborators/hooks/useCollaboratorsData.js` e `components/`           | Consultas, combinação de usuários/realtime e visualização responsiva.                                                       |
+| `src/features/settings/hooks/useSettings.js` e `components/SettingsForm.jsx`         | Leitura, edição, validação, gravação e guarda de alterações não salvas.                                                     |
+| `src/features/reports/`                                                              | Página, consulta de usuários e exportação organizadas por responsabilidade.                                                 |
+| `src/features/auth/pages/AuthPage.jsx`, `src/features/tasks/pages/TasksPage.jsx`     | Auth integra a sessão real do gestor; Tasks usa o CRUD autenticado e consulta a equipe do gestor para atribuições seguras.  |
+| `src/features/dashboard/hooks/useTaskAnalytics.js`, `components/TaskSummaryCard.jsx` | Filtro e resumo por Task isolados dos indicadores gerais; a consulta só usa serviço de demonstração e não inventa métricas. |
+| `src/app/layout/Sidebar.jsx`                                                         | Navegação desktop e diálogo móvel.                                                                                          |
 
 ## Fluxo de dados do painel
 
-`AssociationCodeCard` não faz parte de `useDashboardData`: sua identidade é independente da data e do usuário selecionados. `App` entrega a identidade validada do gestor ao Dashboard; somente então o card é montado. `useAssociationCode` mantém o estado em memória, cancela a consulta e descarta respostas antigas em logout/troca de gestor. Neste checkout, o cliente de produção não tem método de consulta, então o card anuncia a pendência sem código. `GET /auth/me` retorna `ManagerOut` sem `association_code`; a sessão não substitui o contrato ausente. O adapter usado por testes é simulado e não define rota HTTP.
+`AssociationCodeCard` não faz parte de `useDashboardData`: sua identidade é independente da data e do usuário selecionados. `App` entrega a identidade validada do gestor ao Dashboard; somente então o card é montado. `GET /auth/me` retorna `ManagerProfileOut` com `association_code`; `useAssociationCode` valida o código, mantém o estado em memória, cancela a consulta e descarta respostas antigas em logout/troca de gestor.
 
-Fluxo esperado, ainda não comprovado ponta a ponta:
-
-```text
-GESTOR — FRONTEND WEB
-        |
-        | Consulta autenticada do código
-        v
-BACKEND — API
-        ^
-        | POST /associate/
-        | code + username + hostname
-        |
-AGENT — COLABORADOR
-```
-
-`POST /associate/` é a rota consumida pelo Agent na PR #122, integrada à main da organização. A rota não foi localizada nos routers deste checkout. Também não foram localizados geração/consulta de `association_code`, persistência de vínculo ou isolamento de equipe. Conforme a PR, depois de associação bem-sucedida o Agent protege o token local com DPAPI e usa Bearer em chamadas posteriores; o monitoramento só começa se estiver associado. O JWT do gestor é uma credencial distinta. Este diagrama descreve o protocolo do cliente Agent e as lacunas do backend, não uma integração ponta a ponta.
+O fluxo web de gestor está integrado no código: `POST /auth/login` emite JWT de gestor; `GET /auth/me` valida a sessão e inclui `association_code`. O Backend também declara `POST /collaborators/associate`, que recebe código, username e machine name e emite JWT de Agent. O Agent local ainda configura `POST /associate/` com campos `code`, `username` e `hostname`, portanto a associação ponta a ponta segue incompatível até o Agent alinhar caminho e payload. As duas audiências JWT são distintas.
 
 ## Autenticação e sessão do gestor
 
 O backend fornece `POST /auth/register`, `POST /auth/login` e `GET /auth/me`. `ManagerSessionProvider` controla o estado da sessão; `AuthPage` oferece os formulários, mantém credenciais apenas em memória durante o envio e nunca as armazena. Cadastro não cria sessão. Login valida a identidade em `/auth/me` antes de guardar o JWT em `sessionStorage`; a recarga revalida o token. Logout remove o token, e `401` nas chamadas privadas limpa a sessão e direciona para `#/login`. Um `403` mantém a identidade e mostra o erro da operação.
 
-O cliente HTTP envia Bearer nas chamadas de usuários, realtime, resumo/exportações e configuração. Isso prepara a interface para rotas autenticadas, mas `GET /auth/me` é a única rota local que exige `get_current_manager`. Os routers de usuários, realtime, dashboard, exportações e configuração ainda não exigem essa dependência nem filtram registros por gestor. A API continua expondo dados globais e configuração global; filtros visuais e guards React não são autorização. Consulte [Contratos](CONTRATOS_API.md) e B-01/#137 em [Pendências](PENDENCIAS.md).
+O cliente HTTP envia Bearer nas rotas privadas de usuários, realtime, resumo/exportações e Tasks. Após o PR #148, esses routers exigem `get_current_manager` e filtram dados pela identidade autenticada. `/config/*` e `/categories/*` continuam globais; filtros visuais e guards React não são autorização. Consulte [Contratos](CONTRATOS_API.md) e [Pendências](PENDENCIAS.md).
 
 1. `DashboardPage` inicia com a data local do navegador e usuário vazio. A mudança de data ou usuário altera os argumentos de `useDashboardData`.
 2. O hook cancela a consulta anterior, incrementa um identificador de sequência e solicita resumo, usuários e realtime em paralelo com `Promise.allSettled`.
