@@ -1,93 +1,46 @@
 # Documentação do Frontend
 
-Use este índice para localizar informações sobre o estado atual, a arquitetura e a manutenção do frontend. Estado revalidado em **07/11/2026**, no HEAD local `e65caec` após o merge do PR #148.
+Este índice organiza a documentação técnica do Frontend do TimeTracker. Revisão documental realizada em **07/11/2026**, no HEAD **c05d282**. O código funcional mais recente usado como evidência está no commit **c47346a**; o commit seguinte registra documentação e não altera código.
 
-## Estado atual
+## Estado geral
 
-- [Funcionalidades](FUNCIONALIDADES.md): telas, comportamentos disponíveis e relação com os requisitos.
-- [Pendências](PENDENCIAS.md): bloqueios organizados por área, impacto, prioridade e workaround.
-- [Plano de execução](PLANO_EXECUCAO_FRONTEND.md): auditoria inicial, dependências, prioridades e validações desta revisão.
-- [Matriz de issues](MATRIZ_ISSUES_FRONTEND.md): inventário oficial e classificação técnica das 38 issues consultadas.
-- [Relatório da execução](RELATORIO_EXECUCAO_FRONTEND.md): mudanças, resultados reais dos testes, limites e próximos passos.
+Login JWT do gestor, sessão, rotas protegidas, CRUD de Tasks e seleção de colaboradores da equipe estão implementados no Frontend e nos contratos locais. A última execução registrada em 07/11/2026 aprovou 372 testes Vitest e 34 cenários E2E; dois cenários opt-in de API real foram ignorados. Não há homologação da API real, implantação HTTPS nem métricas reais por Task. A seleção de Tasks no Agent e o envio de task_id ainda não estão integrados. Configurações e categorias continuam globais no Backend observado. Os documentos de requisitos divergem sobre PWA; essa decisão está em FE-04.
 
-O Frontend integra cadastro/login JWT, restauração em `sessionStorage`, logout e páginas protegidas após validar `/auth/me`. Depois do PR #148, `/users/`, realtime, resumo/exportações e CRUD de Tasks exigem gestor e filtram pela equipe; o Frontend envia Bearer. A tela de Tasks consome o CRUD autenticado e carrega colaboradores por `/users/` para atribuições com UUID validado. `/config/*` e `/categories/*` continuam globais. O Backend ainda não oferece `/dashboard/tasks-summary` nem `ActivityLog.task_id`; o Agent não envia `task_id` e ainda usa caminho/campos de associação incompatíveis. Não há agregação real por Task em produção. Veja [Contratos da API](CONTRATOS_API.md) e [Pendências](PENDENCIAS.md) para estado e limites completos.
+## Índice
 
-## Arquitetura e contratos
+| Documento                                     | Fonte principal para                                             |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| [Pendências Backend](PENDENCIAS_BACKEND.md)   | Trabalho do Backend e decisões externas que bloqueiam o Frontend |
+| [Pendências Frontend](PENDENCIAS_FRONTEND.md) | Trabalho, integração ou validação atribuídos ao Frontend         |
+| [Alterações](ALTERACOES.md)                   | Histórico único e cronológico do projeto                         |
+| [Arquitetura](ARQUITETURA.md)                 | Camadas, fluxos e limites técnicos vigentes                      |
+| [Contratos da API](CONTRATOS_API.md)          | Endpoints consumidos, payloads, respostas e status               |
+| [Funcionalidades](FUNCIONALIDADES.md)         | Inventário do comportamento visível por módulo                   |
+| [Testes](TESTES.md)                           | Suítes, comandos, último resultado e limites de validação        |
 
-- [Arquitetura](ARQUITETURA.md): estrutura do código, camadas, fluxo da aplicação, estado e decisões arquiteturais.
-- [Contratos da API](CONTRATOS_API.md): endpoints consumidos, parâmetros, respostas, validação e comportamento do cliente HTTP.
-- [Pendências](PENDENCIAS.md#propostas-de-contratos-de-integracao): fonte canônica para o status por ID e contratos candidatos ainda não implementados, incluindo CRUD/horas por Task, associação, jornada, autorização e fusos.
+Para entender o comportamento atual, consulte primeiro [Funcionalidades](FUNCIONALIDADES.md), depois [Arquitetura](ARQUITETURA.md) e [Contratos da API](CONTRATOS_API.md). Use as duas listas de pendências para trabalho aberto e [Alterações](ALTERACOES.md) para decisões e estados históricos.
 
-## Testes e histórico
+## Convenções de estado
 
-- [Testes](TESTES.md): verificações automatizadas, evidências e roteiros manuais.
-- [Alterações](ALTERACOES.md): histórico cronológico e resumo das revisões.
+- **Pendente:** requisito necessário ainda sem implementação.
+- **Parcialmente implementado:** parte do comportamento está presente, com lacunas verificáveis.
+- **Implementado, não homologado:** código e testes locais existem, mas integração real não foi comprovada.
+- **Bloqueado:** depende de contrato, decisão ou ambiente externo identificado.
+- **Resolvido:** requisitos do item foram comprovados; sai da lista ativa e, quando relevante, vai para Alterações.
+- **Demonstração:** comportamento sustentado por fixtures/MSW, sem prova de persistência ou API real.
+- **Histórico:** estado válido para a data e o commit indicados, não necessariamente para o checkout atual.
 
-Atualize o documento correspondente quando mudar uma tela, uma decisão técnica, um contrato ou o resultado de uma verificação. Este índice serve como entrada e não duplica o conteúdo desses documentos.
+O estado oficial de uma Issue no GitHub não equivale ao estado técnico. Uma implementação local não fecha a Issue por si só, e testes interceptados não comprovam comportamento do servidor.
 
-## Público e ordem de leitura
+## Manutenção
 
-Este acervo atende a quem desenvolve o Frontend, integra o Backend ou o Agent, revisa requisitos e verifica a entrega. Para uma leitura inicial, siga esta ordem:
+1. Registre novas dependências do Backend apenas em [Pendências Backend](PENDENCIAS_BACKEND.md) e trabalho exclusivo da aplicação em [Pendências Frontend](PENDENCIAS_FRONTEND.md).
+2. Registre mudanças efetivas em [Alterações](ALTERACOES.md), adicionando-as à seção da data existente.
+3. Mantenha contratos, arquitetura e funcionalidades em seus documentos principais.
+4. Atualize em [Testes](TESTES.md) somente estratégia e resultados realmente executados, com commit e ambiente.
+5. Retire da lista ativa itens comprovadamente concluídos; preserve decisões relevantes no histórico.
+6. Não declare funcionalidade concluída sem evidência adequada e diferencie código, testes, homologação e dependências externas.
 
-1. [Funcionalidades](FUNCIONALIDADES.md) para entender o que a interface faz hoje e o que ainda é demonstração.
-2. [Arquitetura](ARQUITETURA.md) para localizar os componentes, hooks, serviços e fluxos de dados.
-3. [Contratos da API](CONTRATOS_API.md) para separar endpoints existentes das chamadas de demonstração.
-4. [Propostas de contratos do Backend](PROPOSTA_CONTRATOS_BACKEND.md) para revisar decisões sugeridas e riscos de integração.
-5. [Pendências](PENDENCIAS.md) para encontrar bloqueios, evidências, critérios de aceite e condições de desbloqueio.
-6. [Matriz de issues](MATRIZ_ISSUES_FRONTEND.md) para navegar de uma issue oficial à sua situação técnica.
-7. [Testes](TESTES.md) para entender cobertura, resultados registrados e verificações ainda manuais.
-8. [Plano de execução](PLANO_EXECUCAO_FRONTEND.md), [Relatório](RELATORIO_EXECUCAO_FRONTEND.md) e [Alterações](ALTERACOES.md) para consultar contexto e histórico.
+## Fontes e escopo
 
-## Índice do acervo
-
-| Documento                                                     | Finalidade principal                                                       |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [README](README.md)                                           | Entrada, ordem de leitura e regras de manutenção do acervo.                |
-| [FUNCIONALIDADES](FUNCIONALIDADES.md)                         | Comportamento atual por tela, estados, requisitos, código e testes.        |
-| [ARQUITETURA](ARQUITETURA.md)                                 | Estrutura React/Vite, dependências entre camadas e fluxos executados.      |
-| [CONTRATOS_API](CONTRATOS_API.md)                             | Rotas implementadas no Backend e comportamento observado do cliente HTTP.  |
-| [PROPOSTA_CONTRATOS_BACKEND](PROPOSTA_CONTRATOS_BACKEND.md)   | Alternativas técnicas ainda não aprovadas para os contratos ausentes.      |
-| [PENDENCIAS](PENDENCIAS.md)                                   | Fonte principal de bloqueios por ID, evidência, impacto, solução e aceite. |
-| [MATRIZ_ISSUES_FRONTEND](MATRIZ_ISSUES_FRONTEND.md)           | Estado oficial e classificação técnica das issues, com rastreabilidade.    |
-| [TESTES](TESTES.md)                                           | Scripts, inventário, resultados datados, limites e roteiros de validação.  |
-| [PLANO_EXECUCAO_FRONTEND](PLANO_EXECUCAO_FRONTEND.md)         | Diagnóstico, dependências, prioridades, execução e próximos marcos.        |
-| [RELATORIO_EXECUCAO_FRONTEND](RELATORIO_EXECUCAO_FRONTEND.md) | Registro verificável das auditorias e mudanças realizadas.                 |
-| [ALTERACOES](ALTERACOES.md)                                   | Histórico cronológico preservado das mudanças do Frontend.                 |
-
-## Navegação por assunto
-
-- **Login e sessão:** [Funcionalidades — Login e cadastro](FUNCIONALIDADES.md), [Arquitetura — Autenticação](ARQUITETURA.md), [Contratos — autenticação](CONTRATOS_API.md), issues #104, #112 e #138, e pendências I-01/B-01.
-- **Tasks e vínculo de atividades:** [Funcionalidades — Tasks](FUNCIONALIDADES.md), [Contratos — Tasks e jornada](CONTRATOS_API.md), issues #129–#140 e propostas I-03/I-06.
-- **Dashboard e colaboradores:** [Funcionalidades](FUNCIONALIDADES.md), [Arquitetura — fluxos do Painel](ARQUITETURA.md), issues #94–#109 e pendências I-05–I-07.
-- **Associação do Agent:** [Contratos — associação](CONTRATOS_API.md), issues #105, #106 e #113–#116, e proposta I-02.
-- **Relatórios e datas:** [Contratos da API](CONTRATOS_API.md), requisitos RF-24/RF-25, CA-07 e pendências I-06/I-07.
-- **Qualidade:** [Testes](TESTES.md) e [Relatório](RELATORIO_EXECUCAO_FRONTEND.md).
-
-## Como interpretar o estado das informações
-
-Use as classificações no sentido abaixo ao ler ou acrescentar evidências:
-
-- **IMPLEMENTADO:** o comportamento está presente no código consultado.
-- **PARCIAL:** há implementação, mas o fluxo ou os critérios ainda não estão completos.
-- **DEMONSTRATIVO:** depende de mocks/fixtures e não comprova persistência ou integração real.
-- **PROPOSTO:** contrato ou comportamento candidato sem implementação/aceite confirmado.
-- **BLOQUEADO:** depende de outro componente, decisão ou ambiente.
-- **AGUARDANDO VALIDAÇÃO:** implementação existe, mas integração real ainda não foi comprovada.
-- **HISTÓRICO:** registro válido para o commit e contexto indicados, não necessariamente para o checkout atual.
-- **RESOLVIDO:** pendência encerrada dentro do escopo registrado; isso não altera o estado oficial de issues relacionadas. F-04 está resolvida somente para a rota demonstrativa local.
-
-O estado oficial no GitHub e a conclusão técnica são dimensões diferentes. Uma issue fechada não comprova integração; uma issue aberta não significa que nada foi implementado. Consulte a [matriz](MATRIZ_ISSUES_FRONTEND.md) para ambas.
-
-## Como manter a documentação rastreável
-
-Ao alterar uma funcionalidade, atualize o documento que contém seu detalhe principal e conecte as referências pertinentes seguindo:
-
-**Issue → requisito → funcionalidade → arquivo de código → contrato → teste → pendência.**
-
-Registre caminhos relativos reais do checkout, links oficiais para issues/PRs e a data/commit em que a evidência foi consultada. Em resultado de teste, registre comando, ambiente, commit e resultado; mantenha tentativas históricas com suas datas em vez de substituí-las por resultados de outra versão.
-
-Para uma dependência externa, abra ou atualize um item identificado em [Pendências](PENDENCIAS.md), com responsável, evidência, efeito, solução esperada, critérios verificáveis e condição de desbloqueio. Para atualizar a [matriz de issues](MATRIZ_ISSUES_FRONTEND.md), confira o GitHub e o código separadamente e preserve ambos os estados. Para um contrato novo, atualize [Contratos da API](CONTRATOS_API.md) somente após confirmar sua implementação; enquanto candidato, mantenha a marca **PROPOSTO** e a justificativa em [Propostas](PROPOSTA_CONTRATOS_BACKEND.md) e [Pendências](PENDENCIAS.md).
-
-## Limite das fontes
-
-O código de FrontEnd, Backend e Agent pode ser consultado para documentar o estado observado. Os documentos em [requisitos](../../requisitos/README.md) descrevem necessidades do produto e não provam que uma funcionalidade está entregue. Os resultados históricos em Testes/Relatório também não devem ser apresentados como uma execução atual. Esta revisão documental não altera contratos, issues, PRs nem código externo ao Frontend.
+O código atual e seus testes têm precedência para descrever implementação; requisitos definem comportamento esperado. Backend, Agent e requisitos podem ser consultados para auditoria, mas esta documentação não altera arquivos desses diretórios. Consulte a pasta [requisitos](../../requisitos/README.md) para os documentos de origem.

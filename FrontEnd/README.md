@@ -2,7 +2,7 @@
 
 Frontend do **TimeTrack**, responsável pela interface web do dashboard. A aplicação consulta os dados disponíveis na API FastAPI e utiliza navegação por hash, sem React Router. Atualmente, não possui manifest nem service worker e não é instalável como PWA.
 
-> **Estado em 07/11:** a branch `main` contém o PR #148. Login JWT de gestor, validação e logout estão implementados; `/users/`, realtime, resumo/exportações e CRUD de Tasks agora exigem gestor e filtram pela equipe no Backend. O token do Agent é separado. A tela de Tasks usa a lista autenticada da equipe para selecionar atribuições. `/config/*` e `/categories/*` continuam globais. A agregação real por Task segue bloqueada: o Backend não tem `ActivityLog.task_id` nem `/dashboard/tasks-summary`, e o Agent não envia `task_id`. A associação do Agent também aguarda alinhamento do cliente Agent com `/collaborators/associate`. Nenhuma métrica de Task é inventada em produção. Consulte [Contratos da API](docs/CONTRATOS_API.md) e [Pendências](docs/PENDENCIAS.md).
+> **Estado em 07/11:** a branch `main` contém o PR #148. Login JWT de gestor, validação e logout estão implementados; `/users/`, realtime, resumo/exportações e CRUD de Tasks exigem gestor e filtram pela equipe no Backend. O token do Agent é separado. A tela de Tasks usa a lista autenticada da equipe para selecionar atribuições. `/config/*` e `/categories/*` continuam globais. A agregação real por Task segue bloqueada: o Backend não tem `ActivityLog.task_id` nem `/dashboard/tasks-summary`, e o Agent não envia `task_id`. A associação do Agent ainda aguarda alinhamento do cliente Agent com `/collaborators/associate`. Nenhuma métrica de Task é inventada em produção. Consulte [Contratos da API](docs/CONTRATOS_API.md), [Pendências Backend](docs/PENDENCIAS_BACKEND.md) e [Pendências Frontend](docs/PENDENCIAS_FRONTEND.md).
 
 O realtime apresenta os estados `online`, `ausente` e `offline` recebidos da API; usuários sem entrada realtime são identificados como “Sem dados”. Consulte [Arquitetura](docs/ARQUITETURA.md) e [Funcionalidades](docs/FUNCIONALIDADES.md) para a semântica e os limites desses estados.
 
@@ -131,4 +131,5 @@ Um teste separado consulta a API real. Inicie a API e o banco, defina `RUN_REAL_
 - [Funcionalidades](docs/FUNCIONALIDADES.md)
 - [Testes](docs/TESTES.md)
 - [Histórico de alterações](docs/ALTERACOES.md)
-- [Pendências](docs/PENDENCIAS.md)
+- [Pendências Backend](docs/PENDENCIAS_BACKEND.md)
+- [Pendências Frontend](docs/PENDENCIAS_FRONTEND.md)
