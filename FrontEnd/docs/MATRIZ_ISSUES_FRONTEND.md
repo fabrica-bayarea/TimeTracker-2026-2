@@ -2,7 +2,7 @@
 
 ## Atualização vigente — 07/11/2026 — PR #148, Issues #131, #132 e #140
 
-O HEAD local `e65caec` inclui o merge `db8f46c` do PR #148. Os status oficiais abaixo seguem a referência de 07/11/2026 fornecida para esta auditoria; o status técnico foi revalidado no código local e nos testes do Frontend.
+O HEAD local `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545` (`fix(frontend): align task assignments with manager scope`) inclui o merge `db8f46c` do PR #148. Os status oficiais abaixo seguem a referência de 07/11/2026; o status técnico foi revalidado no código local e pela execução de `npm.cmd run check:full` neste checkout.
 
 | Issue                                      | Status oficial na referência      | Evidência local                                                                                                                                                     | Estado técnico desta revisão                                                                                                                                                                               |
 | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

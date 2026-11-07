@@ -1,5 +1,15 @@
 # Alterações do frontend
 
+## 07/11/2026 — reauditoria final pós-commit
+
+**Base revalidada:** branch `main`, HEAD `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545`; checkout limpo no início. A auditoria não encontrou falha adicional comprovada que exigisse alteração de código. Os documentos vigentes foram atualizados para apontar ao HEAD correto e registrar os resultados efetivamente reexecutados.
+
+- Revisados os fluxos de sessão/401/403, proteção de rotas, chamadas Bearer, estado de Dashboard/Colaboradores/Tasks/Relatórios/Configurações e contrato de API local.
+- Confirmado no Backend local que CRUD de Tasks e `/users/` exigem JWT de gestor e escopam a equipe. `/dashboard/tasks-summary` e `ActivityLog.task_id` continuam ausentes; o Agent também não envia `task_id`.
+- `npm.cmd run check:full` passou: 372 testes Vitest em 64 arquivos; cobertura 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines; build e 4 verificações de bundle passaram; E2E com 34 aprovações, 0 falhas e 2 testes de API real ignorados.
+- API real, Backend em execução, Agent e ambiente HTTPS não foram testados. Os pré-requisitos e as credenciais de homologação dos testes reais não estavam todos configurados; nenhuma API externa foi chamada.
+- Documentos atualizados nesta reauditoria: `docs/ALTERACOES.md`, `docs/MATRIZ_ISSUES_FRONTEND.md`, `docs/PENDENCIAS.md`, `docs/PLANO_EXECUCAO_FRONTEND.md`, `docs/RELATORIO_EXECUCAO_FRONTEND.md` e `docs/TESTES.md`. Nenhum arquivo fora de `FrontEnd/` foi alterado.
+
 ## 07/11/2026 — sincronização com o PR #148 e atribuição segura de Tasks
 
 **Base auditada:** branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`, com o merge local do PR #148 (`db8f46c`); o checkout estava limpo antes das alterações. Esta rodada escreveu somente em `FrontEnd/`.

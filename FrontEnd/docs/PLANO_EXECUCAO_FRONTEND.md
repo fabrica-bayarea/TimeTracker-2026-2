@@ -2,7 +2,7 @@
 
 ## Estado vigente — 07/11/2026
 
-Base: branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`; árvore limpa antes da execução e merge local do PR #148 (`db8f46c`). A atribuição de Tasks usa `/users/` autenticado e UUIDs validados. A cobertura local passou (372 testes Vitest, 34 E2E aprovados e 2 testes de API real ignorados); os resultados estão em [TESTES](TESTES.md).
+Base: branch `main`, HEAD `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545` (`fix(frontend): align task assignments with manager scope`), descendente do merge local do PR #148 (`db8f46c`); árvore limpa antes da reauditoria de 07/11/2026. A atribuição de Tasks usa `/users/` autenticado e UUIDs validados. `npm.cmd run check:full` foi reexecutado: 372 testes Vitest passaram, 34 cenários E2E passaram e 2 testes de API real foram ignorados por falta de ambiente configurado; resultados em [TESTES](TESTES.md).
 
 Próximos marcos: (1) homologar sessão, escopo e rejeição de tokens entre perfis com API autorizada; (2) alinhar o Agent a `/collaborators/associate` e ao payload/token do Backend; (3) definir e persistir `task_id` em atividades e entregar resumo real por Task; (4) validar HTTPS/CORS e comunicação entre redes. `/config/*` e `/categories/*` seguem globais no Backend observado.
 

@@ -1,12 +1,12 @@
 # Relatório de execução da auditoria do Frontend
 
-## Relatório vigente — auditoria e sincronização — 07/11/2026
+## Reauditoria vigente — 07/11/2026
 
 ### 1. Estado do repositório
 
 - **Branch:** `main`.
-- **SHA analisado:** `e65caec77225d49c181c1ac46cc364468dd1bef4`, merge local do PR #148 (`db8f46c`). O checkout estava limpo antes da execução.
-- **Arquivos modificados:** exclusivamente arquivos sob `FrontEnd/`; sem arquivos novos fora desse diretório e sem alterações staged. Nenhuma mudança pré-existente foi encontrada fora do escopo.
+- **SHA analisado:** `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545` (`fix(frontend): align task assignments with manager scope`), descendente do merge local do PR #148 (`db8f46c`). O checkout estava limpo antes da reauditoria.
+- **Resultado:** os fluxos de autenticação, isolamento de estado, colaboradores e Tasks já estavam implementados; nenhuma correção adicional de código foi comprovadamente necessária. Esta rodada atualiza somente os registros de auditoria em `FrontEnd/docs/`.
 - Backend, Agent e requisitos foram inspecionados somente em leitura. Não houve commit, push, merge, deploy, alteração remota nem chamada a ambiente externo.
 
 ### 2. Auditoria do PR #148
@@ -25,7 +25,9 @@ O fluxo Agent ainda usa `POST /associate/` com `code` e `hostname`, enquanto o B
 
 O Frontend preserva filtros, catálogo de Tasks autenticado e os componentes de resumo, produtividade e timeline com estados de carregamento/erro/vazio. Não calcula produtividade artificial nem chama uma rota analítica inexistente. Como o Backend não implementa `/dashboard/tasks-summary` e `ActivityLog` não tem `task_id`, e o Agent não envia esse vínculo, não há agregação real por Task. HTTPS, CORS de produção e teste entre redes também não foram homologados. #132 e #140 continuam parciais/bloqueadas pelas dependências documentadas em `PENDENCIAS.md`.
 
-### 5. Alterações por arquivo
+### 5. Alterações do commit auditado
+
+A tabela abaixo resume as mudanças de Frontend já presentes no commit `c47346a`; ela não representa edições de código feitas nesta reauditoria.
 
 | Arquivo                                                  | Motivo e comportamento anterior → atual                                                                                    | Issue                  | Verificação    |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------------- |
@@ -56,19 +58,19 @@ O Frontend preserva filtros, catálogo de Tasks autenticado e os componentes de 
 
 ### 6. Testes e validação
 
-| Comando                                          | Resultado                                                                                                                                                                                                         | Erros e limites                                                                                   |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `npm.cmd run check:full`                         | Passou: lint, Prettier, typecheck, 372 testes/64 arquivos, cobertura 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines; build, 4 verificações de bundle; E2E 34 aprovados/0 falhas/2 ignorados. | Os dois testes de API real ficaram opt-in e foram ignorados; nenhum serviço externo foi acessado. |
-| Testes focados de sessão/API/Tasks/Colaboradores | Passaram: 103 testes em 5 arquivos nesta rodada.                                                                                                                                                                  | Respostas simuladas não comprovam o Backend.                                                      |
-| Backend, Agent e API real                        | Não executados.                                                                                                                                                                                                   | Sem ambiente/credenciais de homologação autorizados nesta execução.                               |
+| Comando                                          | Resultado                                                                                                                                                                                                                       | Erros e limites                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `npm.cmd run check:full`                         | Reexecutado e passou: lint, Prettier, typecheck, 372 testes/64 arquivos, cobertura 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines; build, 4 verificações de bundle; E2E 34 aprovados/0 falhas/2 ignorados. | Os dois testes de API real ficaram opt-in e foram ignorados; nenhum serviço externo foi acessado. |
+| Testes focados de sessão/API/Tasks/Colaboradores | Passaram: 103 testes em 5 arquivos nesta rodada.                                                                                                                                                                                | Respostas simuladas não comprovam o Backend.                                                      |
+| Backend, Agent e API real                        | Não executados.                                                                                                                                                                                                                 | Sem ambiente/credenciais de homologação autorizados nesta execução.                               |
 
 O E2E primeiro encontrou uma asserção antiga de ausência de `GET /users/`; depois, a resposta mockada de criação continha `department`, fora do schema de colaborador dentro de uma Task. O teste foi atualizado para esperar o GET autenticado e a fixture foi corrigida para o contrato de resposta. A execução final completa passou.
 
-### 7. Commit sugerido (não criado)
+### 7. Commit sugerido para esta reauditoria (não criado)
 
-**Título:** `fix(frontend): align task assignments with manager scope`
+**Título:** `docs(frontend): record final audit validation`
 
-**Descrição:** consultar a equipe do gestor e validar UUIDs nas atribuições; cobrir sessão, atribuição e respostas antigas; documentar a integração do PR #148 e as dependências abertas de #131, #132 e #140.
+**Descrição:** corrigir a referência documental ao HEAD; registrar a reexecução de lint, formatação, typecheck, Vitest, build, bundle e E2E; manter explícitas as dependências de homologação, implantação e agregação por Task.
 
 Nenhuma issue foi fechada automaticamente. #131 permanece parcial; #132 e #140 mantêm dependências de Backend, Agent e implantação externa.
 

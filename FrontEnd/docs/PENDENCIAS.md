@@ -1,6 +1,6 @@
 # Pendências e estado de integração — 07/11/2026
 
-**Revisão vigente:** branch `main`, HEAD `e65caec`, incluindo o merge local do PR #148 (`db8f46c`). A árvore inicial estava limpa. O escopo de escrita desta revisão é `FrontEnd/`; Backend, Agent, requisitos e ambientes externos foram somente inspecionados.
+**Revisão vigente:** branch `main`, HEAD `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545` (`fix(frontend): align task assignments with manager scope`), descendente do merge local do PR #148 (`db8f46c`). A árvore estava limpa no início da reauditoria de 07/11. Nenhuma correção de código adicional foi necessária; as verificações completas foram reexecutadas e os registros vigentes foram atualizados. O escopo de escrita permanece `FrontEnd/`; Backend, Agent, requisitos e ambientes externos foram somente inspecionados.
 
 Este snapshot atualiza os checkpoints anteriores deste documento. As conclusões sobre rotas globais de dados foram superadas pelo PR #148. Os checkpoints anteriores foram preservados com a data e o estado histórico.
 
@@ -14,7 +14,7 @@ Este snapshot atualiza os checkpoints anteriores deste documento. As conclusões
 - **Atual:** o Frontend já implementa login, `/auth/me`, armazenamento em `sessionStorage`, logout, guardas, Bearer, 401, 403 separado, cancelamento e sequência para descartar respostas antigas. O Backend local distingue os tokens e escopa `/users/`, realtime, resumo, exportações e Tasks. `/config/*` e `/categories/*` seguem globais.
 - **Responsáveis/dependências:** Frontend e Backend; homologação precisa de ambiente de teste, credenciais descartáveis e CORS autorizado. O Agent responde por renovação/reconexão.
 - **Critério/testes:** comprovar login, logout, sessão restaurada, 401/403, rotas protegidas, headers e isolamento por gestor; validar a API real em ambiente autorizado. Vitest/E2E com respostas interceptadas não comprovam o servidor.
-- **Status:** implementação local do Frontend presente; testes locais registrados em `TESTES.md`; integração real e Issue pai continuam pendentes.
+- **Status:** implementação local do Frontend presente e suíte local revalidada em 07/11/2026; integração real e Issue pai continuam pendentes.
 
 ### TEAM-131/140 — Atribuição de colaboradores a Tasks
 
@@ -24,7 +24,7 @@ Este snapshot atualiza os checkpoints anteriores deste documento. As conclusões
 - **Atual:** após esta revisão, o Frontend consulta `/users/` com Bearer, exige UUID antes de habilitar os controles e envia `collaborator_ids`; o Backend confere novamente que cada ID pertence ao gestor. Sem método de consulta autenticada, a seleção permanece bloqueada.
 - **Responsáveis/dependências:** Frontend e Backend; a atribuição não inicia captura nem controla o Agent.
 - **Critério/testes:** lista restrita, vazio/erro/retry, criar e editar sem perder atribuições, IDs removidos e gestor diferente. Testes específicos estão incluídos na suíte desta revisão.
-- **Status:** implementado no código local; aguarda resultado da validação final deste checkout.
+- **Status:** implementado no código local e validado pela suíte completa do Frontend em 07/11/2026; CRUD real com API autorizada ainda aguarda homologação.
 
 ### ANALYTICS-140 — Agregação real de tempo por Task
 
