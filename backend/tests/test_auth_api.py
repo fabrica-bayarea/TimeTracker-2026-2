@@ -337,13 +337,19 @@ def test_openapi_documenta_auth_e_esquema_bearer(client):
     assert schema["paths"]["/auth/me"]["get"]["security"]
 
 
-def test_rotas_existentes_continuam_abertas_no_mvp(client, db):
+def test_rotas_publicas_e_rotas_ainda_abertas(client, db):
     """
-    As rotas atuais (dashboard, config, users...) seguem sem autenticação
-    
-    Ao protegê-las com get_current_manager, este teste deve ser atualizado
-    de propósito
+    Fixa o que ainda NÃO exige token: healthcheck, pareamento do Agente
+    (público por necessidade) e /config e /categories (dados globais,
+    pendentes de decisão). Dashboard, users, activities e tasks estão
+    protegidos (veja test_tasks_and_association.py)
+
+    Ao proteger /config ou /categories, atualize este teste de propósito
     """
     assert client.get("/").status_code == status.HTTP_200_OK
-    assert client.get("/users/").status_code == status.HTTP_200_OK
     assert client.get("/config/").status_code == status.HTTP_200_OK
+    assert client.get("/categories/").status_code == status.HTTP_200_OK
+    # Sem token, mas chega à validação do corpo (não é barrada por 401)
+    assert client.post("/collaborators/associate", json={}).status_code == (
+        status.HTTP_422_UNPROCESSABLE_CONTENT
+    )

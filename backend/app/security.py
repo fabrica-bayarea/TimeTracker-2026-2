@@ -1,10 +1,9 @@
 """
-Segurança do backend: hash de senhas (bcrypt), tokens JWT de acesso e a
-dependência `get_current_manager` usada para proteger rotas do gestor.
+Segurança do backend: hash de senhas (bcrypt), tokens JWT do gestor e do
+Agente Desktop e as dependências `get_current_manager` e `get_current_agent`
+usadas para proteger as rotas.
 """
 
-import logging
-import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from os import getenv
@@ -22,8 +21,6 @@ from .utils import ROOT_DIR
 
 load_dotenv(ROOT_DIR / ".env")
 
-logger = logging.getLogger(__name__)
-
 JWT_ALGORITHM = "HS256"
 # Audiência do token: evita que outro tipo de token assinado com a mesma chave
 # (ex.: futuro token do agente) seja aceito como sessão de gestor
@@ -35,7 +32,7 @@ AGENT_JWT_AUDIENCE = "time-tracker:agent"
 MIN_SECRET_KEY_LENGTH = 32
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 # O Agente não tem tela de login: o token dura bem mais que o do gestor
-DEFAULT_AGENT_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
+DEFAULT_AGENT_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365
 
 # bcrypt só considera os 72 primeiros bytes da senha
 MAX_PASSWORD_BYTES = 72
@@ -52,18 +49,19 @@ def _resolve_secret_key(raw: str | None) -> str:
     """
     Valida a chave de assinatura dos JWT.
 
-    Sem JWT_SECRET_KEY, gera uma chave aleatória temporária: segura, mas as
-    sessões deixam de valer a cada reinício (e entre múltiplos workers)
-    (defina JWT_SECRET_KEY em prod)
+    A chave é obrigatória e precisa ser a mesma entre reinicializações e
+    entre workers: com uma chave aleatória por processo, os tokens dos
+    gestores e, principalmente, os dos Agentes (que duram meses e não têm
+    tela de login) deixariam de valer a cada reinício da API.
     """
     key = (raw or "").strip()
 
     if not key:
-        logger.warning(
-            "JWT_SECRET_KEY não definida: usando chave temporária. Os tokens "
-            "perdem a validade a cada reinício. Defina JWT_SECRET_KEY no .env."
+        raise RuntimeError(
+            "JWT_SECRET_KEY é obrigatória. Defina no .env uma chave de pelo "
+            f"menos {MIN_SECRET_KEY_LENGTH} caracteres. Gere com: "
+            'python -c "import secrets; print(secrets.token_urlsafe(64))"'
         )
-        return secrets.token_urlsafe(64)
 
     if len(key) < MIN_SECRET_KEY_LENGTH:
         raise RuntimeError(
@@ -221,6 +219,14 @@ bearer_scheme = HTTPBearer(
 )
 
 
+def _unauthorized() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não autenticado: token ausente, inválido ou expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def get_current_manager(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
@@ -228,28 +234,53 @@ def get_current_manager(
     """
     Dependência do FastAPI: exige `Authorization: Bearer <jwt>` válido e
     devolve o gestor autenticado. Responde 401 para token ausente, inválido,
-    expirado ou de gestor inexistente.
+    expirado, de gestor inexistente ou que não seja token de gestor (o token
+    do Agente não é aceito aqui)
 
     Uso: `manager: models.Manager = Depends(get_current_manager)` ou
     `APIRouter(dependencies=[Depends(get_current_manager)])`.
     """
-    unauthorized = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não autenticado: token ausente, inválido ou expirado.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
     if credentials is None:
-        raise unauthorized
+        raise _unauthorized()
 
     try:
         manager_id = decode_access_token(credentials.credentials)
     except InvalidTokenError:
-        raise unauthorized from None
+        raise _unauthorized() from None
 
     manager = db.get(models.Manager, manager_id)
 
     if manager is None:
-        raise unauthorized
+        raise _unauthorized()
 
     return manager
+
+
+def get_current_agent(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    """
+    Dependência do FastAPI para as rotas do Agente Desktop: exige o token
+    emitido em `POST /collaborators/associate` e devolve o colaborador
+    autenticado. Responde 401 para token ausente, inválido, expirado, de
+    colaborador inexistente ou sem gestor, ou que não seja token de Agente
+    (o token do gestor não é aceito aqui)
+
+    Como o vínculo é conferido a cada chamada, um colaborador removido (ou
+    sem gestor) perde o acesso mesmo com o token ainda dentro da validade
+    """
+    if credentials is None:
+        raise _unauthorized()
+
+    try:
+        user_id = decode_agent_token(credentials.credentials)
+    except InvalidTokenError:
+        raise _unauthorized() from None
+
+    user = db.get(models.User, user_id)
+
+    if user is None or user.manager_id is None:
+        raise _unauthorized()
+
+    return user
