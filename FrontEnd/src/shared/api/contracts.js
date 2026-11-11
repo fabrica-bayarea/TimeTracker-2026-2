@@ -75,6 +75,18 @@
 /** @typedef {{ date: string, timezone: 'America/Sao_Paulo', tasks: TaskSummaryEntry[] }} TaskSummary */
 
 /**
+ * Candidate presentation data only. No production API currently returns this shape.
+ * @typedef {{ task_id: string, title: string, registered_seconds: number, productive_seconds: number }} TaskProductivity
+ */
+
+/** @typedef {{ id: string, username: string, process_name: string, window_title?: string | null, captured_at: string, duration_seconds: number, is_idle?: boolean }} TaskTimelineEvent */
+
+/**
+ * Candidate presentation data only. Timestamps must carry an explicit timezone.
+ * @typedef {{ task_id: string, events: TaskTimelineEvent[] }} TaskTimeline
+ */
+
+/**
  * @typedef {{
  *   username: string,
  *   hostname: string,
@@ -106,6 +118,7 @@
 /**
  * @typedef {Object} ApiClient
  * @property {(signal?: AbortSignal) => Promise<User[]>} users
+ * @property {(signal?: AbortSignal) => Promise<TaskCollaborator[]>} collaborators
  * @property {(signal?: AbortSignal) => Promise<RealtimeEntry[]>} realtime
  * @property {(date: string, username?: string, signal?: AbortSignal) => Promise<DailySummary>} summary
  * @property {(signal?: AbortSignal) => Promise<SystemSettings>} settings

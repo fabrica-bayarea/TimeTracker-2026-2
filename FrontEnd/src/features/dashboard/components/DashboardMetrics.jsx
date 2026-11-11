@@ -54,7 +54,7 @@ export function DashboardMetrics({ loading, available, filtered, summary, users,
               : users.length
             : '—'
         }
-        detail="lista global retornada pela API"
+        detail="equipe do gestor autenticado"
       />
     </section>
   );

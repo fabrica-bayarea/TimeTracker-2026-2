@@ -17,6 +17,8 @@ import {
 } from '../../../shared/lib/processFilter';
 import { useTaskAnalytics } from '../hooks/useTaskAnalytics';
 import { TaskSummaryCard } from '../components/TaskSummaryCard';
+import { TaskProductivityCard } from '../components/TaskProductivityCard';
+import { TaskActivityTimeline } from '../components/TaskActivityTimeline';
 import { AssociationCodeCard } from '../components/AssociationCodeCard';
 import { useAssociationCode } from '../hooks/useAssociationCode';
 
@@ -31,8 +33,16 @@ export function DashboardPage({
   const [username, setUsername] = useState('');
   const [selectedProcess, setSelectedProcess] = useState('');
   const [taskId, setTaskId] = useState('');
-  const { data, loading, refreshing, error, updatedAt, refresh } = useDashboardData(date, username);
-  const taskAnalytics = useTaskAnalytics(devApi, date, username, taskId);
+  const { data, loading, refreshing, error, updatedAt, refresh } = useDashboardData(
+    date,
+    username,
+    manager?.id || '',
+    Boolean(manager?.id),
+  );
+  const taskAnalytics = useTaskAnalytics(devApi, date, username, taskId, {
+    scopeKey: manager?.id || '',
+    enabled: Boolean(manager?.id || devApi),
+  });
   const associationCode = useAssociationCode(manager, associationClient);
   useEffect(() => {
     if (
@@ -132,7 +142,7 @@ export function DashboardPage({
           available={availability.summary}
         />
         <TaskSummaryCard
-          demo={!!devApi}
+          demo={taskAnalytics.summaryMode === 'demo'}
           date={date}
           selectedTaskId={taskId}
           summary={taskAnalytics.summary}
@@ -140,10 +150,20 @@ export function DashboardPage({
           error={taskAnalytics.summaryError}
           onRetry={taskAnalytics.retry}
         />
+        <TaskProductivityCard
+          selectedTaskId={taskId}
+          selectedTaskTitle={taskAnalytics.tasks.find((task) => task.id === taskId)?.title || ''}
+        />
+        <TaskActivityTimeline
+          selectedTaskId={taskId}
+          selectedTaskTitle={taskAnalytics.tasks.find((task) => task.id === taskId)?.title || ''}
+          date={date}
+          username={username}
+        />
       </section>
-      {taskAnalytics.tasksError && devApi && (
+      {taskAnalytics.tasksError && (
         <ErrorNotice className="mt-5" onRetry={taskAnalytics.retry}>
-          Lista demonstrativa de Tasks indisponível. {taskAnalytics.tasksError}
+          Lista de Tasks indisponivel. {taskAnalytics.tasksError}
         </ErrorNotice>
       )}
       <p className="mt-5 text-sm muted">

@@ -9,6 +9,7 @@ import { api } from '../../../shared/api/api';
 export function TasksPage({ devApi = null, taskClient = api }) {
   const mockMode = import.meta.env.DEV && !!devApi;
   const service = mockMode ? devApi : taskClient;
+  const allowCollaboratorSelection = typeof service?.collaborators === 'function';
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const {
@@ -78,11 +79,17 @@ export function TasksPage({ devApi = null, taskClient = api }) {
           Tasks no Backend, não atribuem trabalho real e não iniciam nem controlam o monitoramento
           pelo Agent.
         </IntegrationNotice>
+      ) : service && allowCollaboratorSelection ? (
+        <IntegrationNotice title="Atribuição restrita à equipe do gestor">
+          A lista vem de `GET /users/` com o token do gestor, e o Backend valida cada UUID ao salvar
+          as atribuições. A seleção organiza a Task; não inicia nem controla o monitoramento pelo
+          Agent.
+        </IntegrationNotice>
       ) : service ? (
         <IntegrationNotice title="Atribuição de colaboradores indisponível">
-          O CRUD de Tasks está conectado à API autenticada. A seleção de colaboradores permanece
-          bloqueada porque `GET /users/` retorna uma lista global sem autorização por gestor; a
-          interface não usa essa lista para sugerir membros de uma equipe.
+          Este cliente não oferece uma consulta autenticada da equipe. Para evitar atribuições fora
+          do escopo do gestor, a seleção permanece bloqueada; Tasks sem colaboradores continuam
+          disponíveis.
         </IntegrationNotice>
       ) : (
         <IntegrationNotice title="API de Tasks indisponível">
@@ -106,7 +113,7 @@ export function TasksPage({ devApi = null, taskClient = api }) {
         collaboratorsLoading={collaboratorsLoading}
         collaboratorsError={collaboratorsError}
         onRetryCollaborators={retryCollaborators}
-        allowCollaboratorSelection={mockMode}
+        allowCollaboratorSelection={allowCollaboratorSelection}
         onSubmit={saveTask}
         onCancel={() => {
           setEditingTaskId(null);

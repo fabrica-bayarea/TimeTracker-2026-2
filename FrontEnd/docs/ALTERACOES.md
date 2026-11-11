@@ -1,6 +1,62 @@
 # Alterações do frontend
 
-## 30/10/2026 — resiliência e acessibilidade do frontend
+## 07/11/2026
+
+### Consolidação documental
+
+- Reorganizados os documentos em oito arquivos: índice, arquitetura, contratos, funcionalidades, pendências separadas por responsável, testes e este histórico. O README do Frontend aponta para o índice e os novos guias.
+- Os cinco documentos redundantes foram absorvidos e removidos depois da migração do conteúdo útil. Datas e registros históricos foram mantidos; apenas os cabeçalhos repetidos foram agrupados.
+- As contagens agregadas antigas da matriz e do plano divergiam: uma versão registrava 13 itens parciais e 12 pendentes; a outra, 12 parciais e 13 pendentes. Esses totais não foram reaproveitados como estado atual; as listas usam IDs acionáveis e evidência por item.
+- A conferência documental usa o código em c47346a como última base com resultados de testes registrados. Esta consolidação não executou testes de aplicação e não alterou código de produto.
+- Validados os nove Markdown vigentes: nenhum link local quebrado; o Prettier passou para os oito documentos e para `FrontEnd/README.md`; `git diff --check` passou. A busca não encontrou links para os cinco arquivos removidos. Não foram executados testes de aplicação nem criado commit ou push.
+
+### reauditoria final pós-commit
+
+**Base revalidada:** branch `main`, HEAD `c47346a53da65ef8cc9fa8bccf7b4106e1bbd545`; checkout limpo no início. A auditoria não encontrou falha adicional comprovada que exigisse alteração de código. Os documentos vigentes foram atualizados para apontar ao HEAD correto e registrar os resultados efetivamente reexecutados.
+
+- Revisados os fluxos de sessão/401/403, proteção de rotas, chamadas Bearer, estado de Dashboard/Colaboradores/Tasks/Relatórios/Configurações e contrato de API local.
+- Confirmado no Backend local que CRUD de Tasks e `/users/` exigem JWT de gestor e escopam a equipe. `/dashboard/tasks-summary` e `ActivityLog.task_id` continuam ausentes; o Agent também não envia `task_id`.
+- `npm.cmd run check:full` passou: 372 testes Vitest em 64 arquivos; cobertura 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines; build e 4 verificações de bundle passaram; E2E com 34 aprovações, 0 falhas e 2 testes de API real ignorados.
+- API real, Backend em execução, Agent e ambiente HTTPS não foram testados. Os pré-requisitos e as credenciais de homologação dos testes reais não estavam todos configurados; nenhuma API externa foi chamada.
+- Documentos atualizados nesta reauditoria: `docs/ALTERACOES.md`, `docs/MATRIZ_ISSUES_FRONTEND.md`, `docs/PENDENCIAS.md`, `docs/PLANO_EXECUCAO_FRONTEND.md`, `docs/RELATORIO_EXECUCAO_FRONTEND.md` e `docs/TESTES.md`. Nenhum arquivo fora de `FrontEnd/` foi alterado.
+
+### sincronização com o PR #148 e atribuição segura de Tasks
+
+**Base auditada:** branch `main`, HEAD `e65caec77225d49c181c1ac46cc364468dd1bef4`, com o merge local do PR #148 (`db8f46c`); o checkout estava limpo antes das alterações. Esta rodada escreveu somente em `FrontEnd/`.
+
+- Atualizado o cliente para consultar `/users/` com Bearer e validar UUIDs antes de oferecer integrantes da equipe na atribuição de Tasks. A seleção permanece bloqueada para clientes sem essa consulta segura; equipe vazia ainda permite criar Task sem atribuições.
+- Atualizados o formulário, a página de Tasks e os avisos de Colaboradores/Dashboard para refletir o escopo por gestor e esclarecer que atribuir uma Task não inicia captura no Agent.
+- Acrescentados testes para validação estrita dos colaboradores, Bearer e respostas inválidas, seleção/criação com equipe autenticada, equipe vazia, retry de sessão após falha temporária e descarte de identidade antiga após logout/troca de gestor.
+- Atualizado o E2E para verificar `GET /users/` autenticado e atribuição via `POST /tasks/`. A fixture final usa somente os campos de colaborador definidos no contrato de Task.
+- Reconciliados README e documentos de arquitetura, funcionalidades, contratos, matriz, pendências, plano, testes e relatório com o estado local observado depois do PR #148. Os registros anteriores foram mantidos como históricos.
+
+**Arquivos desta rodada:** `README.md`; `docs/README.md`, `ARQUITETURA.md`, `CONTRATOS_API.md`, `FUNCIONALIDADES.md`, `MATRIZ_ISSUES_FRONTEND.md`, `PENDENCIAS.md`, `PLANO_EXECUCAO_FRONTEND.md`, `RELATORIO_EXECUCAO_FRONTEND.md`, `TESTES.md` e este arquivo; `e2e/app.spec.js`; `src/features/collaborators/pages/CollaboratorsPage.jsx`; `src/features/dashboard/components/DashboardMetrics.jsx`; `src/features/tasks/components/TaskForm.jsx`, `hooks/useTasks.session.test.jsx`, `pages/TasksPage.jsx` e `pages/TasksPage.test.jsx`; `src/shared/api/api.js`, `api.test.js`, `contracts.js`, `validators.js`, `validators.test.js`; `src/shared/auth/ManagerSession.test.jsx`.
+
+**Validação final:** `npm.cmd run check:full` passou após as edições finais: lint, Prettier, typecheck, 372 testes Vitest em 64 arquivos, build, 4 verificações de bundle e Playwright com 34 aprovações, 0 falhas e 2 testes de API real ignorados. Cobertura Vitest: 93,99% statements, 90,85% branches, 95,17% functions e 96,39% lines. Nenhuma API real, Backend, Agent ou serviço externo foi executado.
+
+**Estado das issues:** #131 permanece aberta e parcialmente atendida no escopo Frontend; a sessão local e os fluxos protegidos têm testes, mas a homologação real não foi feita. A atribuição da equipe agora usa o endpoint protegido disponível. #132 permanece parcial por falta de implantação externa/HTTPS e agregação real. #140 permanece parcialmente bloqueada pela ausência de `/dashboard/tasks-summary` e `ActivityLog.task_id` no Backend e de `task_id` enviado pelo Agent.
+
+**Commit sugerido (não criado):** `fix(frontend): align task assignments with manager scope`. Descrição: consultar a equipe do gestor e validar UUIDs nas atribuições; cobrir sessão, atribuição e respostas antigas; documentar a integração do PR #148 e as dependências abertas de #131, #132 e #140. Nenhuma issue foi fechada automaticamente.
+
+## 04/11/2026
+
+### preparação do Dashboard analítico por Task
+
+Este registro descreve somente a fotografia e os testes executados em 04/11. Sua afirmação de que `/users/`, realtime e resumo não tinham escopo de equipe foi superada pela auditoria local do PR #148 em 07/11; consulte a entrada vigente acima.
+
+- `useTaskAnalytics` agora seleciona uma fonte explícita: em produção, lista Tasks por `GET /tasks/` usando cliente HTTP e JWT; resumo candidato continua somente no adaptador MSW de desenvolvimento. `useDashboardData` e `useTaskAnalytics` descartam o estado e as respostas antigas ao trocar/remover a sessão do gestor. Nenhuma rota analítica inexistente é chamada.
+- O card de resumo valida o contrato candidato antes de apresentar dados. A formatação compartilhada aceita somente segundos inteiros não negativos e exibe segundos quando a duração é inferior a um minuto.
+- Criados `TaskProductivityCard` e `TaskActivityTimeline`, junto com validadores de dados candidatos. Os componentes mostram dependência do Backend sem produzir números; a timeline ordena por instante explícito, não exibe título da janela e não calcula intervalos. Atualização manual está disponível quando um serviço de timeline for conectado.
+- Filtros gerais permanecem separados do filtro de Task. O Dashboard informa que `/users/`, realtime e resumo ainda não têm escopo de equipe; a lista de Tasks usa a rota autenticada, mas não corrige autorização das demais consultas.
+- Pendências, contratos candidatos, matriz RF-27/RN-19/CA-10/CA-11/CA-12 e registro de testes estão em `PENDENCIAS.md`, `CONTRATOS_API.md` e `TESTES.md`.
+
+**Arquivos desta rodada:** `src/features/dashboard/services/taskAnalyticsSource.js`, hooks `useTaskAnalytics.js`/`useDashboardData.js`, seus testes, `src/features/dashboard/components/TaskSummaryCard.jsx`, `TaskProductivityCard.jsx`, `TaskActivityTimeline.jsx`, `DashboardPage.jsx`, `DashboardFilters.jsx`, validadores/contratos da API, `src/shared/lib/duration.js` e documentos do Dashboard em `docs/`.
+
+**Verificação:** `npm.cmd run check` passou (365 testes Vitest; cobertura 93,25% statements, 90,58% branches, 94,96% functions e 95,68% lines; build e 4 verificações do bundle passaram). `npm.cmd run test:e2e` passou com 34 cenários aprovados, nenhum erro e 2 testes opt-in de API real ignorados. Nenhuma API real ou Backend/Agent foi executado.
+
+## 30/10/2026
+
+### resiliência e acessibilidade do frontend
 
 **Base auditada:** branch `main`, HEAD `eec089a976cd2678473ad2f992269538fd1a4a57`; a árvore inicial estava limpa. Todas as alterações permaneceram em `FrontEnd/`.
 
@@ -14,7 +70,7 @@
 
 **Validação:** o baseline de `eec089a` foi confirmado em cópia temporária dentro de `FrontEnd/`: Vitest 338 aprovados e Playwright 30 aprovados + 2 testes de API real ignorados. Nesta rodada, lint, format:check, typecheck, build e test:bundle passaram; Vitest aprovou 348 testes em 61 arquivos (93,16% statements, 89,60% branches, 94,79% funções, 95,60% linhas). Playwright aprovou 34 cenários, falhou em 0 e ignorou 2 testes opt-in de API real. Axe não detectou violações nas oito varreduras executadas. Nenhuma API real foi chamada.
 
-## 30/10/2026 — auditoria de regressão após CRUD autenticado
+### auditoria de regressão após CRUD autenticado
 
 **Base auditada:** HEAD e referência solicitada são `04a272798219dd56a424847e73fad02298a0b3e3`; a árvore inicial estava limpa. As alterações desta auditoria ficaram em `FrontEnd/`.
 
@@ -34,7 +90,7 @@
 
 `npm.cmd run check` passou: lint, Prettier, typecheck, 338 testes Vitest, build e 4 verificações de bundle. `npm.cmd run test:e2e` executou 32 cenários: 30 passaram e 2 testes de API real foram ignorados por não haver ambiente/credenciais autorizados configurados. Nenhuma API real foi chamada; backend, Agent e arquivos fora de `FrontEnd/` foram somente leitura. Nenhum commit, PR ou push foi criado.
 
-## 30/10/2026 — integração com os contratos atuais do Backend
+### integração com os contratos atuais do Backend
 
 **Base verificada:** branch main, HEAD cccc5ac2bf6f7482fc65ba28cb7443bc02a633de. Todos os arquivos alterados nesta tarefa pertencem a FrontEnd/.
 
@@ -69,24 +125,24 @@ A lista exata de arquivos e os resultados automatizados estão registrados em TE
 - Backend: autorização e escopo por gestor em usuários, atividade, Dashboard, exportações e configuração; endpoint seguro da equipe; CORS/origem de implantação; timezone, idempotência, status por máquina, config singleton/seed e agregação por Task/jornada.
 - Agent: caminho e campos de associação ainda não correspondem ao backend; listagem de Tasks via token do Agent e envio de task_id/idempotente para atividade não estão implementados ponta a ponta.
 - Homologação real: depende de API, banco descartável, CORS e credenciais de teste autorizadas. Status e issues externas não confirmados nesta sessão.
-- Detalhes, evidências e critérios de aceite estão em [PENDENCIAS.md](PENDENCIAS.md); contratos atuais e propostas estão separados em [CONTRATOS_API.md](CONTRATOS_API.md).
-
-## Histórico
+- Detalhes, evidências e critérios de aceite estão em [pendências do Backend](PENDENCIAS_BACKEND.md) e [pendências do Frontend](PENDENCIAS_FRONTEND.md); contratos atuais e propostas estão separados em [CONTRATOS_API.md](CONTRATOS_API.md).
 
 As entradas anteriores abaixo foram preservadas. Estados anteriores que descrevem Tasks como indisponíveis e /auth/me sem association_code são snapshots dos commits indicados e foram superados pela auditoria de 30/10/2026.
 ---
 
-# Alterações do frontend
+## 22/10/2026
 
-## 22/10/2026 — auditoria e validação da US-16.1
+### auditoria e validação da US-16.1
 
-- **Contrato:** a leitura do backend local confirmou que `/dashboard/tasks-summary` não existe em `backend/app/routers/dashboard.py`; o schema de atividade também não recebe `task_id`. A forma de resposta e os parâmetros de agregação permanecem proposta, descrita em [Pendências — agregação de horas por Task](PENDENCIAS.md#proposta-task-hours). Nenhuma chamada de produção foi criada com esse contrato candidato.
+- **Contrato:** a leitura do backend local confirmou que `/dashboard/tasks-summary` não existe em `backend/app/routers/dashboard.py`; o schema de atividade também não recebe `task_id`. A forma de resposta e os parâmetros de agregação permanecem proposta, descrita em [proposta de horas por Task](PENDENCIAS_BACKEND.md#be-12--persistir-taskid-e-fornecer-agregação-real-por-task). Nenhuma chamada de produção foi criada com esse contrato candidato.
 - **Frontend preservado:** a prévia por Task permanece identificada como demonstração e separada do Dashboard real. Filtros, barras acessíveis, atividade geral sem Task, estados assíncronos, cancelamento e descarte de respostas antigas continuam cobertos. O filtro de Task não altera indicadores sem vínculo confiável.
 - **Regressão adicionada:** teste do cartão confirma que uma Task com duração de zero segundos permanece válida e expõe barra acessível em 0%, sem confundir valor zero com ausência de dados.
 - **Validação:** teste focado 4/4; lint, format check, typecheck, build e teste E2E passaram; cobertura passou com 297 testes em 58 arquivos. Evidências completas e os dois testes de API real ignorados estão em [Testes](TESTES.md).
 - **Limites:** não foi possível integrar dados reais sem endpoint, schema, vínculo `task_id`, regra de agregação e autorização/escopo fornecidos pelo Backend. Nenhuma API real foi chamada; não houve alteração fora de `FrontEnd/`, nem commit, push, PR ou mudança de issue.
 
-## 21/10/2026 — formatação e revalidação dos contratos
+## 21/10/2026
+
+### formatação e revalidação dos contratos
 
 - **Estado inicial:** branch `main`, HEAD `fc3132ab5133b2ad9ea12da1e8ce1bbb987822eb`, igual a `origin/main`; árvore de trabalho limpa. A primeira execução de `npm.cmd run format:check` apontou somente `docs/ARQUITETURA.md` e `docs/README.md`.
 - **Formatação:** aplicados Prettier aos dois documentos indicados; títulos, tabelas, links, exemplos e blocos Mermaid foram preservados.
@@ -98,7 +154,7 @@ As entradas anteriores abaixo foram preservadas. Estados anteriores que descreve
 - **Limites:** não foi chamada API real nem executado teste do Backend/Agent. As rotas de dados continuam sem autorização por gestor no Backend; Tasks persistentes e associação seguem ausentes.
 - **Permissões:** `git diff` contém alterações somente em `FrontEnd/docs/`; nenhum código-fonte ou arquivo externo foi alterado. `check:full` regenerou artefatos ignorados de build/cobertura nas pastas de saída já existentes de `FrontEnd/`. Não houve commit, push, PR, merge, alteração de issue ou deploy.
 
-## 21/10/2026 — correção e encerramento local de F-04
+### correção e encerramento local de F-04
 
 - **Diagnóstico:** em `a20750c` na branch `main`, `devApi.createTask()` enviava POST `/tasks`, enquanto o handler MSW declarava `/tasks/`. O teste integrado reproduziu a falha: o handler curinga respondeu 501.
 - **Código e testes:** alinhado o POST do cliente a `/tasks/`; o teste de cliente agora fixa pathname, método, autenticação, Content-Type, payload, validação da resposta e erro HTTP. Os testes de handlers cobrem o ciclo demonstrativo, status HTTP, reset e integração cliente + MSW real de testes.
@@ -107,39 +163,39 @@ As entradas anteriores abaixo foram preservadas. Estados anteriores que descreve
 - **Verificações gerais:** lint, typecheck, cobertura (296 testes/58 arquivos), build, 4 verificações do bundle e E2E (30 aprovados/2 testes reais ignorados) passaram. O `format:check` global aponta somente `docs/ARQUITETURA.md` e `docs/README.md`, que não foram alterados nesta tarefa; por isso `check:full` parou nessa etapa. Os demais comandos foram executados separadamente.
 - **Limites:** F-04 cobre somente a rota demonstrativa. Issues #133 e #134 continuam abertas; CRUD real, autorização por gestor e integração da interface dependem do Backend.
 
-## 21/10/2026 — auditoria e rastreabilidade documental
+### auditoria e rastreabilidade documental
 
 - **Objetivo:** confrontar os 11 documentos existentes em FrontEnd/docs com o código local, requisitos, Backend, Agent e estado oficial de issues/PRs, preservando o conteúdo anterior.
 - **Documentos atualizados:** ALTERACOES, ARQUITETURA, CONTRATOS_API, FUNCIONALIDADES, MATRIZ_ISSUES_FRONTEND, PENDENCIAS, PLANO_EXECUCAO_FRONTEND, PROPOSTA_CONTRATOS_BACKEND, README, RELATORIO_EXECUCAO_FRONTEND e TESTES.
 - **Natureza:** índice e trilha de leitura ampliados; mapa arquitetura/mock-prod adicionados; relações de funcionalidade, requisito, código, endpoint e teste explicitadas; catálogo de rotas do Backend e caminho /tasks versus /tasks/ documentados; propostas externas com riscos, efeitos e critérios conectados a IDs.
 - **Motivo:** melhorar navegação e distinguir evidência atual, histórico, demonstração e contrato proposto; corrigir a fotografia de estado anterior ao HEAD f8556a1 e registrar a diferença de caminho de criação de Task.
-- **Rastreabilidade:** issues oficiais consultadas: 38 (35 abertas, 3 fechadas); PR #128 aberta entre a branch pessoal e a main oficial; PRs #122/#123 integradas. Relações detalhadas em [Matriz](MATRIZ_ISSUES_FRONTEND.md), [Funcionalidades](FUNCIONALIDADES.md) e [Pendências](PENDENCIAS.md).
-- **Validação e limites:** testes de código não foram reexecutados nesta auditoria documental. A revisão local do estado, caminhos e documentos foi registrada em [Relatório](RELATORIO_EXECUCAO_FRONTEND.md); nenhum endpoint real foi chamado.
+- **Rastreabilidade:** issues oficiais consultadas: 38 (35 abertas, 3 fechadas); PR #128 aberta entre a branch pessoal e a main oficial; PRs #122/#123 integradas. Consulte o [índice](README.md), as [Funcionalidades](FUNCIONALIDADES.md) e as listas de [Pendências do Backend](PENDENCIAS_BACKEND.md) e [Frontend](PENDENCIAS_FRONTEND.md).
+- **Validação e limites:** testes de código não foram reexecutados nesta auditoria documental. A revisão local do estado, caminhos e documentos foi registrada em [Relatório](TESTES.md); nenhum endpoint real foi chamado.
 - **Pendência adicionada:** F-04 registra divergência textual entre POST /tasks no cliente demonstrativo e POST /tasks/ no handler. Compatibilidade do matcher ainda precisa de validação; nenhum defeito foi declarado reproduzido.
 - **Escopo:** todas as escritas ficaram dentro de FrontEnd/docs/. Nenhum código, arquivo externo, issue, PR ou remoto foi alterado; nenhum commit, push ou merge foi feito.
 
-Histórico de alterações por data, em ordem da mais recente para a mais antiga. Caminhos registrados em entradas antigas refletem a estrutura usada na época. Consulte [Arquitetura](ARQUITETURA.md) para a organização atual, [Testes](TESTES.md) para os resultados automatizados e [Pendências](PENDENCIAS.md) para bloqueios em aberto; detalhes de versões anteriores também estão no histórico do Git.
-
-## 21/10/2026 — conclusão da interface de Tasks e prévia analítica
+### conclusão da interface de Tasks e prévia analítica
 
 - **Tasks (#134):** adicionados formulário e lista com título, descrição e seleção múltipla de colaboradores; CRUD da demonstração em memória, busca por título/descrição, ordenação por título/data, detalhes, confirmação antes da exclusão e estados acessíveis. Em produção, a prévia permanece desabilitada enquanto a API não oferece contrato.
 - **Dashboard (#98/#140):** adicionado filtro e card de resumo por Task usando apenas `devApi` nos mocks de desenvolvimento. A rota demonstrativa responde com lista vazia; o filtro não altera os indicadores gerais ou categorias e não inventa tempo de trabalho.
 - **Mocks e regressão de sessão:** adicionados handlers locais de cadastro/login/identidade e colaboradores demonstrativos para navegar pelas rotas protegidas em desenvolvimento. O aviso de mocks deixa explícito que auth, colaboradores, Tasks e jornada são dados simulados.
-- **Contratos e rastreabilidade:** validadores e tipos da camada de demonstração foram adicionados; contratos candidatos estão centralizados em [Pendências](PENDENCIAS.md). Matriz e funcionalidades distinguem interface parcial de persistência/integração backend.
-- **Validação:** resultados desta revisão estão em [Testes](TESTES.md) e no [Relatório](RELATORIO_EXECUCAO_FRONTEND.md).
+- **Contratos e rastreabilidade:** validadores e tipos da camada de demonstração foram adicionados; contratos candidatos estão centralizados em [Pendências do Backend](PENDENCIAS_BACKEND.md). Matriz e funcionalidades distinguem interface parcial de persistência/integração backend.
+- **Validação:** resultados desta revisão estão em [Testes](TESTES.md).
 
-## 21/10/2026 — Autenticação real do gestor e proteção das páginas
+### Autenticação real do gestor e proteção das páginas
 
 - **Issues:** avanço de #112 e #138, em resposta à issue #138 aberta em 21/10. O checkout inicial estava limpo em `main` no commit `eb099637`; a PR #128 com cinco commits e alterações apenas em `FrontEnd/` permanecia aberta e não integrada a `upstream/main`.
 - **Formulários:** `AuthPage` passou a enviar cadastro/login aos contratos existentes. Valida e-mail, mínimo de 8 caracteres e máximo de 72 bytes UTF-8 no cadastro; trata credencial inválida, e-mail já usado, 422, timeout/rede e prevenção de envio duplicado. Cadastro retorna confirmação e exige ação separada para entrar; não autentica automaticamente.
 - **Sessão:** criado `ManagerSessionProvider` com armazenamento do token somente em `sessionStorage`, validação do token e identidade via `GET /auth/me`, restauração após refresh, logout e proteção das cinco páginas do gestor. Nenhum token ou senha é registrado.
 - **Cliente HTTP:** chamadas a usuários, realtime, resumo, exportações e configurações enviam Bearer da sessão. HTTP 401 coordena limpeza da sessão e redirecionamento; HTTP 403 preserva a identidade. Cadastro/login permanecem públicos; o Bearer de `/auth/me` usa o token recebido explicitamente.
 - **Navegação/testes:** Sidebar mostra e-mail validado e botão de saída. Foram adicionados testes de auth, API, sessão, guarda de rotas e E2E mockado. O fluxo real do servidor não foi executado.
-- **Dependência crítica:** `/auth/me` é protegido no backend, mas rotas de dados atuais ainda não exigem token nem filtram por gestor. A guarda React e o envio de Bearer não oferecem autorização; ver B-01/#137 em [Pendências](PENDENCIAS.md). O card de associação continua oculto porque falta contrato de código (#113).
-- **Validação:** resultados de `check`, `check:full`, Playwright e auditoria npm estão em [Testes](TESTES.md) e no [Relatório](RELATORIO_EXECUCAO_FRONTEND.md). A auditoria npm atual não obteve conexão ao registry.
+- **Dependência crítica:** `/auth/me` é protegido no backend, mas rotas de dados atuais ainda não exigem token nem filtram por gestor. A guarda React e o envio de Bearer não oferecem autorização; ver B-01/#137 em [Pendências do Backend](PENDENCIAS_BACKEND.md#mapeamento-dos-registros-anteriores). O card de associação continua oculto porque falta contrato de código (#113).
+- **Validação:** resultados de `check`, `check:full`, Playwright e auditoria npm estão em [Testes](TESTES.md). A auditoria npm atual não obteve conexão ao registry.
 - **Escopo:** alterações persistentes nesta execução restritas a `FrontEnd/`. Nenhum commit, push, merge, issue, PR, deploy ou chamada à API real foi feito.
 
-## 16/10/2026 — Atividade em tempo real, filtros do painel e busca de tarefas
+## 16/10/2026
+
+### Atividade em tempo real, filtros do painel e busca de tarefas
 
 - **Visualização:** a lista agora mostra o estado de atividade retornado pela API, o aplicativo mais recente e o tempo desde a captura. Essa idade não é apresentada como conexão ou sincronização confirmada.
 - **Filtros:** adicionadas pesquisa por nome/usuário/departamento, filtros combináveis de estado e aplicativo, ordenação por nome/idade da captura, contagem de resultados e limpeza.
@@ -161,7 +217,9 @@ Histórico de alterações por data, em ordem da mais recente para a mais antiga
 - **Dependências externas:** B-10 em `PENDENCIAS.md` registra que status confiável de conexão depende de timestamp de recebimento e identidade de Agent/máquina no contrato autorizado do Backend.
 - **Validação:** linha de base, resultados finais, cenários reais ignorados e limites do ambiente estão em [Testes](TESTES.md).
 
-## 13/10/2026 — Atualização do frontend: autenticação, mocks e jornada simulada
+## 13/10/2026
+
+### Atualização do frontend: autenticação, mocks e jornada simulada
 
 - **Inicialização e isolamento:** MSW e cliente simulado só são importados em desenvolvimento quando `VITE_USE_MOCKS=true`. A aplicação aguarda o worker; falha apresenta alerta e não usa a API real. Rotas da API sem handler retornam `501`, e requests não tratados na origem da API são bloqueados pelo MSW. Ao desativar mocks em desenvolvimento, registros antigos do worker são removidos sem atingir outros Service Workers.
 - **Produção:** ramificações de Tasks e jornada simuladas são removidas do build. O verificador do bundle também rejeita o marcador da interface mock, além dos handlers, worker e rotas simuladas.
@@ -171,7 +229,7 @@ Histórico de alterações por data, em ordem da mais recente para a mais antiga
 - **Formatação:** os sete arquivos apontados pelo `format:check` foram formatados com Prettier. Nenhum comportamento ou lógica foi alterado nesses sete arquivos.
 - **Contratos JWT:** `getCurrentManager` agora rejeita token ausente, vazio, malformado, com espaços ou caracteres de controle antes de criar o cabeçalho. A checagem valida somente a forma compacta de três segmentos; assinatura, expiração e autorização continuam no backend. Cadastro/login validam o tipo e presença de e-mail/senha, enviam apenas esses campos e não refletem credenciais em erros.
 - **Validadores:** a resposta `Token` agora também precisa trazer token com forma compacta de JWT. Os schemas `ManagerOut` e `Token` continuam rejeitando propriedades extras; campos novos exigem revisão explícita do contrato.
-- **Dependências:** Vite 6.4.3 foi atualizado para 6.4.4 com correções upstream no mesmo ramo; `source-map-js` 1.2.1 foi atualizado para 1.2.2 dentro das faixas existentes. O audit passou de 8 para 7 entradas. As pendências que exigem Tailwind 4 ou não têm versão corrigida estão em [Pendências](PENDENCIAS.md).
+- **Dependências:** Vite 6.4.3 foi atualizado para 6.4.4 com correções upstream no mesmo ramo; `source-map-js` 1.2.1 foi atualizado para 1.2.2 dentro das faixas existentes. O audit passou de 8 para 7 entradas. As pendências que exigem Tailwind 4 ou não têm versão corrigida estão em [Testes](TESTES.md).
 - **Validação executada:** `npm.cmd run check` e `npm.cmd run check:full` passaram. Vitest: 171 testes em 41 arquivos; cobertura 95,98% statements, 94,62% branches, 96,31% functions e 97,69% lines. E2E: 27 passaram, 2 ignorados por dependerem da API real. `git diff --check` passou; nenhum teste de integração real foi configurado.
 - **MVP e escopo:** acesso sem login, `AuthPage` informativa, card de associação oculto, dashboard, navegação, status e contratos de relatórios foram preservados. Não houve alteração fora de `FrontEnd/`, commit, push, PR ou merge.
 - **Estado das integrações:** registrada a incorporação da PR #122 do Agent (`ed48ad7cfff9e724406ef9ffffeb6c0f132caf32`, merge `e43673b4dca212eaa991308d14c9dc25b6c64061`) e da PR #123 de autenticação (`c5a053916747751a3894b93e45c1f4e2dafc34b6`, merge `0fc4e7b7333ceb4fdd120f7f1f753f9836163e30`).
@@ -181,7 +239,9 @@ Histórico de alterações por data, em ordem da mais recente para a mais antiga
 - **Validação em 13/10:** `npm.cmd ci` concluiu após a primeira tentativa no sandbox receber `EPERM` para remover `node_modules/nwsapi/dist/lint.log`; o arquivo vazio foi restaurado. Lint, typecheck, Vitest/cobertura (168 testes em 41 arquivos), build e E2E (27 passaram, 2 cenários reais ignorados) passaram quando executados. `format:check` global aponta sete arquivos preexistentes e intocados; os 15 arquivos desta revisão passam na checagem explícita do Prettier. O npm informou 8 vulnerabilidades e script do `esbuild` pendente; nenhuma correção automática foi aplicada. `git diff --check` passou. Detalhes em [Testes](TESTES.md).
 - **Permissões:** nenhuma alteração foi feita fora de `FrontEnd/`; não houve commit, push, PR ou merge.
 
-## 09/10/2026 — Adequação documental à PR externa #122
+## 09/10/2026
+
+### Adequação documental à PR externa #122
 
 - **Alterações locais:** esclarecido em `PENDENCIAS.md`, `CONTRATOS_API.md`, `ARQUITETURA.md`, `FUNCIONALIDADES.md`, `README.md` e `docs/README.md` que o card de associação é apenas visual, está oculto no MVP e depende de contratos de backend e sessão do gestor. Registrada a separação entre rotas consumidas pelo frontend, caminhos previstos, rota consumida pelo Agent e rotas localizadas no backend deste checkout.
 - **Referência externa:** documentada a PR #122 (`ed48ad7cfff9e724406ef9ffffeb6c0f132caf32`, `agent/association`) como implementação do lado Agent fornecida para análise, ainda não integrada neste checkout. A documentação registra `POST /associate/`, payload string com código de seis dígitos, tolerância do Agent a `token`/`access_token`, DPAPI, Bearer e bloqueio de monitoramento sem associação, sem afirmar suporte correspondente do servidor.
@@ -189,7 +249,9 @@ Histórico de alterações por data, em ordem da mais recente para a mais antiga
 - **Testes do card:** adicionada cobertura para códigos ausentes/malformados/não string e ausência da Clipboard API. A execução ficou impedida pela ausência dos binários de ESLint/Vitest; detalhes constam em `TESTES.md`.
 - **Fora do FrontEnd:** nenhum arquivo foi alterado. Não houve commit, push, abertura/aprovação de PR ou merge.
 
-## 07/10/2026 — Revisão dos contratos e validação do MVP
+## 07/10/2026
+
+### Revisão dos contratos e validação do MVP
 
 - Reinspecionados backend, Agent e requisitos atuais em modo somente leitura. Não foram encontrados contratos de jornada diária nem consulta/criação persistente de Tasks; o Agent continua sem `task_id` e sem controle de Task.
 - Confirmado que as adequações do PR #121 já estão na branch: acesso sem login, link de cadastro oculto, cartão de associação fora do Dashboard e tela de Tasks sem persistência simulada.
@@ -298,7 +360,7 @@ Histórico de alterações por data, em ordem da mais recente para a mais antiga
 
 ### Testes e validação
 
-As rodadas de testes diretos, cobertura, lint, build, formatação e E2E estão registradas em [Testes](TESTES.md). O teste opt-in com API real exige `RUN_REAL_API` e ambiente disponível; a validação manual de leitor de tela e dispositivos reais continua em [Pendências](PENDENCIAS.md).
+As rodadas de testes diretos, cobertura, lint, build, formatação e E2E estão registradas em [Testes](TESTES.md). O teste opt-in com API real exige `RUN_REAL_API` e ambiente disponível; a validação manual de leitor de tela e dispositivos reais continua em [FE-03](PENDENCIAS_FRONTEND.md#fe-03--validar-acessibilidade-manual-e-navegadores-alvo).
 
 ## 26/09/2026
 
@@ -344,7 +406,7 @@ Atualizados imports relativos, imports dinâmicos das páginas, mocks e configur
 
 ### Escopo
 
-Esta revisão alterou somente `FrontEnd/`. `backend/` e `requisitos/` foram consultados; nenhuma alteração foi feita neles. Dependências externas e verificações que exigem serviços ausentes estão em [Pendências](PENDENCIAS.md).
+Esta revisão alterou somente `FrontEnd/`. `backend/` e `requisitos/` foram consultados; nenhuma alteração foi feita neles. Dependências externas e verificações que exigem serviços ausentes estão em [Pendências do Backend](PENDENCIAS_BACKEND.md) e [Pendências do Frontend](PENDENCIAS_FRONTEND.md).
 
 ### Alterações funcionais e técnicas
 
@@ -389,10 +451,10 @@ Esta passagem de formatação amplia o diff, mas deixa os scripts de verificaç�
 | `npm.cmd run build`                                    | Passou                                                                 |
 | `npm.cmd run test:e2e` com `PLAYWRIGHT_CHANNEL=chrome` | Passou; o teste de backend real opt-in foi ignorado sem `RUN_REAL_API` |
 
-O endereço `http://localhost:8000/config/` não respondeu durante esta revisão. Por isso o teste sem mocks não foi executado; os E2E regulares interceptam respostas HTTP, e não comprovam CORS ou conteúdo do FastAPI. A ampliação de 200% usa CSS no Chrome e não equivale a zoom nativo. axe-core não substitui leitor de tela ou inspeção humana. Os componentes preservados fora da árvore ativa não foram removidos; a decisão permanece em [Pendências](PENDENCIAS.md).
+O endereço `http://localhost:8000/config/` não respondeu durante esta revisão. Por isso o teste sem mocks não foi executado; os E2E regulares interceptam respostas HTTP, e não comprovam CORS ou conteúdo do FastAPI. A ampliação de 200% usa CSS no Chrome e não equivale a zoom nativo. axe-core não substitui leitor de tela ou inspeção humana. Os componentes preservados fora da árvore ativa não foram removidos; a decisão permanece em [índice das pendências](README.md).
 
 ### Referência da auditoria histórica — 25/09/2026
 
 A revisão daquele ciclo cobriu a estrutura, os fluxos de interface, os contratos disponíveis, os testes e a documentação. Entre os problemas então corrigidos estavam limites de validação de respostas, cancelamento e estados de carregamento, rotas inválidas e telas que sugeriam integrações ainda inexistentes. As alterações e os caminhos usados na época estão resumidos nas entradas cronológicas acima; o histórico detalhado de versões permanece no Git.
 
-Para entender o estado atual, consulte [Arquitetura](ARQUITETURA.md), [Contratos da API](CONTRATOS_API.md), [Funcionalidades](FUNCIONALIDADES.md), [Testes](TESTES.md) e [Pendências](PENDENCIAS.md). Requisitos e backend foram consultados somente para compreender contexto e contratos; nenhum contrato foi criado pela auditoria.
+Para entender o estado atual, consulte [Arquitetura](ARQUITETURA.md), [Contratos da API](CONTRATOS_API.md), [Funcionalidades](FUNCIONALIDADES.md), [Testes](TESTES.md) e [Pendências do Backend](PENDENCIAS_BACKEND.md) e [Pendências do Frontend](PENDENCIAS_FRONTEND.md). Requisitos e backend foram consultados somente para compreender contexto e contratos; nenhum contrato foi criado pela auditoria.

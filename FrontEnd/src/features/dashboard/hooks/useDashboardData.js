@@ -3,9 +3,16 @@ import { api } from '../../../shared/api/api';
 import { requestFailure } from '../../../shared/lib/requestFailure';
 import { useAutoRefresh } from './useAutoRefresh';
 
-const initial = { loading: true, refreshing: false, error: null, data: null, updatedAt: null };
+const initial = {
+  key: null,
+  loading: true,
+  refreshing: false,
+  error: null,
+  data: null,
+  updatedAt: null,
+};
 
-export function useDashboardData(date, username) {
+export function useDashboardData(date, username, scopeKey = '', enabled = true) {
   const [state, setState] = useState(initial);
   const active = useRef(null);
   const sequence = useRef(0);
@@ -16,11 +23,17 @@ export function useDashboardData(date, username) {
     const controller = new AbortController();
     active.current = controller;
     const current = ++sequence.current;
-    const query = `${date}|${username}`;
+    const query = `${scopeKey}|${date}|${username}`;
+    if (!enabled) {
+      previousQuery.current = query;
+      setState({ ...initial, key: query, loading: false });
+      return;
+    }
     const changed = previousQuery.current !== query;
     previousQuery.current = query;
     setState((previous) => ({
       ...previous,
+      key: query,
       data: changed ? null : previous.data,
       updatedAt: changed ? null : previous.updatedAt,
       loading: changed || !previous.data,
@@ -42,6 +55,7 @@ export function useDashboardData(date, username) {
       realtime: realtime.status === 'fulfilled',
     };
     setState({
+      key: query,
       loading: false,
       refreshing: false,
       error:
@@ -60,13 +74,14 @@ export function useDashboardData(date, username) {
       },
       updatedAt: Object.values(availability).some(Boolean) ? new Date() : null,
     });
-  }, [date, username]);
+  }, [date, enabled, scopeKey, username]);
 
   useEffect(() => {
     load();
     return () => active.current?.abort();
   }, [load]);
-  useAutoRefresh(load);
+  useAutoRefresh(load, enabled);
 
-  return { ...state, refresh: load };
+  const currentState = state.key === `${scopeKey}|${date}|${username}` ? state : initial;
+  return { ...currentState, refresh: load };
 }

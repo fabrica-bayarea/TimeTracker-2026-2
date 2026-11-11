@@ -233,10 +233,22 @@ describe('cliente da API', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await api.users();
+    await api.collaborators();
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe(`Bearer ${ACCESS_TOKEN}`);
+    expect(fetchMock.mock.calls[1][1].headers.get('Authorization')).toBe(`Bearer ${ACCESS_TOKEN}`);
+    expect(new URL(fetchMock.mock.calls[1][0]).pathname).toBe('/users/');
 
     await api.loginManager({ email: 'gestor@empresa.com', password: 'SenhaSegura123!' });
-    expect(fetchMock.mock.calls[1][1].headers.has('Authorization')).toBe(false);
+    expect(fetchMock.mock.calls[2][1].headers.has('Authorization')).toBe(false);
+  });
+
+  it('rejects team entries without UUIDs before they can be used for Task assignments', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => [{ username: 'ana' }] })),
+    );
+
+    await expect(api.collaborators()).rejects.toMatchObject({ type: 'invalid-response' });
   });
 
   it('rejects private requests without a session and coordinates logout after HTTP 401', async () => {

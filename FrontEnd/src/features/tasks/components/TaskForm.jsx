@@ -178,8 +178,7 @@ export function TaskForm({
           >
             <legend className="px-1 text-sm font-semibold">Colaboradores atribuídos</legend>
             <p id={`${id}-collaborators-help`} className="mb-2 text-xs muted">
-              Atribuição opcional. Selecione membros da equipe disponíveis neste modo de
-              demonstração.
+              Atribuição opcional. Selecione pessoas disponíveis para este cliente.
             </p>
             {collaboratorsLoading ? (
               <p className="text-sm muted" role="status">
@@ -263,8 +262,8 @@ export function TaskForm({
               Colaboradores atribuídos
             </h3>
             <p className="mt-1 text-xs muted">
-              A atribuição está indisponível porque o Backend ainda não oferece uma consulta segura
-              da equipe do gestor. Esta Task pode ficar sem colaboradores.
+              Este cliente não oferece uma consulta autenticada da equipe do gestor. Esta Task pode
+              ficar sem colaboradores.
             </p>
             {task?.collaborators?.length ? (
               <ul className="mt-2 list-inside list-disc text-sm">

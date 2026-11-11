@@ -28,6 +28,24 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('heading', { name: 'Código de associação' })).not.toBeInTheDocument();
   });
 
+  it('mostra os indicadores preparados e a dependência real de dados por Task', () => {
+    useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
+    render(<DashboardPage manager={{ id: 'manager-1' }} />);
+
+    expect(screen.getByRole('heading', { name: 'Tempo por Task' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Tempo registrado e produtivo' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Linha do tempo da Task' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/API não fornece uma consulta real de duração por Task/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/API não fornece classificação de tempo produtivo/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/API não fornece consulta cronológica/)).toBeInTheDocument();
+  });
+
   it('exibe o estado pendente do código para o gestor autenticado sem afetar os indicadores', async () => {
     useDashboardData.mockReturnValue({ data: fullData, loading: false, refresh: vi.fn() });
     render(<DashboardPage manager={{ id: 'manager-1' }} associationClient={{}} />);
@@ -230,7 +248,7 @@ describe('DashboardPage', () => {
     });
     render(<DashboardPage dark={false} toggleTheme={vi.fn()} devApi={devApi} />);
 
-    const taskFilter = await screen.findByLabelText(/Task \(somente resumo por Task\)/);
+    const taskFilter = await screen.findByLabelText(/Task \(resumo por Task\)/);
     await waitFor(() => expect(taskFilter).toBeEnabled());
     const date = screen.getByLabelText('Data do resumo').value;
     const user = screen.getByLabelText('Usuário').value;
@@ -277,7 +295,7 @@ describe('DashboardPage', () => {
     });
     render(<DashboardPage dark={false} toggleTheme={vi.fn()} devApi={devApi} />);
 
-    const taskFilter = await screen.findByLabelText(/Task \(somente resumo por Task\)/);
+    const taskFilter = await screen.findByLabelText(/Task \(resumo por Task\)/);
     await waitFor(() => expect(taskFilter).toBeEnabled());
     fireEvent.change(taskFilter, { target: { value: task.id } });
     await screen.findByText('0h 30min');

@@ -31,7 +31,9 @@ describe('TaskSummaryCard', () => {
   it('não exibe valores nem gráficos enquanto o Backend não fornece task_id', () => {
     render(<TaskSummaryCard />);
     expect(screen.getByRole('heading', { name: 'Tempo por Task' })).toBeInTheDocument();
-    expect(screen.getByText(/API ainda não fornece agregações reais/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/API não fornece uma consulta real de duração por Task/),
+    ).toBeInTheDocument();
     expect(screen.queryByText('1h 00min')).not.toBeInTheDocument();
   });
 
@@ -131,5 +133,11 @@ describe('TaskSummaryCard', () => {
       screen.getByText('A API não retornou atividades por Task para esta data.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('não apresenta um resumo de outra data como resultado dos filtros atuais', () => {
+    render(<TaskSummaryCard date="2026-11-04" summary={summary} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('resposta do resumo por Task é inválida');
+    expect(screen.queryByText('1h 00min')).not.toBeInTheDocument();
   });
 });

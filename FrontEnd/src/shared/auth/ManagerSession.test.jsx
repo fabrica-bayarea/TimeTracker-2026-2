@@ -12,10 +12,11 @@ const manager = {
 };
 
 function SessionControls() {
-  const { status, login, logout } = useManagerSession();
+  const { status, manager: currentManager, login, logout, retrySession } = useManagerSession();
   return (
     <>
       <p role="status">{status}</p>
+      <p aria-label="Gestor atual">{currentManager?.email || ''}</p>
       <button
         type="button"
         onClick={() =>
@@ -26,6 +27,9 @@ function SessionControls() {
       </button>
       <button type="button" onClick={logout}>
         Sair
+      </button>
+      <button type="button" onClick={() => void retrySession()}>
+        Tentar novamente
       </button>
     </>
   );
@@ -68,6 +72,92 @@ it('removes a token rejected by the identity endpoint', async () => {
 
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('anonymous'));
   expect(sessionStorage.getItem(MANAGER_ACCESS_TOKEN_KEY)).toBeNull();
+});
+
+it('keeps a stored session after a temporary network failure and allows retry', async () => {
+  sessionStorage.setItem(MANAGER_ACCESS_TOKEN_KEY, token);
+  const client = {
+    getCurrentManager: vi
+      .fn()
+      .mockRejectedValueOnce({ type: 'network' })
+      .mockResolvedValueOnce(manager),
+  };
+  render(
+    <ManagerSessionProvider client={client}>
+      <SessionControls />
+    </ManagerSessionProvider>,
+  );
+
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('unavailable'));
+  expect(sessionStorage.getItem(MANAGER_ACCESS_TOKEN_KEY)).toBe(token);
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('authenticated'));
+  expect(screen.getByLabelText('Gestor atual')).toHaveTextContent(manager.email);
+  expect(client.getCurrentManager).toHaveBeenCalledTimes(2);
+});
+
+it('clears a delayed identity response on logout and does not restore the old manager', async () => {
+  sessionStorage.setItem(MANAGER_ACCESS_TOKEN_KEY, token);
+  let resolveManager;
+  const client = {
+    getCurrentManager: vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveManager = resolve;
+        }),
+    ),
+  };
+  render(
+    <ManagerSessionProvider client={client}>
+      <SessionControls />
+    </ManagerSessionProvider>,
+  );
+
+  await waitFor(() => expect(client.getCurrentManager).toHaveBeenCalledOnce());
+  const signal = client.getCurrentManager.mock.calls[0][1];
+  fireEvent.click(screen.getByRole('button', { name: 'Sair' }));
+  resolveManager(manager);
+
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('anonymous'));
+  expect(signal.aborted).toBe(true);
+  expect(screen.getByLabelText('Gestor atual')).toBeEmptyDOMElement();
+  expect(sessionStorage.getItem(MANAGER_ACCESS_TOKEN_KEY)).toBeNull();
+});
+
+it('clears the previous manager before accepting a new identity', async () => {
+  const nextToken = `eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJtYW5hZ2VyLWJpIn0.${'B'.repeat(43)}`;
+  const nextManager = {
+    ...manager,
+    id: 'aa69c407-4b5e-40fd-8e67-c2206ef9fca4',
+    email: 'novo@empresa.com',
+  };
+  sessionStorage.setItem(MANAGER_ACCESS_TOKEN_KEY, token);
+  const client = {
+    loginManager: vi.fn().mockResolvedValue({
+      access_token: nextToken,
+      token_type: 'bearer',
+      expires_in: 3600,
+    }),
+    getCurrentManager: vi.fn().mockResolvedValueOnce(manager).mockResolvedValueOnce(nextManager),
+  };
+  render(
+    <ManagerSessionProvider client={client}>
+      <SessionControls />
+    </ManagerSessionProvider>,
+  );
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Gestor atual')).toHaveTextContent(manager.email),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Sair' }));
+  expect(screen.getByLabelText('Gestor atual')).toBeEmptyDOMElement();
+  expect(sessionStorage.getItem(MANAGER_ACCESS_TOKEN_KEY)).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+  await waitFor(() =>
+    expect(screen.getByLabelText('Gestor atual')).toHaveTextContent(nextManager.email),
+  );
+  expect(sessionStorage.getItem(MANAGER_ACCESS_TOKEN_KEY)).toBe(nextToken);
 });
 
 it('clears a malformed stored token without calling the identity endpoint', async () => {
