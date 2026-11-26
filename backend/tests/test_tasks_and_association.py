@@ -836,7 +836,7 @@ def test_atividade_categoriza_e_aceita_corpo_sem_username(client, team):
 
 # Isolamento entre gestores
 def test_users_retorna_somente_a_equipe_do_gestor(
-    client, auth_headers, other_manager
+    client, seeded, auth_headers, other_manager
 ):
     mine = client.get("/users/", headers=auth_headers)
     theirs = client.get("/users/", headers=other_manager["headers"])
@@ -855,7 +855,7 @@ def test_users_de_gestor_sem_equipe_retorna_lista_vazia(
 
 
 def test_realtime_retorna_somente_a_equipe_do_gestor(
-    client, auth_headers, other_manager
+    client, seeded, auth_headers, other_manager
 ):
     mine = client.get("/activities/realtime", headers=auth_headers)
     theirs = client.get(
@@ -867,7 +867,7 @@ def test_realtime_retorna_somente_a_equipe_do_gestor(
 
 
 def test_realtime_nao_mostra_colaborador_sem_gestor(
-    client, auth_headers, other_manager
+    client, seeded, auth_headers, other_manager
 ):
     for headers in (auth_headers, other_manager["headers"]):
         response = client.get("/activities/realtime", headers=headers)
@@ -876,7 +876,7 @@ def test_realtime_nao_mostra_colaborador_sem_gestor(
 
 
 def test_summary_retorna_somente_a_equipe_do_gestor(
-    client, auth_headers, other_manager, today
+    client, seeded, auth_headers, other_manager, today
 ):
     url = f"/dashboard/summary?date={today.isoformat()}"
     mine = client.get(url, headers=auth_headers)
@@ -887,7 +887,7 @@ def test_summary_retorna_somente_a_equipe_do_gestor(
 
 
 def test_summary_com_filtro_de_colaborador_de_outra_equipe_vem_vazio(
-    client, auth_headers, today
+    client, seeded, auth_headers, today
 ):
     response = client.get(
         f"/dashboard/summary?date={today.isoformat()}&username=diego",
@@ -899,7 +899,7 @@ def test_summary_com_filtro_de_colaborador_de_outra_equipe_vem_vazio(
 
 
 def test_summary_com_filtro_do_proprio_colaborador_funciona(
-    client, auth_headers, today
+    client, seeded, auth_headers, today
 ):
     response = client.get(
         f"/dashboard/summary?date={today.isoformat()}&username=ana",
@@ -924,7 +924,7 @@ def test_summary_soma_apenas_a_equipe(
 
 
 def test_exportacao_csv_contem_somente_a_equipe(
-    client, auth_headers, today
+    client, seeded, auth_headers, today
 ):
     response = client.get(
         f"/dashboard/export/csv?date={today.isoformat()}",
