@@ -451,12 +451,19 @@ def categorize(
     Retorna o category_id da primeira regra que casar,
     ou None ("Outros"/sem categoria).
     """
+    return _match_category(list_rules(db), process_name, window_title)
+
+
+def _match_category(
+        rules: list[models.CategorizationRule],
+        process_name: str | None,
+        window_title: str | None
+) -> uuid.UUID | None:
+    """`categorize` sobre regras já carregadas (evita uma consulta por item)"""
     tgt = {
         "process": (process_name or "").lower(),
         "title": (window_title or "").lower(),
     }
-
-    rules = list_rules(db)
 
     for rule in rules:
         keyword = rule.keyword.lower()
@@ -499,6 +506,173 @@ def create_activity_log(
     db.refresh(db_log)
 
     return db_log
+
+
+class ActivitySyncConflictError(Exception):
+    """
+    Lotes simultâneos disputaram os mesmos registros mais vezes do que o
+    limite de tentativas; o Agente deve reenviar o lote
+    """
+
+
+def _as_utc(value: datetime) -> datetime:
+    # SQLite (usado nos testes) devolve datetimes sem fuso; o Postgres, com
+    # fuso. Em ambos os casos o valor está em UTC
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
+
+
+def _dedup_key(
+        hostname: str,
+        process_name: str,
+        started_at: datetime
+) -> tuple[str, str, datetime]:
+    """Chave de deduplicação dentro de um colaborador (`user_id` fixo)"""
+    return hostname, process_name, _as_utc(started_at)
+
+
+def _existing_dedup_keys(
+        db: Session,
+        user_id: uuid.UUID,
+        started_ats: set[datetime],
+) -> set[tuple[str, str, datetime]]:
+    rows = (
+        db.query(
+            models.ActivityLog.hostname,
+            models.ActivityLog.process_name,
+            models.ActivityLog.started_at,
+        )
+        .filter(
+            models.ActivityLog.user_id == user_id,
+            models.ActivityLog.started_at.in_(started_ats),
+        )
+        .all()
+    )
+
+    return ({
+        _dedup_key(host, process, started)
+        for host, process, started in rows
+    })
+
+
+def _team_task_ids(
+        db: Session,
+        manager_id: uuid.UUID,
+        task_ids: set[uuid.UUID],
+) -> set[uuid.UUID]:
+    """Subconjunto de `task_ids` que pertence ao gestor"""
+    if not task_ids:
+        return set()
+
+    rows = (
+        db.query(models.Task.id)
+          .filter(
+              models.Task.id.in_(task_ids),
+              models.Task.manager_id == manager_id,
+          )
+          .all()
+    )
+
+    return {task_id for (task_id,) in rows}
+
+
+def sync_activity_logs(
+        db: Session,
+        items: list[schemas.ActivitySyncItem],
+        user: models.User,
+) -> schemas.ActivitySyncResponse:
+    """
+    Persiste um lote de períodos de utilização do colaborador autenticado
+    (`user`, vindo do token do Agente) de forma idempotente
+
+    - Duplicado = mesmo usuário, máquina, processo e início. É ignorado
+      (o registro original é mantido) mas continua confirmado, para o Agente
+      poder marcá-lo como sincronizado após um reenvio
+    - Task inexistente ou de outro gestor: só aquele item é rejeitado; os
+      demais são gravados, para um registro ruim não travar a fila do Agente
+    - Lotes simultâneos: o índice único `uq_activity_dedup` decide; quem
+      perde a corrida refaz a consulta de existentes e segue
+    """
+    rules = list_rules(db)
+    valid_tasks = _team_task_ids(
+        db,
+        user.manager_id,
+        {item.task_id for item in items if item.task_id is not None},
+    )
+
+    accepted: list[schemas.ActivitySyncItem] = []
+    rejected: list[schemas.ActivitySyncRejected] = []
+    REJECT_TASK_NOT_FOUND = "task_not_found"
+
+    for item in items:
+        if item.task_id is not None and item.task_id not in valid_tasks:
+            rejected.append(schemas.ActivitySyncRejected(
+                client_id=item.client_id, reason=REJECT_TASK_NOT_FOUND
+            ))
+        else:
+            accepted.append(item)
+
+    created = 0
+
+    if accepted:
+        started_ats = {item.started_at for item in accepted}
+        SYNC_MAX_ATTEMPTS = 3
+
+        for _ in range(SYNC_MAX_ATTEMPTS):
+            seen = _existing_dedup_keys(db, user.id, started_ats)
+            new_rows = []
+
+            for item in accepted:
+                key = _dedup_key(
+                    item.hostname, item.process_name, item.started_at
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                new_rows.append(models.ActivityLog(
+                    user_id=user.id,
+                    hostname=item.hostname,
+                    process_name=item.process_name,
+                    window_title=item.window_title,
+                    duration_seconds=int(
+                        (item.ended_at - item.started_at).total_seconds()
+                    ),
+                    category_id=_match_category(
+                        rules, item.process_name, item.window_title
+                    ),
+                    task_id=item.task_id,
+                    scope=item.scope.value,
+                    started_at=item.started_at,
+                    ended_at=item.ended_at,
+                    # Último instante conhecido da atividade: mantém o
+                    # painel em tempo real e o sumário diário coerentes
+                    captured_at=item.ended_at,
+                ))
+
+            db.add_all(new_rows)
+
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+                continue
+
+            created = len(new_rows)
+
+            break
+        else:
+            raise ActivitySyncConflictError()
+
+    return schemas.ActivitySyncResponse(
+        confirmed_ids=[item.client_id for item in accepted],
+        created=created,
+        duplicates=len(accepted) - created,
+        rejected=rejected,
+    )
 
 
 # Realtime View
