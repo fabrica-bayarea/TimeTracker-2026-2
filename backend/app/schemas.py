@@ -1,13 +1,15 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from pydantic import (
+    AwareDatetime,
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
     field_validator,
+    model_validator,
 )
 
 from .security import MAX_PASSWORD_BYTES
@@ -324,6 +326,132 @@ class ActivityLogOut(BaseModel):
     category_id: uuid.UUID | None
     is_idle: bool
     captured_at: datetime
+
+
+# Sincronização de atividades (Agente Desktop)
+ACTIVITY_SYNC_MAX_ITEMS = 500
+
+
+class ActivityScopeEnum(str, Enum):
+    in_scope = "in_scope"
+    out_of_scope = "out_of_scope"
+
+
+class ActivitySyncItem(BaseModel):
+    """
+    Um período de utilização de uma aplicação, como guardado no JSON local
+    do Agente. O colaborador não vem no corpo: é o dono do token
+    """
+
+    client_id: uuid.UUID = Field(
+        description=(
+            "Identificador do registro no JSON local do Agente. É devolvido "
+            "em `confirmed_ids` para o Agente saber quais registros já pode "
+            "marcar como sincronizados."
+        ),
+    )
+    hostname: str = Field(
+        min_length=1,
+        max_length=ASSOCIATION_FIELD_MAX,
+        description="Nome da máquina que gerou o registro.",
+    )
+    process_name: str = Field(
+        min_length=1,
+        max_length=255,
+        description="Aplicação (processo) utilizada.",
+    )
+    window_title: str | None = Field(default=None, max_length=500)
+    task_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Task ativa durante o período. Precisa pertencer ao gestor do "
+            "colaborador; caso contrário o registro é rejeitado."
+        ),
+    )
+    scope: ActivityScopeEnum = Field(
+        description="Classificação: dentro (`in_scope`) ou fora "
+                    "(`out_of_scope`) do escopo da task.",
+    )
+    started_at: AwareDatetime = Field(
+        description="Início do período, com fuso horário.",
+    )
+    ended_at: AwareDatetime = Field(
+        description="Término do período, com fuso horário.",
+    )
+
+    @field_validator("hostname", "process_name")
+    @classmethod
+    def clean(cls, value: str) -> str:
+        return _clean_identifier(value)
+
+    @field_validator("window_title")
+    @classmethod
+    def window_title_blank_is_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        return value.strip() or None
+
+    @field_validator("started_at", "ended_at")
+    @classmethod
+    def to_utc(cls, value: datetime) -> datetime:
+        # Normaliza: o mesmo instante em fusos diferentes gera a mesma chave
+        # de deduplicação
+        return value.astimezone(timezone.utc)
+
+    @model_validator(mode="after")
+    def window_is_ordered(self) -> "ActivitySyncItem":
+        if self.ended_at < self.started_at:
+            raise ValueError("`ended_at` não pode ser anterior a `started_at`.")
+
+        return self
+
+
+class ActivitySyncRequest(BaseModel):
+    activities: list[ActivitySyncItem] = Field(
+        min_length=1,
+        max_length=ACTIVITY_SYNC_MAX_ITEMS,
+        description=f"Lote de 1 a {ACTIVITY_SYNC_MAX_ITEMS} registros.",
+    )
+
+    @field_validator("activities")
+    @classmethod
+    def client_ids_are_unique(
+        cls,
+        value: list[ActivitySyncItem]
+    ) -> list[ActivitySyncItem]:
+        ids = [item.client_id for item in value]
+
+        if len(ids) != len(set(ids)):
+            raise ValueError("`client_id` repetido no mesmo lote.")
+
+        return value
+
+
+class ActivitySyncRejected(BaseModel):
+    client_id: uuid.UUID
+    reason: str = Field(
+        description="`task_not_found`: a task não existe ou não pertence ao "
+                    "gestor do colaborador."
+    )
+
+
+class ActivitySyncResponse(BaseModel):
+    confirmed_ids: list[uuid.UUID] = Field(
+        description=(
+            "`client_id` dos registros persistidos, inclusive os que já "
+            "estavam gravados (reenvio). O Agente só deve marcar como "
+            "sincronizado o que estiver aqui."
+        ),
+    )
+    created: int = Field(description="Registros novos gravados nesta chamada.")
+    duplicates: int = Field(
+        description="Registros confirmados que já existiam e foram ignorados."
+    )
+    rejected: list[ActivitySyncRejected] = Field(
+        default_factory=list,
+        description="Registros não gravados e não confirmados.",
+    )
 
 
 # Dashboard / Real-Time

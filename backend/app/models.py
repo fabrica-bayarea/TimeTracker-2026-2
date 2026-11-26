@@ -21,10 +21,21 @@ from .database import Base
 from .utils import MAX_IDLE_SECONDS
 
 
+# Nome do índice único usado na deduplicação (também criado em schema_upgrades)
+ACTIVITY_DEDUP_INDEX = "uq_activity_dedup"
+
+
 class MatchField(str, enum.Enum):
     PROCESS = "process"
     TITLE = "title"
     BOTH = "both"
+
+
+class ActivityScope(str, enum.Enum):
+    """Classificação da aplicação em relação ao escopo da task"""
+
+    IN_SCOPE = "in_scope"
+    OUT_OF_SCOPE = "out_of_scope"
 
 
 class User(Base):
@@ -163,13 +174,30 @@ class ActivityLog(Base):
     captured_at = Column(DateTime(timezone=True), server_default=func.now(),
                          nullable=False)
 
+    # Preenchidos apenas pelos registros de `POST /activities/sync` (nulos
+    # nas leituras avulsas de `POST /activities/`).
+    # `scope` guarda um ActivityScope como texto: a coluna é adicionada por
+    # `schema_upgrades` e um tipo ENUM do Postgres exigiria migração própria
+    task_id = Column(Uuid(as_uuid=True),
+                     ForeignKey("tasks.id", ondelete="SET NULL"),
+                     nullable=True)
+    scope = Column(String(20), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+
     user = relationship("User", back_populates="activity_logs")
     category = relationship("Category", back_populates="activity_logs")
+    task = relationship("Task")
 
     __table_args__ = (
         # Otimiza consultas: usuário + data, e por categoria
         Index("ix_activity_user_captured_at", "user_id", "captured_at"),
         Index("ix_activity_category", "category_id"),
+        Index("ix_activity_task", "task_id"),
+        # Chave de deduplicação da sincronização: o reenvio de um lote não
+        # gera linhas novas. Linhas sem `started_at` (NULL) nunca colidem
+        Index(ACTIVITY_DEDUP_INDEX, "user_id", "hostname", "process_name",
+              "started_at", unique=True),
     )
 
 

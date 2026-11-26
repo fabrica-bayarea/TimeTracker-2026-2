@@ -49,7 +49,7 @@ app/
   rate_limit.py    # limite de tentativas inválidas do código de associação
   routers/
     auth.py        # POST /auth/register, POST /auth/login, GET /auth/me (RF-02)
-    activities.py  # POST /activities (RF01/RF02) e GET /activities/realtime (RF09)
+    activities.py  # POST /activities (RF01/RF02), POST /activities/sync (RF-13/RF-19) e GET /activities/realtime (RF09)
     dashboard.py   # GET /dashboard/summary (RF10) e exportações CSV/PDF (RF11)
     categories.py  # categorias e regras de categorização (RF07/RF08)
     config.py      # GET/PUT /config (RF06 - config remota do agente)
@@ -67,6 +67,7 @@ tests/             # testes automatizados (pytest)
 | GET | `/auth/me` | Gestor autenticado e seu código de associação (rota protegida) | RF-02, RF-03 |
 | POST | `/collaborators/associate` | Agente associa o colaborador ao gestor pelo código de 6 dígitos e recebe o token do Agente | RF-01, RF-04 |
 | POST | `/activities/` | Agente envia leitura da janela ativa | RF01, RF02, RF05 |
+| POST | `/activities/sync` | Agente sincroniza um lote de atividades (autenticado e idempotente) | RF-13, RF-19 |
 | GET | `/activities/realtime` | Painel em tempo real | RF09 |
 | GET | `/dashboard/summary?date=` | Sumário diário por categoria | RF10 |
 | GET | `/dashboard/export/csv` | Exporta relatório em CSV | RF11 |
@@ -130,7 +131,34 @@ POST /collaborators/associate   (sem autenticação)
 - É **idempotente**: repetir com o mesmo gestor responde 200 com `already_associated: true`, atualiza `machine_name` e emite um novo token.
 - O colaborador é identificado por `username` (único). O token do Agente tem audiência própria (`time-tracker:agent`) e **não** vale como sessão de gestor, nem o contrário.
 - Após 10 tentativas com código inexistente em 15 minutos, a origem recebe 429. O contador é por processo e usa o IP da conexão; atrás de proxy/túnel, configure o proxy para repassar o IP real (ex.: `uvicorn --proxy-headers`).
-- O token do Agente só vale em `POST /activities/` (veja "Quem acessa o quê").
+- O token do Agente só vale em `POST /activities/` e `POST /activities/sync` (veja "Quem acessa o quê").
+
+### Sincronização de atividades (`POST /activities/sync`)
+
+Rota do Agente para enviar os registros pendentes do JSON local (RF-18/RF-19). Exige o token do Agente; sem ele (ou com token de gestor, expirado ou de colaborador sem gestor) responde **401** e nada é gravado.
+
+```
+POST /activities/sync
+Authorization: Bearer <token do Agente>
+{"activities": [{
+  "client_id": "<uuid do registro no JSON local>",
+  "hostname": "PC-JOAO-01", "process_name": "code.exe",
+  "window_title": null, "task_id": "<uuid da task ou null>",
+  "scope": "in_scope",                       // ou "out_of_scope"
+  "started_at": "2026-11-20T13:00:00Z",      // com fuso horário
+  "ended_at":   "2026-11-20T13:01:30Z"
+}]}
+→ 200 {"confirmed_ids": ["<client_id>"], "created": 1, "duplicates": 0, "rejected": []}
+→ 401 token ausente/inválido/expirado, ou token que não é de Agente
+→ 409 lotes simultâneos disputaram os mesmos registros (reenvie o lote)
+→ 422 corpo inválido (lote vazio ou com mais de 500 itens, data sem fuso, fim antes do início, escopo desconhecido...); nada é gravado
+```
+
+- **Idempotente:** a chave de deduplicação é *colaborador + máquina + processo + `started_at`* (índice único `uq_activity_dedup`). Reenviar o lote após uma queda de rede não gera linhas novas; o registro já gravado é mantido e continua listado em `confirmed_ids`.
+- **Confirmação:** o Agente só deve marcar como sincronizados os registros cujo `client_id` esteja em `confirmed_ids`.
+- **Task:** `task_id` é opcional, mas se informado precisa ser de uma task do gestor do colaborador. Registros com task inexistente ou de outro gestor voltam em `rejected` (`task_not_found`) e não são gravados; o restante do lote é processado.
+- `duration_seconds` é calculado a partir de `started_at`/`ended_at`; `captured_at` recebe `ended_at`, então o painel em tempo real e o sumário diário já enxergam os registros sincronizados.
+- Bancos existentes recebem as colunas `task_id`, `scope`, `started_at`, `ended_at` e o índice único na inicialização (`schema_upgrades`). Linhas antigas ficam com `NULL` e não colidem no índice.
 
 ### Protegendo rotas
 
@@ -157,7 +185,7 @@ router = APIRouter(
 | Rota | Credencial | Observação |
 |---|---|---|
 | `POST /auth/register`, `POST /auth/login`, `POST /collaborators/associate`, `GET /` | nenhuma | Públicas por necessidade (o `associate` tem limite de tentativas). |
-| `POST /activities/` | **token do Agente** | O registro é gravado no colaborador dono do token; o `username` do corpo é ignorado. |
+| `POST /activities/`, `POST /activities/sync` | **token do Agente** | O registro é gravado no colaborador dono do token; o `username` do corpo é ignorado. |
 | `GET /activities/realtime`, `GET /dashboard/*`, `GET /users/`, `/tasks/*`, `GET /auth/me` | **token do gestor** | Os dados retornados são somente os da equipe do gestor logado. |
 | `/config/*`, `/categories/*` | nenhuma (por enquanto) | Dados globais, ainda abertos; pendente de decisão. |
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import schemas, crud, models, security
@@ -31,6 +31,43 @@ def receive_activity(
     db: Session = Depends(get_db),
 ):
     return crud.create_activity_log(db, log, user)
+
+
+@router.post(
+    "/sync",
+    response_model=schemas.ActivitySyncResponse,
+    summary="Sincroniza um lote de atividades do Agente (idempotente)",
+    description=(
+        "Exige o token do Agente (`POST /collaborators/associate`). Os "
+        "registros são gravados no colaborador dono do token. Reenviar o "
+        "mesmo lote (ex.: após queda de rede) não duplica linhas: um "
+        "registro com o mesmo usuário, máquina, processo e `started_at` é "
+        "ignorado, mas continua listado em `confirmed_ids`. O Agente só "
+        "deve marcar como sincronizados os registros presentes em "
+        "`confirmed_ids`. Registros com `task_id` inexistente ou de outro "
+        "gestor voltam em `rejected` e não são gravados; os demais do lote "
+        "são processados normalmente."
+    ),
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        status.HTTP_409_CONFLICT: {
+            "description": "Lotes simultâneos disputaram os mesmos "
+                           "registros; reenvie o lote."
+        },
+    },
+)
+def sync_activities(
+    payload: schemas.ActivitySyncRequest,
+    user: models.User = Depends(security.get_current_agent),
+    db: Session = Depends(get_db),
+):
+    try:
+        return crud.sync_activity_logs(db, payload.activities, user)
+    except crud.ActivitySyncConflictError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conflito ao gravar o lote. Reenvie-o.",
+        ) from None
 
 
 @router.get(
